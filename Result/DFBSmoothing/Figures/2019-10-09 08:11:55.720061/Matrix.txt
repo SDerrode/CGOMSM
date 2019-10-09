@@ -1,0 +1,123 @@
+# matrice Cov
+\begin{eqnarray*}
+&\bs{\Gamma}_{0,0}^{\zundeux} &= \begin{bmatrix}
+0.5 & 0.3 & 0.082 & 0.229 & \\
+0.3 & 2.0 & 0.4 & 0.296 & \\
+0.082 & 0.4 & 0.5 & 0.3 & \\
+0.229 & 0.296 & 0.3 & 2.0 & \\
+\end{bmatrix}
+&\bs{\Gamma}_{0,1}^{\zundeux} &= \begin{bmatrix}
+0.5 & 0.3 & 0.346 & 0.104 & \\
+0.3 & 2.0 & 0.335 & 0.478 & \\
+0.346 & 0.335 & 1.0 & 0.5 & \\
+0.104 & 0.478 & 0.5 & 0.5 & \\
+\end{bmatrix}
+&\bs{\Gamma}_{1,0}^{\zundeux} &= \begin{bmatrix}
+1.0 & 0.5 & 0.024 & 0.449 & \\
+0.5 & 0.5 & 0.034 & 0.266 & \\
+0.024 & 0.034 & 0.5 & 0.3 & \\
+0.449 & 0.266 & 0.3 & 2.0 & \\
+\end{bmatrix}
+&\bs{\Gamma}_{1,1}^{\zundeux} &= \begin{bmatrix}
+1.0 & 0.5 & 0.001 & 0.045 & \\
+0.5 & 0.5 & 0.275 & 0.137 & \\
+0.001 & 0.275 & 1.0 & 0.5 & \\
+0.045 & 0.137 & 0.5 & 0.5 & \\
+\end{bmatrix}
+\end{eqnarray*}
+
+# matrice A
+\begin{eqnarray*}
+&\bs{A}_{0,0}^{\zundeux} &= \begin{bmatrix}
+0.048 & 0.193 & \\
+0.406 & 0.087 & \\
+\end{bmatrix}
+&\bs{A}_{0,1}^{\zundeux} &= \begin{bmatrix}
+0.65 & 0.07 & \\
+0.071 & 0.228 & \\
+\end{bmatrix}
+&\bs{A}_{1,0}^{\zundeux} &= \begin{bmatrix}
+-0.02 & 0.088 & \\
+0.366 & 0.166 & \\
+\end{bmatrix}
+&\bs{A}_{1,1}^{\zundeux} &= \begin{bmatrix}
+-0.548 & 1.098 & \\
+-0.184 & 0.458 & \\
+\end{bmatrix}
+\end{eqnarray*}
+
+# matrice B
+\begin{eqnarray*}
+&\bs{B}_{0,0}^{\zundeux} &= \begin{bmatrix}
+0.637 & 0.116 & \\
+0.116 & 1.367 & \\
+\end{bmatrix}
+&\bs{B}_{0,1}^{\zundeux} &= \begin{bmatrix}
+0.816 & 0.293 & \\
+0.293 & 0.546 & \\
+\end{bmatrix}
+&\bs{B}_{1,0}^{\zundeux} &= \begin{bmatrix}
+0.691 & 0.141 & \\
+0.141 & 1.331 & \\
+\end{bmatrix}
+&\bs{B}_{1,1}^{\zundeux} &= \begin{bmatrix}
+0.792 & 0.267 & \\
+0.267 & 0.612 & \\
+\end{bmatrix}
+\end{eqnarray*}
+
+# matrice CGOMSM Direct
+\begin{eqnarray*}
+&\bs{\Gamma}_{0,0}^{\zundeux} &= \begin{bmatrix}
+0.5 & 0.3 & 0.082 & 0.044 & \\
+0.3 & 2.0 & 0.4 & 0.296 & \\
+0.082 & 0.4 & 0.5 & 0.3 & \\
+0.044 & 0.296 & 0.3 & 2.0 & \\
+\end{bmatrix}
+&\bs{\Gamma}_{0,1}^{\zundeux} &= \begin{bmatrix}
+0.5 & 0.3 & 0.346 & 0.072 & \\
+0.3 & 2.0 & 0.335 & 0.478 & \\
+0.346 & 0.335 & 1.0 & 0.5 & \\
+0.072 & 0.478 & 0.5 & 0.5 & \\
+\end{bmatrix}
+&\bs{\Gamma}_{1,0}^{\zundeux} &= \begin{bmatrix}
+1.0 & 0.5 & 0.024 & 0.266 & \\
+0.5 & 0.5 & 0.034 & 0.266 & \\
+0.024 & 0.034 & 0.5 & 0.3 & \\
+0.266 & 0.266 & 0.3 & 2.0 & \\
+\end{bmatrix}
+&\bs{\Gamma}_{1,1}^{\zundeux} &= \begin{bmatrix}
+1.0 & 0.5 & 0.001 & 0.137 & \\
+0.5 & 0.5 & 0.275 & 0.137 & \\
+0.001 & 0.275 & 1.0 & 0.5 & \\
+0.137 & 0.137 & 0.5 & 0.5 & \\
+\end{bmatrix}
+\end{eqnarray*}
+
+# matrice CGOMSM Reverse
+\begin{eqnarray*}
+&\bs{\Gamma}_{0,0}^{\zundeux} &= \begin{bmatrix}
+0.5 & 0.3 & 0.082 & 0.044 & \\
+0.3 & 2.0 & 0.229 & 0.296 & \\
+0.082 & 0.229 & 0.5 & 0.3 & \\
+0.044 & 0.296 & 0.3 & 2.0 & \\
+\end{bmatrix}
+&\bs{\Gamma}_{0,1}^{\zundeux} &= \begin{bmatrix}
+0.5 & 0.3 & 0.346 & 0.072 & \\
+0.3 & 2.0 & 0.449 & 0.478 & \\
+0.346 & 0.449 & 1.0 & 0.5 & \\
+0.072 & 0.478 & 0.5 & 0.5 & \\
+\end{bmatrix}
+&\bs{\Gamma}_{1,0}^{\zundeux} &= \begin{bmatrix}
+1.0 & 0.5 & 0.024 & 0.266 & \\
+0.5 & 0.5 & 0.104 & 0.266 & \\
+0.024 & 0.104 & 0.5 & 0.3 & \\
+0.266 & 0.266 & 0.3 & 2.0 & \\
+\end{bmatrix}
+&\bs{\Gamma}_{1,1}^{\zundeux} &= \begin{bmatrix}
+1.0 & 0.5 & 0.001 & 0.137 & \\
+0.5 & 0.5 & 0.045 & 0.137 & \\
+0.001 & 0.045 & 1.0 & 0.5 & \\
+0.137 & 0.137 & 0.5 & 0.5 & \\
+\end{bmatrix}
+\end{eqnarray*}

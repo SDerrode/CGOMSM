@@ -1,0 +1,17 @@
+
+============ Supervised Restoration (AVERAGE of 30 exp., sample size N=300) ===========
+  Blind upper bound (KJ) 	: 0.478
+  Blind upper bound (UJ) 	: 0.582
+  Dir. Filter   (CGP - KJ)	: 0.421 (0.00)
+  Dir. Smoother (CGP - KJ)	: 0.406 (0.00)
+  Rev. Filter   (CGP - KJ)	: 0.457 (0.00)
+  Rev. Smoother (CGP - KJ)	: 0.414 (0.00)
+  Filter   X, R (CGO - DIRECT)	: 0.514 (0.00), 24.6%
+  Smoother X, R (CGO - DIRECT)	: 0.496 (0.00), 19.7%
+  Filter   X, R (CGO - REVERSE)	: 0.550 (0.00), 24.2%
+  Smoother X, R (CGO - REVERSE)	: 0.532 (0.00), 19.9%
+  New DF based Smoother X (CGO)	: 0.489 (0.00)
+    -> LATEX DIRECT  : 0.514 (0.00) & 24.6% & 0.496 (0.00) & 19.7%
+    -> LATEX REVERSE : 0.550 (0.00) & 24.2% & 0.532 (0.00) & 19.9%
+
+--- 0 seconds (AVERAGE) ---
