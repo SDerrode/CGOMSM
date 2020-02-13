@@ -79,6 +79,7 @@ class LoiAPriori:
             TProba[r, :] = JProba[r, :] / MProba[r]
         return MProba, TProba
 
+
     def sumR1R2(self, discretization):
         """
         Integration of density p(r1,R2), should sum one
@@ -86,31 +87,28 @@ class LoiAPriori:
 
         EPS = 1E-10
 
-        R = np.linspace(start=EPS, stop=1.0 - EPS, num=discretization, endpoint=True)
+        R1  = np.linspace(start=EPS, stop=1.0 - EPS, num=discretization, endpoint=True)
+        R2  = np.linspace(start=EPS, stop=1.0 - EPS, num=discretization, endpoint=True)
+        pR2 = np.ndarray(shape=(R2.shape[0]))
+        pR1 = np.ndarray(shape=(R1.shape[0]))
 
         integ = 0
-        # D'abord les 4 droites
-        pR = np.ndarray((R.shape[0]))
-        for j, r in enumerate(R): pR[j] = self.probaR1R2(0, r)
-        integ += sum(pR) / discretization
-        for j, r in enumerate(R): pR[j] = self.probaR1R2(1, r)
-        integ += sum(pR) / discretization
-        for j, r in enumerate(R): pR[j] = self.probaR1R2(r, 0)
-        integ += sum(pR) / discretization
-        for j, r in enumerate(R): pR[j] = self.probaR1R2(r, 1)
-        integ += sum(pR) / discretization
 
-        # Ensuite les 4 angles
-        integ += self.probaR1R2(0, 0) + self.probaR1R2(1, 0) + self.probaR1R2(0, 1) + self.probaR1R2(1, 1)
+        #### pour r2==0.
+        r2 = 0.
+        for j, r in enumerate(R1): pR1[j] = self.probaR1R2(r, r2)
+        integ += np.trapz(y=pR1, x=R1) + self.probaR1R2(0., r2) + self.probaR1R2(1., r2)
+        #### pour r2==1.
+        r2 = 1.
+        for j, r in enumerate(R1): pR1[j] = self.probaR1R2(r, r2)
+        integ += np.trapz(y=pR1, x=R1) + self.probaR1R2(0., r2) + self.probaR1R2(1., r2)
 
         # La surface à l'intérieur
-        R1 = np.linspace(start=EPS, stop=1.0 - EPS, num=discretization, endpoint=True)
-        R2 = np.linspace(start=EPS, stop=1.0 - EPS, num=discretization, endpoint=True)
-        pR1R2 = np.ndarray(shape=(R1.shape[0], R2.shape[0]))
-        for i, r1 in enumerate(R1):
-            for j, r2 in enumerate(R2):
-                pR1R2[i, j] = self.probaR1R2(r1, r2)
-        integ += sum(sum(pR1R2)) / (discretization * discretization)
+        for j, r2 in enumerate(R2):
+            for i, r1 in enumerate(R1):
+                pR1[i] = self.probaR1R2(r1, r2)
+            pR2[j] = np.trapz(y=pR1, x=R1) + self.probaR1R2(0., r2) + self.probaR1R2(1., r2)
+        integ += np.trapz(y=pR2, x=R2)
 
         return integ
 
@@ -120,32 +118,72 @@ class LoiAPriori:
 
         R1 = np.linspace(start=minR1+EPS, stop=maxR1-EPS, num=discretization, endpoint=True)
         R2 = np.linspace(start=minR2+EPS, stop=maxR2-EPS, num=discretization, endpoint=True)
+        pR2 = np.ndarray((R2.shape[0]))
+        pR1 = np.ndarray((R1.shape[0]))
+
+        integ = 0.
+
+        # D'abord les 4 droites
+        
+        if r1==0.:
+            for j, r in enumerate(R2): pR2[j] = self.probaR1R2(0., r)
+            integ  += np.trapz(y=pR2, x=R2)
+            
+        if r1==1.:
+            for j, r in enumerate(R2): pR2[j] = self.probaR1R2(1., r)
+            integ  += np.trapz(y=pR2, x=R2)
+
+        if r2==0.:
+            for j, r in enumerate(R1): pR1[j] = self.probaR1R2(r, 0.)
+            integ  += np.trapz(y=pR1, x=R1)
+
+        if r2==1.:
+            for j, r in enumerate(R1): pR1[j] = self.probaR1R2(r, 1.)
+            integ  += np.trapz(y=pR1, x=R1)
 
         # Ensuite les 4 angles
-        integ = self.probaR1R2(r1, r2)
-
-        pR = np.ndarray((R1.shape[0]))
-        if r1==0.:
-            for j, r in enumerate(R2): pR[j] = self.probaR1R2(0., r)
-            integ += sum(pR) / discretization / 2.
-        if r1==1.:
-            for j, r in enumerate(R2): pR[j] = self.probaR1R2(1., r)
-            integ += sum(pR) / discretization / 2.
-        if r2==0.:
-            for j, r in enumerate(R1): pR[j] = self.probaR1R2(r, 0.)
-            integ += sum(pR) / discretization / 2.
-        if r2==1.:
-            for j, r in enumerate(R1): pR[j] = self.probaR1R2(r, 1.)
-            integ += sum(pR) / discretization /2.
+        integ += self.probaR1R2(r1, r2)
 
         # La surface à l'intérieur
-        pR1R2 = np.ndarray(shape=(R1.shape[0], R2.shape[0]))
-        for i, p in enumerate(R1):
-            for j, q in enumerate(R2):
-                pR1R2[i, j] = self.probaR1R2(p, q)
-        integ += sum(sum(pR1R2)) / (discretization * discretization) / 4.
+        for i, r1 in enumerate(R1):
+            for j, r2 in enumerate(R2):
+                pR2[j] = self.probaR1R2(r1, r2)
+            pR1[i] = np.trapz(y=pR2, x=R2)
+        integ += np.trapz(y=pR1, x=R1)
 
         return integ
+
+
+
+       
+
+        # # masse de l'angle
+        # integ = self.probaR1R2(r1, r2)
+        # print(integ)
+        # input('puase')
+
+        # pR = np.ndarray((R1.shape[0]))
+        # if r1==0.:
+        #     for j, r in enumerate(R2): pR[j] = self.probaR1R2(0., r)
+        #     integ += sum(pR) / discretization / 2.
+        # if r1==1.:
+        #     for j, r in enumerate(R2): pR[j] = self.probaR1R2(1., r)
+        #     integ += sum(pR) / discretization / 2.
+        # if r2==0.:
+        #     for j, r in enumerate(R1): pR[j] = self.probaR1R2(r, 0.)
+        #     integ += sum(pR) / discretization / 2.
+        # if r2==1.:
+        #     for j, r in enumerate(R1): pR[j] = self.probaR1R2(r, 1.)
+        #     integ += sum(pR) / discretization /2.
+
+        # # La surface à l'intérieur
+        # pR1R2 = np.ndarray(shape=(R1.shape[0], R2.shape[0]))
+        # for i, p in enumerate(R1):
+        #     for j, q in enumerate(R2):
+        #         pR1R2[i, j] = self.probaR1R2(p, q)
+        # integ += sum(sum(pR1R2)) / (discretization * discretization) / 4.
+
+        # return integ
 
     def getNumericalHardTransition(self, n_r, discretization):
         """
@@ -156,10 +194,10 @@ class LoiAPriori:
             input('ProbaHard : n_r != 2 - IMP0SSIBLE')
 
         JProba = np.zeros(shape=(n_r, n_r), dtype=float)
-        JProba[0,0] = self.probaQuart(0., 0., 0.0, 0.5,    0.0, 0.5   , discretization)
-        JProba[1,0] = self.probaQuart(1., 0., 0.5, 1.-0.0, 0.0, 0.5   , discretization)
-        JProba[0,1] = self.probaQuart(0., 1., 0.0, 0.5,    0.5, 1.-0.0, discretization)
-        JProba[1,1] = self.probaQuart(1., 1., 0.5, 1.-0.0, 0.5, 1.-0.0, discretization)
+        JProba[0,0] = self.probaQuart(0., 0., 0.0, 0.5, 0.0, 0.5, discretization)
+        JProba[1,0] = self.probaQuart(1., 0., 0.5, 1.0, 0.0, 0.5, discretization)
+        JProba[0,1] = self.probaQuart(0., 1., 0.0, 0.5, 0.5, 1. , discretization)
+        JProba[1,1] = self.probaQuart(1., 1., 0.5, 1.0, 0.5, 1. , discretization)
         
         somme = np.sum(sum(JProba))
         if abs(1.0 - somme)> 1E-2:

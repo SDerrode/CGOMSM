@@ -205,7 +205,7 @@ class CGOFMSM:
                 Resto.resetSTEPS(STEPS[i])
 
                 # FUZZY: filter (and smooth) with unknown jumps
-                E_X_OFA, E_R_OFA, E_X_OSA, E_R_OSA = Resto.restore_Fuzzy1D(Y, filt=filt, smooth=smooth)
+                E_X_OFA, E_R_OFA, E_R_OFA2, E_X_OSA, E_R_OSA, E_R_OSA2 = Resto.restore_Fuzzy1D(Y, filt=filt, smooth=smooth)
                 end_time = time.time()
                 elapsed_time += end_time - start_time
 
