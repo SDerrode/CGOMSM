@@ -5,13 +5,14 @@
 # proportion of contributors will probably not be using Sublime Text
 *.sublime-project
 
-# Travail de Fei, non necessaire, mais gardé pour comparaison
-Test_CGPMSM_OFA_Fei.py
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+
+# des répertoires avec des images et des films
+Fuzzy/figures/
+Fuzzy/films/
 
 # Distribution / packaging
 .Python

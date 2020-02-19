@@ -60,6 +60,14 @@ class LoiAPriori:
     Super class to factorize code for APrioriFuzzyLaw_Seriesx.py classes.
     """
 
+    def __init__(self, EPS, discretization):
+
+        self.__EPS = EPS
+        self.__discretization = discretization
+
+        self.__R1  = np.linspace(start=self.__EPS, stop=1.0 - self.__EPS, num=self.__discretization, endpoint=True)
+        self.__pR1 = np.ndarray(shape=(self.__R1.shape[0]))
+
     def maxiFuzzyJump(self):
         """
         return the percent of fuzzy jump for the joint a priori law
@@ -80,46 +88,39 @@ class LoiAPriori:
         return MProba, TProba
 
 
-    def sumR1R2(self, discretization):
+    def sumR1R2(self):
         """
         Integration of density p(r1,R2), should sum one
         """
 
-        EPS = 1E-10
-
-        R1  = np.linspace(start=EPS, stop=1.0 - EPS, num=discretization, endpoint=True)
-        R2  = np.linspace(start=EPS, stop=1.0 - EPS, num=discretization, endpoint=True)
+        R2  = np.linspace(start=self.__EPS, stop=1.0 - self.__EPS, num=self.__discretization, endpoint=True)
         pR2 = np.ndarray(shape=(R2.shape[0]))
-        pR1 = np.ndarray(shape=(R1.shape[0]))
 
         integ = 0
 
         #### pour r2==0.
         r2 = 0.
-        for j, r in enumerate(R1): pR1[j] = self.probaR1R2(r, r2)
-        integ += np.trapz(y=pR1, x=R1) + self.probaR1R2(0., r2) + self.probaR1R2(1., r2)
+        for j, r in enumerate(self.__R1): self.__pR1[j] = self.probaR1R2(r, r2)
+        integ += np.trapz(y=self.__pR1, x=self.__R1) + self.probaR1R2(0., r2) + self.probaR1R2(1., r2)
         #### pour r2==1.
         r2 = 1.
-        for j, r in enumerate(R1): pR1[j] = self.probaR1R2(r, r2)
-        integ += np.trapz(y=pR1, x=R1) + self.probaR1R2(0., r2) + self.probaR1R2(1., r2)
+        for j, r in enumerate(self.__R1): self.__pR1[j] = self.probaR1R2(r, r2)
+        integ += np.trapz(y=self.__pR1, x=self.__R1) + self.probaR1R2(0., r2) + self.probaR1R2(1., r2)
 
         # La surface à l'intérieur
         for j, r2 in enumerate(R2):
-            for i, r1 in enumerate(R1):
-                pR1[i] = self.probaR1R2(r1, r2)
-            pR2[j] = np.trapz(y=pR1, x=R1) + self.probaR1R2(0., r2) + self.probaR1R2(1., r2)
+            for i, r1 in enumerate(self.__R1):
+                self.__pR1[i] = self.probaR1R2(r1, r2)
+            pR2[j] = np.trapz(y=self.__pR1, x=self.__R1) + self.probaR1R2(0., r2) + self.probaR1R2(1., r2)
         integ += np.trapz(y=pR2, x=R2)
 
         return integ
 
-    def probaQuart(self, r1, r2, minR1, maxR1, minR2, maxR2, discretization):
+    def probaQuart(self, r1, r2, minR1, maxR1, minR2, maxR2):
 
-        EPS = 1E-10
-
-        R1 = np.linspace(start=minR1+EPS, stop=maxR1-EPS, num=discretization, endpoint=True)
-        R2 = np.linspace(start=minR2+EPS, stop=maxR2-EPS, num=discretization, endpoint=True)
-        pR2 = np.ndarray((R2.shape[0]))
-        pR1 = np.ndarray((R1.shape[0]))
+        R2 = np.linspace(start=minR2+self.__EPS, stop=maxR2-self.__EPS, num=self.__discretization, endpoint=True)
+        pR2 = np.ndarray(shape=(R2.shape[0]))
+        
 
         integ = 0.
 
@@ -134,58 +135,27 @@ class LoiAPriori:
             integ  += np.trapz(y=pR2, x=R2)
 
         if r2==0.:
-            for j, r in enumerate(R1): pR1[j] = self.probaR1R2(r, 0.)
-            integ  += np.trapz(y=pR1, x=R1)
+            for j, r in enumerate(self.__R1): self.__pR1[j] = self.probaR1R2(r, 0.)
+            integ  += np.trapz(y=self.__pR1, x=self.__R1)
 
         if r2==1.:
-            for j, r in enumerate(R1): pR1[j] = self.probaR1R2(r, 1.)
-            integ  += np.trapz(y=pR1, x=R1)
+            for j, r in enumerate(self.__R1): self.__pR1[j] = self.probaR1R2(r, 1.)
+            integ  += np.trapz(y=self.__pR1, x=self.__R1)
 
         # Ensuite les 4 angles
         integ += self.probaR1R2(r1, r2)
 
         # La surface à l'intérieur
-        for i, r1 in enumerate(R1):
+        for i, r1 in enumerate(self.__R1):
             for j, r2 in enumerate(R2):
                 pR2[j] = self.probaR1R2(r1, r2)
-            pR1[i] = np.trapz(y=pR2, x=R2)
-        integ += np.trapz(y=pR1, x=R1)
+            self.__pR1[i] = np.trapz(y=pR2, x=R2)
+        integ += np.trapz(y=self.__pR1, x=self.__R1)
 
         return integ
 
 
-
-       
-
-        # # masse de l'angle
-        # integ = self.probaR1R2(r1, r2)
-        # print(integ)
-        # input('puase')
-
-        # pR = np.ndarray((R1.shape[0]))
-        # if r1==0.:
-        #     for j, r in enumerate(R2): pR[j] = self.probaR1R2(0., r)
-        #     integ += sum(pR) / discretization / 2.
-        # if r1==1.:
-        #     for j, r in enumerate(R2): pR[j] = self.probaR1R2(1., r)
-        #     integ += sum(pR) / discretization / 2.
-        # if r2==0.:
-        #     for j, r in enumerate(R1): pR[j] = self.probaR1R2(r, 0.)
-        #     integ += sum(pR) / discretization / 2.
-        # if r2==1.:
-        #     for j, r in enumerate(R1): pR[j] = self.probaR1R2(r, 1.)
-        #     integ += sum(pR) / discretization /2.
-
-        # # La surface à l'intérieur
-        # pR1R2 = np.ndarray(shape=(R1.shape[0], R2.shape[0]))
-        # for i, p in enumerate(R1):
-        #     for j, q in enumerate(R2):
-        #         pR1R2[i, j] = self.probaR1R2(p, q)
-        # integ += sum(sum(pR1R2)) / (discretization * discretization) / 4.
-
-        # return integ
-
-    def getNumericalHardTransition(self, n_r, discretization):
+    def getNumericalHardTransition(self, n_r):
         """
         Integration of density p(r1,R2), should sum one
         """
@@ -194,10 +164,10 @@ class LoiAPriori:
             input('ProbaHard : n_r != 2 - IMP0SSIBLE')
 
         JProba = np.zeros(shape=(n_r, n_r), dtype=float)
-        JProba[0,0] = self.probaQuart(0., 0., 0.0, 0.5, 0.0, 0.5, discretization)
-        JProba[1,0] = self.probaQuart(1., 0., 0.5, 1.0, 0.0, 0.5, discretization)
-        JProba[0,1] = self.probaQuart(0., 1., 0.0, 0.5, 0.5, 1. , discretization)
-        JProba[1,1] = self.probaQuart(1., 1., 0.5, 1.0, 0.5, 1. , discretization)
+        JProba[0,0] = self.probaQuart(0., 0., 0.0, 0.5, 0.0, 0.5)
+        JProba[1,0] = self.probaQuart(1., 0., 0.5, 1.0, 0.0, 0.5)
+        JProba[0,1] = self.probaQuart(0., 1., 0.0, 0.5, 0.5, 1. )
+        JProba[1,1] = self.probaQuart(1., 1., 0.5, 1.0, 0.5, 1. )
         
         somme = np.sum(sum(JProba))
         if abs(1.0 - somme)> 1E-2:
@@ -210,22 +180,19 @@ class LoiAPriori:
 
         return MProba, TProba, JProba
 
-    def plotR1R2(self, discretization, filename, ax, dpi=150):
+
+    def plotR1R2(self, filename, ax, dpi=150):
         """
         Plot of the joint density p(r1, r2)
         """
 
-
-        EPS = 1E-10
         #mpl.style.use('seaborn') # les couleurs
-
-        R1 = np.linspace(start=0+EPS, stop=1.0-EPS, num=discretization, endpoint=True)
-        R2 = np.linspace(start=0+EPS, stop=1.0-EPS, num=discretization, endpoint=True)
-        pR1R2 = np.ndarray(shape=(R1.shape[0], R2.shape[0]))
-        R1Grid1, R2Grid1 = np.meshgrid(R1, R2)
+        R2    = np.linspace(start=0+self.__EPS, stop=1.0-self.__EPS, num=self.__discretization, endpoint=True)
+        pR1R2 = np.ndarray(shape=(self.__R1.shape[0], R2.shape[0]))
+        R1Grid1, R2Grid1 = np.meshgrid(self.__R1, R2)
 
         ############# Dessin de la surface centrale
-        for i, r1 in enumerate(R1):
+        for i, r1 in enumerate(self.__R1):
             for j, r2 in enumerate(R2):
                 pR1R2[i, j] = self.probaR1R2(r1, r2)
         ax.plot_surface(R1Grid1, R2Grid1, pR1R2, alpha=1, color='xkcd:green')
@@ -234,9 +201,9 @@ class LoiAPriori:
 
         ############# Dessin des bords
         # pR1R2.fill(0.)
-        # for i, r1 in enumerate(R1):
+        # for i, r1 in enumerate(self.__R1):
         #     pR1R2[i, 0] = self.probaR1R2(r1, 0.)
-        # for i, r1 in enumerate(R1):
+        # for i, r1 in enumerate(self.__R1):
         #     pR1R2[i, R2.shape[0]-1] = self.probaR1R2(r1, 1.)
         # for j, r2 in enumerate(R2):
         #     pR1R2[0, j] = self.probaR1R2(0., r2)
@@ -274,56 +241,45 @@ class LoiAPriori:
             plt.savefig(filename, bbox_inches='tight', dpi=dpi)
 
 
-    def sumR1(self, discretization):
+    def sumR1(self):
         """
         Integration of density p(r), should sum one
         """
 
-        EPS = 1E-10
-        R = np.linspace(start=EPS, stop=1.0-EPS, num=discretization, endpoint=True)
-
-        pR = np.zeros((R.shape[0]))
-        for i, r in enumerate(R):
-            pR[i] = self.probaR(r)
-        integ = sum(pR) / discretization
+        for i, r in enumerate(self.__R1):
+            self.__pR1[i] = self.probaR(r)
+        integ = sum(self.__pR1) / self.__discretization
 
         # Les deux bords
         integ += self.probaR(0.) + self.probaR(1.)
 
         return integ
 
-    def sumR2CondR1(self, discretization, r1):
+    def sumR2CondR1(self, r1):
         """
         Integration of density p(r), should sum one
         """
 
-        EPS = 1E-10
-        R = np.linspace(start=EPS, stop=1.0-EPS, num=discretization, endpoint=True)
-
-        pR = np.zeros((R.shape[0]))
-        for i, r in enumerate(R):
-            pR[i] = self.probaR2CondR1 (r1, r)
-        integ = sum(pR) / discretization
+        for i, r in enumerate(self.__R1):
+            self.__pR1[i] = self.probaR2CondR1 (r1, r)
+        integ = sum(self.__pR1) / self.__discretization
 
         # Les deux bords
         integ += self.probaR2CondR1(r1, 0.) + self.probaR2CondR1(r1, 1.)
 
         return integ
 
-    def plotR1(self, discretization, filename, dpi):
+    def plotR1(self, filename, dpi):
         """
         Plot of the marginal density p(r)
         """
-        ESP = 1E-10
-        R = np.linspace(start=0.+ESP, stop=1.0-ESP, num=discretization, endpoint=True)
 
-        pR = np.zeros((R.shape[0]))
-        for i, r in enumerate(R):
-            pR[i] = self.probaR(r)
+        for i, r in enumerate(self.__R1):
+            self.__pR1[i] = self.probaR(r)
 
         fig = plt.figure()
         ax = fig.gca()
-        ax.plot(R, pR, alpha=0.6, color='g')
+        ax.plot(self.__R1, self.__pR1, alpha=0.6, color='g')
 
         ax.set_xlabel('$r$', fontsize=fontS)
         #ax.set_xlim(0, 1)

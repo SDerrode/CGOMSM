@@ -97,6 +97,10 @@ def main():
     mean_tab_MSE, mean_tab_MSE_HARD, mean_time = aCGOFMSM.run_several(NbExp, STEPS = STEPS, Plot=Plot, Work=work)
 
 
+
+
+
+
 class CGOFMSM:
 
     def __init__(self, N, filenameParamCov, verbose, FSParametersStr):

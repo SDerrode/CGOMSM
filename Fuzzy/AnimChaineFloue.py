@@ -1,37 +1,36 @@
-import numpy as np
-import random
 import sys
+import random
+import scipy.stats as stats
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from mpl_toolkits.mplot3d import Axes3D
-
-
-from APrioriFuzzyLaw_Series2 import LoiAPrioriSeries2
-from APrioriFuzzyLaw_Series4 import LoiAPrioriSeries4
+import numpy as np
 
 fontS = 16 # fontSize
 mpl.rc('xtick', labelsize=fontS)
 mpl.rc('ytick', labelsize=fontS)
-dpi = 100
+dpi = 300
 
+from APrioriFuzzyLaw_Series2 import LoiAPrioriSeries2
+from APrioriFuzzyLaw_Series4 import LoiAPrioriSeries4
 
 if __name__ == '__main__':
 
     discretization = 200
+    EPS            = 1E-10
 
-    #seed = random.randrange(sys.maxsize)
+    seed = random.randrange(sys.maxsize)
     seed = 5039309497922655937
-    random.seed(seed)
+    rng = random.Random(seed)
     print("Seed was:", seed)
-    # 4887634503081723624 8132925864540000067 5039309497922655937
 
-    # P = LoiAPrioriSeries2(alpha=0.10, eta=0.21, delta=0.076)
-    P = LoiAPrioriSeries4(alpha=0.15, gamma = 0.60, delta_d=0.20, delta_u=0.20)
+    P = LoiAPrioriSeries2(EPS, discretization, alpha=0.10, eta=0.21, delta=0.076)
+    #P = LoiAPrioriSeries4(EPS, discretization, alpha=0.15, gamma = 0.60, delta_d=0.20, delta_u=0.20)
 
     fig = plt.figure(figsize=(7, 10))
     ax1 = fig.add_subplot(2, 1, 1, projection='3d')
-    P.plotR1R2(discretization, None, ax1, dpi=dpi)
+    P.plotR1R2(None, ax1, dpi=dpi)
     ax2 = fig.add_subplot(2, 1, 2)
     ax2.grid(True)
 
@@ -85,7 +84,7 @@ if __name__ == '__main__':
     #ani     = animation.FuncAnimation(fig, animate, init_func=init, frames=100, blit=True, interval=20, repeat=False)
     line_ani = animation.FuncAnimation(fig, animate, frames=(N), fargs=(chain, lines), interval=150, blit=False, repeat=False)
     # print('Array line_ani = ', line_ani)
-    line_ani.save('mymovie.mp4')
+    line_ani.save('./films/mymovie'+P.stringName()+'.mp4')
 
     # input('pause')
     plt.show(block=False)

@@ -6,29 +6,135 @@ Created on Fri Dec 15 11:06:52 2017
 @author: MacBook_Derrode
 """
 
-import numpy as np
-import matplotlib
+import sys
+import random
+import scipy.stats as stats
+import matplotlib as mpl
 import matplotlib.pyplot as plt
+import numpy as np
 
 fontS = 16 # fontSize
-matplotlib.rc('xtick', labelsize=fontS)
-matplotlib.rc('ytick', labelsize=fontS)
-dpi=150
+mpl.rc('xtick', labelsize=fontS)
+mpl.rc('ytick', labelsize=fontS)
+dpi = 300
 
-from Fuzzy.APrioriFuzzyLaw import LoiAPriori, echelle
-#from APrioriFuzzyLaw import LoiAPriori, echelle
-
-########### SERIE 3 ##################
-######################################
+#from Fuzzy.APrioriFuzzyLaw import LoiAPriori, echelle
+from APrioriFuzzyLaw import LoiAPriori, echelle
 
 
+def main():
+
+    discretization = 200
+    EPS            = 1E-10
+
+    seed = random.randrange(sys.maxsize)
+    seed = 5039309497922655937
+    rng = random.Random(seed)
+    print("Seed was:", seed)
+
+    # SERIES 3
+    print('*********************SERIES 3')
+    series = 'Serie3'
+    #P, case = LoiAPrioriSeries3(EPS, discretization, alpha=0.05, delta=0.05), 1
+    P,case = LoiAPrioriSeries3(EPS, discretization, alpha=0.5, delta=0.1), 2
+    #P,case = LoiAPrioriSeries3(EPS, discretization, alpha=0.1, delta=0.5), 3
+    #P,case = LoiAPrioriSeries3(EPS, discretization, alpha=0.05, delta=0.0), 10
+
+    print(P)
+    ALPHA, DELTA, GAMMA = P.getParam()
+    print('3:'+str(ALPHA)+':'+str(DELTA)+' #pH='+str(P.maxiHardJump()))
+
+# Test de sommes à 1
+    sum_R1R2 = P.sumR1R2()
+    sum_R1   = P.sumR1()
+    sum_R2CondR1_0   = P.sumR2CondR1(0.)
+    sum_R2CondR1_20  = P.sumR2CondR1(0.10)
+    sum_R2CondR1_50  = P.sumR2CondR1(0.50)
+    sum_R2CondR1_90  = P.sumR2CondR1(0.90)
+    sum_R2CondR1_100 = P.sumR2CondR1(1.)
+    print("sum_R1R2 = ", sum_R1R2)
+    print("sum_R1 = ", sum_R1)
+    print("sum_R2CondR1_0   = ", sum_R2CondR1_0)
+    print("sum_R2CondR1_20  = ", sum_R2CondR1_20)
+    print("sum_R2CondR1_50  = ", sum_R2CondR1_50)
+    print("sum_R2CondR1_90  = ", sum_R2CondR1_90)
+    print("sum_R2CondR1_100 = ", sum_R2CondR1_100)
+    print('maxiHardJump = ', P.maxiHardJump())
+    
+    # Calcul théorique et empirique de la proportion de suats durs
+    # MProbaTh, TProbaTh, JProbaTh = P.getTheoriticalHardTransition(2)
+    # print('JProba Hard Theorique=\n', JProbaTh)
+    # print('sum=', sum(sum(JProbaTh)))
+
+    MProbaNum, TProbaNum, JProbaNum = P.getNumericalHardTransition(2)
+    print('Jproba Hard Numerique, J=\n', JProbaNum)
+    print('sum=', sum(sum(JProbaNum)))
+
+    # Simulation d'un chaine de markov flou suivant ce modèle
+    N = 10000
+    chain = np.zeros(shape=(N))
+    # Le premier
+    chain[0] = P.tirageR1()
+    # les suivantes...
+    for i in range(1, N):
+        chain[i] = P.tirageRnp1CondRn(chain[i-1])
+
+    # Comptage des quarts
+    JProbaEch = np.zeros(shape=(2,2))
+    for i in range(N-1):
+        if chain[i]<0.5:
+            if chain[i+1]<0.5:
+                JProbaEch[0,0] += 1.
+            else:
+                JProbaEch[0,1] += 1.
+        else:
+            if chain[i+1]<0.5:
+                JProbaEch[1,0] += 1.
+            else:
+                JProbaEch[1,1] += 1.
+    JProbaEch /= (N-1.)
+    print('Jproba Hard Echantillon, J=\n', JProbaEch)
+    print('sum=', sum(sum(JProbaEch)))
+
+    cpt0 = 0
+    cpt1 = 0
+    for i in range(N):
+        if chain[i] == 0.:
+            cpt0 += 1
+        elif chain[i] == 1.0:
+            cpt1 += 1
+    print('Nbre saut 0 :', cpt0/N, ', Theorique :', P.probaR(0.))
+    print('Nbre saut 1 :', cpt1/N, ', Theorique :', P.probaR(1.))
+    print('Nbre saut durs (0+1) :', (cpt0+cpt1)/N, ', Theorique :', P.maxiHardJump())
+
+    mini = 100
+    maxi = 150
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1, projection='3d')
+    P.plotR1R2('./figures/LoiCouple_' + series + '_' + str(case) + '.png', ax, dpi=dpi)
+    P.plotR1('./figures/LoiMarg_' + series + '_' + str(case) + '.png', dpi=dpi)
+    FIG = plt.figure()
+    AX = FIG.gca()
+    abscisse= np.linspace(start=mini, stop=maxi, num=maxi-mini)
+    AX.plot(abscisse, chain[mini:maxi], 'g')
+    #plt.title('Trajectory (Fuzzy jumps)')
+    AX.set_xlabel('$n$', fontsize=fontS)
+    AX.set_ylim(0., 1.05)
+    plt.savefig('./figures/Traj_' + series + '_' + str(case) + '.png', bbox_inches='tight', dpi=dpi)
+
+
+
+########### SERIE 3 #############
+#################################
 class LoiAPrioriSeries3(LoiAPriori):
     """
         Implementation of the third law described in the report Calcul_Simu_CGOFMSM.pdf
     """
 
-    def __init__(self, alpha, delta):
+    def __init__(self, EPS, discretization, alpha, delta):
         """Constructeur to set the parameters of the density."""
+
+        LoiAPriori.__init__(self, EPS, discretization)
 
         self.__alpha = alpha
 
@@ -48,6 +154,9 @@ class LoiAPrioriSeries3(LoiAPriori):
 
     def __str__(self):
         return "alpha=" + str(self.__alpha) + ", delta=" + str(self.__delta) + ", gamma=" + str(self.__gamma)
+
+    def stringName(self):
+        return '3:'+str(self.__alpha)+':'+str(self.__delta)
 
     def probaR1R2(self, r1, r2):
         """ Return the joint proba at r1, r2."""
@@ -169,55 +278,4 @@ class LoiAPrioriSeries3(LoiAPriori):
 
 
 if __name__ == '__main__':
-
-    discretization = 200
-    # np.random.seed(0)
-    np.random.seed(None)
-
-    # SERIES 3
-    print('*********************SERIES 3')
-    series = 'Serie3'
-    #P, case = LoiAPrioriSeries3(alpha=0.05, delta=0.05), 1
-    #P,case = LoiAPrioriSeries3(alpha=0.5, delta=0.1), 2
-    #P,case = LoiAPrioriSeries3(alpha=0.1, delta=0.5), 3
-
-    P,case = LoiAPrioriSeries3(alpha=0.05, delta=0.0), 10
-
-    print(P)
-    sum_R1R2 = P.sumR1R2(discretization)
-    print("sum_R1R2 = ", sum_R1R2)
-    sum_R1 = P.sumR1(discretization)
-    print("sum_R1 = ", sum_R1)
-    print('maxiHardJump = ', P.maxiHardJump())
-
-    N = 50000
-    chain = np.zeros((1, N))
-    chain[0] = P.tirageR1()
-    for i in range(1, N):
-        chain[0, i] = P.tirageRnp1CondRn(chain[0, i - 1])
-
-    cpt0 = 0
-    cpt1 = 0
-    for i in range(N):
-        if chain[0, i] == 0.:
-            cpt0 += 1
-        elif chain[0, i] == 1.0:
-            cpt1 += 1
-    print('Nbre saut 0 :', cpt0/N, ', Theorique :', P.probaR(0.))
-    print('Nbre saut 1 :', cpt1/N, ', Theorique :', P.probaR(1.))
-    print('Nbre saut durs (0+1) :', (cpt0+cpt1)/N, ', Theorique :', P.maxiHardJump())
-
-    mini = 100
-    maxi = 250
-    fig = plt.figure()
-    ax = fig.add_subplot(1, 1, 1, projection='3d')
-    P.plotR1R2(discretization, 'LoiCouple_' + series + '_' + str(case) + '.png', ax, dpi=dpi)
-    P.plotR1(discretization, 'LoiMarg_' + series + '_' + str(case) + '.png')
-    FIG = plt.figure()
-    AX = FIG.gca()
-    abscisse= np.linspace(start=mini, stop=maxi, num=maxi-mini)
-    AX.plot(abscisse, chain[0, mini:maxi], 'g')
-    #plt.title('Trajectory (Fuzzy jumps)')
-    AX.set_xlabel('$n$', fontsize=fontS)
-    AX.set_ylim(0., 1.05)
-    plt.savefig('Traj_' + series + '_' + str(case) + '.png',bbox_inches='tight', dpi=dpi)
+    main()

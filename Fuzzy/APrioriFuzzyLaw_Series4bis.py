@@ -6,18 +6,144 @@ Created on Fri Dec 15 11:06:52 2017
 @author: MacBook_Derrode
 """
 
-import numpy as np
+import sys
+import random
 import scipy.stats as stats
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import numpy as np
 
 fontS = 16 # fontSize
 mpl.rc('xtick', labelsize=fontS)
 mpl.rc('ytick', labelsize=fontS)
-dpi=150
+dpi = 300
 
-from Fuzzy.APrioriFuzzyLaw import LoiAPriori, echelle, plotSample
-#from APrioriFuzzyLaw import LoiAPriori, echelle, plotSample
+#from Fuzzy.APrioriFuzzyLaw import LoiAPriori, echelle, plotSample
+from APrioriFuzzyLaw import LoiAPriori, echelle, plotSample
+
+
+def main():
+
+    discretization = 200
+    EPS            = 1E-10
+
+    seed = random.randrange(sys.maxsize)
+    seed = 5039309497922655937
+    rng = random.Random(seed)
+    print("Seed was:", seed)
+
+    print('*********************SERIES 4 Extended')
+    series = 'Serie4bis'
+    #P, case = LoiAPrioriSeries4bis(EPS, discretization, alpha=0.10, gamma = 0.65, delta_d=0.15, delta_u=0.05, lamb=0.5), 1
+    P, case = LoiAPrioriSeries4bis(EPS, discretization, alpha=0.10, gamma = 0.65, delta_d=0.15, delta_u=0., lamb=0.8), 1
+
+    print(P)
+    ALPHA, BETA, DELTA_D, DELTA_U, GAMMA, LAMB = P.getParam()
+    print('4bis:'+str(ALPHA)+':'+str(GAMMA)+':'+str(DELTA_D)+':'+str(DELTA_U)+':'+str(LAMB)+', beta='+str(BETA)+', #pH='+str(P.maxiHardJump()))
+
+    # Test de sommes à 1
+    sum_R1R2 = P.sumR1R2()
+    sum_R1   = P.sumR1()
+    sum_R2CondR1_0   = P.sumR2CondR1(0.)
+    sum_R2CondR1_20  = P.sumR2CondR1(0.10)
+    sum_R2CondR1_50  = P.sumR2CondR1(0.50)
+    sum_R2CondR1_90  = P.sumR2CondR1(0.90)
+    sum_R2CondR1_100 = P.sumR2CondR1(1.)
+    print("sum_R1R2 = ", sum_R1R2)
+    print("sum_R1 = ", sum_R1)
+    print("sum_R2CondR1_0   = ", sum_R2CondR1_0)
+    print("sum_R2CondR1_20  = ", sum_R2CondR1_20)
+    print("sum_R2CondR1_50  = ", sum_R2CondR1_50)
+    print("sum_R2CondR1_90  = ", sum_R2CondR1_90)
+    print("sum_R2CondR1_100 = ", sum_R2CondR1_100)
+    print('maxiHardJump = ', P.maxiHardJump())
+    
+    # # Calcul théorique et empirique de la proportion de suats durs
+    # MProbaTh, TProbaTh, JProbaTh = P.getTheoriticalHardTransition(2)
+    # print('JProba Hard Theorique=\n', JProbaTh)
+    # print('sum=', sum(sum(JProbaTh)))
+
+    MProbaNum, TProbaNum, JProbaNum = P.getNumericalHardTransition(2)
+    print('Jproba Hard Numerique, J=\n', JProbaNum)
+    print('sum=', sum(sum(JProbaNum)))
+
+    # Simulation d'un chaine de markov flou suivant ce modèle
+    N = 10000
+    chain = np.zeros(shape=(N))
+    # Le premier
+    chain[0] = P.tirageR1()
+    # les suivantes...
+    for i in range(1, N):
+        chain[i] = P.tirageRnp1CondRn(chain[i-1])
+
+    # Comptage des quarts
+    JProbaEch = np.zeros(shape=(2,2))
+    for i in range(N-1):
+        if chain[i]<0.5:
+            if chain[i+1]<0.5:
+                JProbaEch[0,0] += 1.
+            else:
+                JProbaEch[0,1] += 1.
+        else:
+            if chain[i+1]<0.5:
+                JProbaEch[1,0] += 1.
+            else:
+                JProbaEch[1,1] += 1.
+    JProbaEch /= (N-1.)
+    print('Jproba Hard Echantillon, J=\n', JProbaEch)
+    print('sum=', sum(sum(JProbaEch)))
+
+    cpt0 = 0
+    cpt1 = 0
+    for i in range(N):
+        if chain[i] == 0.:
+            cpt0 += 1
+        elif chain[i] == 1.0:
+            cpt1 += 1
+    print('Nbre saut 0 :', cpt0/N, ', Theorique :', P.probaR(0.))
+    print('Nbre saut 1 :', cpt1/N, ', Theorique :', P.probaR(1.))
+    print('Nbre saut durs (0+1) :', (cpt0+cpt1)/N, ', Theorique :', P.maxiHardJump())
+
+    mini = 100
+    maxi = 150
+    fig = plt.figure()
+    ax = fig.add_subplot(1, 1, 1, projection='3d')
+    P.plotR1R2('./figures/LoiCouple_' + series + '_' + str(case) + '.png', ax, dpi=dpi)
+    P.plotR1('./figures/LoiMarg_' + series + '_' + str(case) + '.png', dpi=dpi)
+    FIG = plt.figure()
+    AX = FIG.gca()
+    abscisse= np.linspace(start=mini, stop=maxi, num=maxi-mini)
+    AX.plot(abscisse, chain[mini:maxi], 'g')
+    #plt.title('Trajectory (Fuzzy jumps)')
+    AX.set_xlabel('$n$', fontsize=fontS)
+    AX.set_ylim(0., 1.05)
+    plt.savefig('./figures/Traj_' + series + '_' + str(case) + '.png', bbox_inches='tight', dpi=dpi)
+
+    # # Dessin de la pente a partir de la quelle on doit faire des tirages
+    # pente = pente_Serie4bis_gen(momtype=0, name='pente_Serie4bis', a=0., b=1., shapes="DELTA_U")
+    # rv = pente(DELTA_U)
+    # #print(pente.pdf(0.54, DELTA_U))
+    # mean, var = plotSample(rv, 1000, 'pente_' + series + '_'+str(case)+'.png')
+    # print('mean echantillon = ', mean)
+    # print('var echantillon = ', var)
+    # print(rv.stats('mvsk'))
+
+    # # Dessin de la pente a partir de la quelle on doit faire des tirages
+    # pente2 = pente2_Serie4bis_gen(momtype=0, name='pente2_Serie4bis', a=0., b=1., shapes="DELTA_D")
+    # rv = pente2(DELTA_D)
+    # #print(pente2.pdf(0.54, DELTA_D))
+    # mean, var = plotSample(rv, 1000, 'pente2_' + series + '_'+str(case)+'.png')
+    # print('mean echantillon = ', mean)
+    # print('var echantillon = ', var)
+    # print(rv.stats('mvsk'))
+
+    # trapeze = trapeze_Serie4bis_gen(momtype=0, name='trapeze_Serie4bis', a=0., b=1., shapes="ALPHA, BETA, GAMMA, DELTA_D, DELTA_U, LAMB")
+    # rv = trapeze(ALPHA, BETA, GAMMA, DELTA_D, DELTA_U, LAMB)
+    # #print(trapeze.pdf(0.54, ALPHA, BETA, GAMMA, DELTA_D, DELTA_U, LAMB))
+    # mean, var = plotSample(rv, 1000, 'trapeze_' + series + '_'+str(case)+'.png')
+    # print('mean echantillon = ', mean)
+    # print('var echantillon = ', var)
+    # print(rv.stats('mvsk'))
 
 ########### SERIE 4 Extended ##################
 ######################################
@@ -26,8 +152,10 @@ class LoiAPrioriSeries4bis(LoiAPriori):
     Implementation of the fourth law described in the report Calcul_Simu_CGOFMSM.pdf
     """
 
-    def __init__(self, alpha, gamma, delta_d, delta_u, lamb):
+    def __init__(self, EPS, discretization, alpha, gamma, delta_d, delta_u, lamb):
         """Constructeur to set the parameters of the density."""
+
+        LoiAPriori.__init__(self, EPS, discretization)
 
         self.__alpha = alpha
 
@@ -71,6 +199,9 @@ class LoiAPrioriSeries4bis(LoiAPriori):
         str1 += ", delta_d=" + str(self.__delta_d) + ", delta_u=" + str(self.__delta_u) + ", gamma=" + str(self.__gamma)
         str1 += ", lambda=" + str(self.__lamb)
         return str1
+
+    def stringName(self):
+        return '4bis:'+str(self.__alpha)+':'+str(self.__gamma)+':'+str(self.__delta_d)+':'+str(self.__delta_u)+':'+str(self.__lamb)
 
     def probaR1R2(self, r1, r2):
         """ Return the joint proba at r1, r2."""
@@ -355,90 +486,6 @@ class pente2_Serie4bis_gen(stats.rv_continuous):
 
 
 if __name__ == '__main__':
+    main()
 
-    discretization = 200
-    # np.random.seed(0)
-    np.random.seed(None)
-
-    print('*********************SERIES 4 Extended')
-    series = 'Serie4bis'
-    #P, case = LoiAPrioriSeries4bis(alpha=0.10, gamma = 0.65, delta_d=0.15, delta_u=0.05, lamb=0.5), 1
-    P, case = LoiAPrioriSeries4bis(alpha=0.10, gamma = 0.65, delta_d=0.15, delta_u=0., lamb=0.8), 1
-
-    sum_R1R2 = P.sumR1R2(discretization)
-    sum_R1   = P.sumR1(discretization)
-    sum_R2CondR1_0   = P.sumR2CondR1(discretization, 0.)
-    sum_R2CondR1_20  = P.sumR2CondR1(discretization, 0.10)
-    sum_R2CondR1_50  = P.sumR2CondR1(discretization, 0.50)
-    sum_R2CondR1_90  = P.sumR2CondR1(discretization, 0.90)
-    sum_R2CondR1_100 = P.sumR2CondR1(discretization, 1.)
-    ALPHA, BETA, DELTA_D, DELTA_U, GAMMA,LAMB = P.getParam()
-
-    print(P)
-    print("sum_R1R2 = ", sum_R1R2)
-    print("sum_R1 = ", sum_R1)
-    print("sum_R2CondR1_0   = ", sum_R2CondR1_0)
-    print("sum_R2CondR1_20  = ", sum_R2CondR1_20)
-    print("sum_R2CondR1_50  = ", sum_R2CondR1_50)
-    print("sum_R2CondR1_90  = ", sum_R2CondR1_90)
-    print("sum_R2CondR1_100 = ", sum_R2CondR1_100)
-    print('maxiHardJump = ', P.maxiHardJump())
-    print('4:'+str(ALPHA)+':'+str(GAMMA)+':'+str(DELTA_D)+':'+str(DELTA_U)+':'+str(LAMB)+', beta='+str(BETA)+', #pH='+str(P.maxiHardJump()))
-
-    N = 200000
-    chain = np.zeros((1, N))
-    chain[0] = P.tirageR1()
-    for i in range(1, N):
-        chain[0, i] = P.tirageRnp1CondRn(chain[0, i - 1])
-
-    cpt0 = 0
-    cpt1 = 0
-    for i in range(N):
-        if chain[0, i] == 0.:
-            cpt0 += 1
-        elif chain[0, i] == 1.0:
-            cpt1 += 1
-    print('Nbre saut 0 :', cpt0/N, ', Theorique :', P.probaR(0.))
-    print('Nbre saut 1 :', cpt1/N, ', Theorique :', P.probaR(1.))
-    print('Nbre saut durs (0+1) :', (cpt0+cpt1)/N, ', Theorique :', P.maxiHardJump())
     
-    mini = 0
-    maxi = 100
-    fig = plt.figure()
-    ax = fig.add_subplot(1, 1, 1, projection='3d')
-    P.plotR1R2(discretization, 'LoiCouple_' + series + '_' + str(case) + '.png', ax, dpi=dpi)
-    P.plotR1(discretization, 'LoiMarg_' + series + '_' + str(case) + '.png')
-    FIG = plt.figure()
-    AX = FIG.gca()
-    abscisse= np.linspace(start=mini, stop=maxi, num=maxi-mini)
-    AX.plot(abscisse, chain[0, mini:maxi], 'g')
-    #plt.title('Trajectory (Fuzzy jumps)')
-    AX.set_xlabel('$n$', fontsize=fontS)
-    AX.set_ylim(0., 1.05)
-    plt.savefig('Traj_' + series + '_' + str(case) + '.png', bbox_inches='tight', dpi=150)
-
-    # # Dessin de la pente a partir de la quelle on doit faire des tirages
-    # pente = pente_Serie4bis_gen(momtype=0, name='pente_Serie4bis', a=0., b=1., shapes="DELTA_U")
-    # rv = pente(DELTA_U)
-    # #print(pente.pdf(0.54, DELTA_U))
-    # mean, var = plotSample(rv, 1000, 'pente_' + series + '_'+str(case)+'.png')
-    # print('mean echantillon = ', mean)
-    # print('var echantillon = ', var)
-    # print(rv.stats('mvsk'))
-
-    # # Dessin de la pente a partir de la quelle on doit faire des tirages
-    # pente2 = pente2_Serie4bis_gen(momtype=0, name='pente2_Serie4bis', a=0., b=1., shapes="DELTA_D")
-    # rv = pente2(DELTA_D)
-    # #print(pente2.pdf(0.54, DELTA_D))
-    # mean, var = plotSample(rv, 1000, 'pente2_' + series + '_'+str(case)+'.png')
-    # print('mean echantillon = ', mean)
-    # print('var echantillon = ', var)
-    # print(rv.stats('mvsk'))
-
-    # trapeze = trapeze_Serie4bis_gen(momtype=0, name='trapeze_Serie4bis', a=0., b=1., shapes="ALPHA, BETA, GAMMA, DELTA_D, DELTA_U, LAMB")
-    # rv = trapeze(ALPHA, BETA, GAMMA, DELTA_D, DELTA_U, LAMB)
-    # #print(trapeze.pdf(0.54, ALPHA, BETA, GAMMA, DELTA_D, DELTA_U, LAMB))
-    # mean, var = plotSample(rv, 1000, 'trapeze_' + series + '_'+str(case)+'.png')
-    # print('mean echantillon = ', mean)
-    # print('var echantillon = ', var)
-    # print(rv.stats('mvsk'))

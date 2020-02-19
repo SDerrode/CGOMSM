@@ -30,10 +30,10 @@ def update_lines(num, dataLines, lines):
         x, y, z = data[0, :num], data[1, :num], data[2, :num]
         line.set_data(x, y)
         line.set_3d_properties(z)
-        print('Array x = ', x)
-        print('Array y = ', y)
-        print('Array z = ', z)
-        input('pause')
+        # print('Array x = ', x)
+        # print('Array y = ', y)
+        # print('Array z = ', z)
+        # input('pause')
     return lines
 
 # Attaching 3D axis to the figure

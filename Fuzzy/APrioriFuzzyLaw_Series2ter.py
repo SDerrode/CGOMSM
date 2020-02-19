@@ -7,23 +7,24 @@ Created on Fri Dec 15 11:06:52 2017
 """
 
 import sys
-import numpy as np
 import random
 import scipy.stats as stats
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import numpy as np
 
 fontS = 16 # fontSize
 mpl.rc('xtick', labelsize=fontS)
 mpl.rc('ytick', labelsize=fontS)
 dpi = 300
 
-from Fuzzy.APrioriFuzzyLaw import LoiAPriori, plotSample
-#from APrioriFuzzyLaw import LoiAPriori, plotSample
+#from Fuzzy.APrioriFuzzyLaw import LoiAPriori, plotSample
+from APrioriFuzzyLaw import LoiAPriori, plotSample
 
 def main():
 
     discretization = 200
+    EPS            = 1E-10
 
     seed = random.randrange(sys.maxsize)
     seed = 5039309497922655937
@@ -34,20 +35,21 @@ def main():
     print('*********************SERIES 2 ter')
     series = 'Serie2ter'
 
-    P, case = LoiAPrioriSeries2ter(alpha0 = 0.10, alpha1 = 0.20, beta=0.06), 1
-    P, case = LoiAPrioriSeries2ter(alpha0 = 0.05, alpha1 = 0.02, beta=0.01), 2
-
-    sum_R1R2 = P.sumR1R2(discretization)
-    sum_R1   = P.sumR1(discretization)
-    sum_R2CondR1_0   = P.sumR2CondR1(discretization, 0.)
-    sum_R2CondR1_20  = P.sumR2CondR1(discretization, 0.10)
-    sum_R2CondR1_50  = P.sumR2CondR1(discretization, 0.50)
-    sum_R2CondR1_90  = P.sumR2CondR1(discretization, 0.90)
-    sum_R2CondR1_100 = P.sumR2CondR1(discretization, 1.)
-    ALPHA0, ALPHA1, BETA, ETA = P.getParam()
-
+    P, case = LoiAPrioriSeries2ter(EPS, discretization, alpha0 = 0.10, alpha1 = 0.20, beta=0.06, ), 1
+    #P, case = LoiAPrioriSeries2ter(EPS, discretization, alpha0 = 0.05, alpha1 = 0.02, beta=0.01), 2
 
     print(P)
+    ALPHA0, ALPHA1, BETA, ETA = P.getParam()
+    print('2ter:'+str(ALPHA0)+':'+str(ALPHA1)+':'+str(BETA)+' #pH='+str(P.maxiHardJump()))
+
+    # Test de sommes à 1
+    sum_R1R2 = P.sumR1R2()
+    sum_R1   = P.sumR1()
+    sum_R2CondR1_0   = P.sumR2CondR1(0.)
+    sum_R2CondR1_20  = P.sumR2CondR1(0.10)
+    sum_R2CondR1_50  = P.sumR2CondR1(0.50)
+    sum_R2CondR1_90  = P.sumR2CondR1(0.90)
+    sum_R2CondR1_100 = P.sumR2CondR1(1.)
     print("sum_R1R2 = ", sum_R1R2)
     print("sum_R1 = ", sum_R1)
     print("sum_R2CondR1_0   = ", sum_R2CondR1_0)
@@ -56,16 +58,17 @@ def main():
     print("sum_R2CondR1_90  = ", sum_R2CondR1_90)
     print("sum_R2CondR1_100 = ", sum_R2CondR1_100)
     print('maxiHardJump = ', P.maxiHardJump())
-    print('2:'+str(ALPHA0)+':'+str(ALPHA1)+':'+str(BETA)+' #pH='+str(P.maxiHardJump()))
-
+    
+    # Calcul théorique et empirique de la proportion de suats durs
     MProbaTh, TProbaTh, JProbaTh = P.getTheoriticalHardTransition(2)
     print('JProba Hard Theorique=\n', JProbaTh)
     print('sum=', sum(sum(JProbaTh)))
 
-    MProbaNum, TProbaNum, JProbaNum = P.getNumericalHardTransition(2, discretization)
+    MProbaNum, TProbaNum, JProbaNum = P.getNumericalHardTransition(2)
     print('Jproba Hard Numerique, J=\n', JProbaNum)
     print('sum=', sum(sum(JProbaNum)))
 
+    # Simulation d'un chaine de markov flou suivant ce modèle
     N = 10000
     chain = np.zeros(shape=(N))
     # Le premier
@@ -106,8 +109,8 @@ def main():
     maxi = 150
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1, projection='3d')
-    P.plotR1R2(discretization, 'LoiCouple_' + series + '_' + str(case) + '.png', ax, dpi=dpi)
-    P.plotR1(discretization, 'LoiMarg_' + series + '_' + str(case) + '.png', dpi=dpi)
+    P.plotR1R2('./figures/LoiCouple_' + series + '_' + str(case) + '.png', ax, dpi=dpi)
+    P.plotR1('./figures/LoiMarg_' + series + '_' + str(case) + '.png', dpi=dpi)
     FIG = plt.figure()
     AX = FIG.gca()
     abscisse= np.linspace(start=mini, stop=maxi, num=maxi-mini)
@@ -115,7 +118,7 @@ def main():
     #plt.title('Trajectory (Fuzzy jumps)')
     AX.set_xlabel('$n$', fontsize=fontS)
     AX.set_ylim(0., 1.05)
-    plt.savefig('Traj_' + series + '_' + str(case) + '.png', bbox_inches='tight', dpi=dpi)
+    plt.savefig('./figures/Traj_' + series + '_' + str(case) + '.png', bbox_inches='tight', dpi=dpi)
 
 
 ########### SERIE 2 ter ##############
@@ -125,14 +128,16 @@ class LoiAPrioriSeries2ter(LoiAPriori):
     Implementation of the second law described in the paper about traffic flows (Zied)
     """
 
-    def __init__(self, alpha0, alpha1, beta):
+    def __init__(self, EPS, discretization, alpha0, alpha1, beta):
         """Constructeur to set the parameters of the density."""
+
+        LoiAPriori.__init__(self, EPS, discretization)
 
         self.__alpha0 = alpha0
         self.__alpha1 = alpha1
         self.__beta = beta
         self.__eta = 3./8.*(1. - alpha0 - alpha1 - 2.*beta)
-        print('self.__eta=', self.__eta)
+        #print('self.__eta=', self.__eta)
         #print('sum=', self.__alpha0+self.__alpha1+self.__beta+self.__eta)
 
         self.__D0 = self.__alpha0 + self.__beta + self.__eta / 2.
@@ -155,6 +160,9 @@ class LoiAPrioriSeries2ter(LoiAPriori):
 
     def __str__(self):
         return "alpha0=" + str(self.__alpha0) +  ", alpha1=" + str(self.__alpha1) + ", beta=" + str(self.__beta) + ", eta=" + str(self.__eta)
+
+    def stringName(self):
+        return '2ter:'+str(self.__alpha0)+':'+str(self.__alpha1)+':'+str(self.__beta)
 
     def getTheoriticalHardTransition(self, n_r):
 
@@ -238,6 +246,7 @@ class LoiAPrioriSeries2ter(LoiAPriori):
             else:
                 return  (1. - np.abs(r1 - r2)) / D
 
+        
 
     def tirageR1(self):
         """ Return a draw according to the marginal density p(r1) """

@@ -6,22 +6,25 @@ Created on Fri Dec 15 11:06:52 2017
 @author: MacBook_Derrode
 """
 
-import numpy as np
+import sys
 import random
 import scipy.stats as stats
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import numpy as np
 
 fontS = 16 # fontSize
 mpl.rc('xtick', labelsize=fontS)
 mpl.rc('ytick', labelsize=fontS)
 dpi = 300
 
-from Fuzzy.APrioriFuzzyLaw import LoiAPriori, echelle, plotSample
-#from APrioriFuzzyLaw import LoiAPriori, echelle, plotSample
+#from Fuzzy.APrioriFuzzyLaw import LoiAPriori, echelle, plotSample
+from APrioriFuzzyLaw import LoiAPriori, echelle, plotSample
 
 def main():
+    
     discretization = 200
+    EPS            = 1E-10
 
     seed = random.randrange(sys.maxsize)
     seed = 5039309497922655937
@@ -31,46 +34,48 @@ def main():
 
     print('*********************SERIES 4')
     series = 'Serie4'
-    #P, case = LoiAPrioriSeries4(alpha=0.05, gamma = 0.0, delta_d=0.05, delta_u=0.05), 1
-    #P, case = LoiAPrioriSeries4(alpha=0.05, gamma = 0.15, delta_d=0.3, delta_u=0.), 2
-    #P, case = LoiAPrioriSeries4(alpha=0.15, gamma = 0.15, delta_d=0.0, delta_u=0.1), 3
+    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.05, gamma = 0.0, delta_d=0.05, delta_u=0.05), 1
+    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.05, gamma = 0.15, delta_d=0.3, delta_u=0.), 2
+    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.15, gamma = 0.15, delta_d=0.0, delta_u=0.1), 3
     
     # CAS PROBELMATIQUE
     #M = 3.*(0.2+0.1) - 0.5*(0.2*0.2+0.1*0.1)
-    #P, case = LoiAPrioriSeries4(alpha=0.2, gamma = (1.-4.*0.25)/M, delta_d=0.1, delta_u=0.2), 100
-    #P, case = LoiAPrioriSeries4(alpha=0.2, gamma = 0.3, delta_d=0.05, delta_u=0.20), 11
+    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.2, gamma = (1.-4.*0.25)/M, delta_d=0.1, delta_u=0.2), 100
+    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.2, gamma = 0.3, delta_d=0.05, delta_u=0.20), 11
     
-    #P, case = LoiAPrioriSeries4(alpha=0.10, gamma = 0.55, delta_d=0.30, delta_u=0.30), 12  #--> 48%
-    #P, case = LoiAPrioriSeries4(alpha=0.15, gamma = 0.65, delta_d=0.15, delta_u=0.15), 12 #--> 62%
-    #P, case = LoiAPrioriSeries4(alpha=0.15, gamma = 0.65, delta_d=0.10, delta_u=0.10), 12 #--> 75%
-    #P, case = LoiAPrioriSeries4(alpha=0.15, gamma = 0.55, delta_d=0.06, delta_u=0.06), 12 #--> 87%
-    #P, case = LoiAPrioriSeries4(alpha=0.15, gamma = 0.65, delta_d=0.00, delta_u=0.00), 12 #--> 100%
+    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.10, gamma = 0.55, delta_d=0.30, delta_u=0.30), 12  #--> 48%
+    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.15, gamma = 0.65, delta_d=0.15, delta_u=0.15), 12 #--> 62%
+    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.15, gamma = 0.65, delta_d=0.10, delta_u=0.10), 12 #--> 75%
+    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.15, gamma = 0.55, delta_d=0.06, delta_u=0.06), 12 #--> 87%
+    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.15, gamma = 0.65, delta_d=0.00, delta_u=0.00), 12 #--> 100%
 
-    #P, case = LoiAPrioriSeries4(alpha=0.10, gamma = 0.55, delta_d=0.0, delta_u=0.1), 200
-    #P, case = LoiAPrioriSeries4(alpha=0.15, gamma = 0.34, delta_d=0.2, delta_u=0.2), 200
+    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.10, gamma = 0.55, delta_d=0.0, delta_u=0.1), 200
+    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.15, gamma = 0.34, delta_d=0.2, delta_u=0.2), 200
 
-    #P, case = LoiAPrioriSeries4(alpha=0.10, gamma = 0.65, delta_d=0.15, delta_u=0.15), 1
+    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.10, gamma = 0.65, delta_d=0.15, delta_u=0.15), 1
 
     # alpha = 0.15
     # delta_d=0.15
     # delta_u=0.15
     # M = 3.*(delta_u + delta_d) - 0.5*(delta_d*delta_d+delta_u*delta_u)
     # gamma = (1. - 2. * alpha)/M
-    # P, case = LoiAPrioriSeries4(alpha=alpha, gamma = gamma, delta_d=delta_d, delta_u=delta_u), 57
+    # P, case = LoiAPrioriSeries4(EPS, discretization, alpha=alpha, gamma = gamma, delta_d=delta_d, delta_u=delta_u), 57
 
-    # P, case = LoiAPrioriSeries4(alpha=0.15, gamma = 0.65, delta_d=0., delta_u=0.), 58
-    P, case = LoiAPrioriSeries4(alpha=0.15, gamma = 0.60, delta_d=0.20, delta_u=0.20), 57
-    
-    sum_R1R2 = P.sumR1R2(discretization)
-    sum_R1   = P.sumR1(discretization)
-    sum_R2CondR1_0   = P.sumR2CondR1(discretization, 0.)
-    sum_R2CondR1_20  = P.sumR2CondR1(discretization, 0.10)
-    sum_R2CondR1_50  = P.sumR2CondR1(discretization, 0.50)
-    sum_R2CondR1_90  = P.sumR2CondR1(discretization, 0.90)
-    sum_R2CondR1_100 = P.sumR2CondR1(discretization, 1.)
-    ALPHA, BETA, DELTA_D, DELTA_U, GAMMA = P.getParam()
+    # P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.15, gamma = 0.65, delta_d=0., delta_u=0.), 58
+    P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.15, gamma = 0.60, delta_d=0.20, delta_u=0.20), 57
 
     print(P)
+    ALPHA, BETA, DELTA_D, DELTA_U, GAMMA = P.getParam()
+    print('4:'+str(ALPHA)+':'+str(GAMMA)+':'+str(DELTA_D)+':'+str(DELTA_U)+', beta='+str(BETA)+', #pH='+str(P.maxiHardJump()))
+
+    # Test de sommes à 1
+    sum_R1R2 = P.sumR1R2()
+    sum_R1   = P.sumR1()
+    sum_R2CondR1_0   = P.sumR2CondR1(0.)
+    sum_R2CondR1_20  = P.sumR2CondR1(0.10)
+    sum_R2CondR1_50  = P.sumR2CondR1(0.50)
+    sum_R2CondR1_90  = P.sumR2CondR1(0.90)
+    sum_R2CondR1_100 = P.sumR2CondR1(1.)
     print("sum_R1R2 = ", sum_R1R2)
     print("sum_R1 = ", sum_R1)
     print("sum_R2CondR1_0   = ", sum_R2CondR1_0)
@@ -79,34 +84,35 @@ def main():
     print("sum_R2CondR1_90  = ", sum_R2CondR1_90)
     print("sum_R2CondR1_100 = ", sum_R2CondR1_100)
     print('maxiHardJump = ', P.maxiHardJump())
-    print('4:'+str(ALPHA)+':'+str(GAMMA)+':'+str(DELTA_D)+':'+str(DELTA_U)+', beta='+str(BETA)+', #pH='+str(P.maxiHardJump()))
-
+    
+    # Calcul théorique et empirique de la proportion de suats durs
     MProbaTh, TProbaTh, JProbaTh = P.getTheoriticalHardTransition(2)
     print('JProba Hard Theorique=\n', JProbaTh)
     print('sum=', sum(sum(JProbaTh)))
 
-    MProbaNum, TProbaNum, JProbaNum = P.getNumericalHardTransition(2, discretization)
+    MProbaNum, TProbaNum, JProbaNum = P.getNumericalHardTransition(2)
     print('Jproba Hard Numerique, J=\n', JProbaNum)
     print('sum=', sum(sum(JProbaNum)))
 
-
+    # Simulation d'un chaine de markov flou suivant ce modèle
     N = 10000
-    chain = np.zeros((1, N))
+    chain = np.zeros(shape=(N))
+    # Le premier
     chain[0] = P.tirageR1()
     # les suivantes...
     for i in range(1, N):
-        chain[0, i] = P.tirageRnp1CondRn(chain[0, i-1])
+        chain[i] = P.tirageRnp1CondRn(chain[i-1])
 
     # Comptage des quarts
     JProbaEch = np.zeros(shape=(2,2))
     for i in range(N-1):
-        if chain[0, i]<0.5:
-            if chain[0, i+1]<0.5:
+        if chain[i]<0.5:
+            if chain[i+1]<0.5:
                 JProbaEch[0,0] += 1.
             else:
                 JProbaEch[0,1] += 1.
         else:
-            if chain[0, i+1]<0.5:
+            if chain[i+1]<0.5:
                 JProbaEch[1,0] += 1.
             else:
                 JProbaEch[1,1] += 1.
@@ -117,28 +123,29 @@ def main():
     cpt0 = 0
     cpt1 = 0
     for i in range(N):
-        if chain[0, i] == 0.:
+        if chain[i] == 0.:
             cpt0 += 1
-        elif chain[0, i] == 1.0:
+        elif chain[i] == 1.0:
             cpt1 += 1
     print('Nbre saut 0 :', cpt0/N, ', Theorique :', P.probaR(0.))
     print('Nbre saut 1 :', cpt1/N, ', Theorique :', P.probaR(1.))
     print('Nbre saut durs (0+1) :', (cpt0+cpt1)/N, ', Theorique :', P.maxiHardJump())
 
-    mini = 0
+    mini = 100
     maxi = 150
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1, projection='3d')
-    P.plotR1R2(discretization, 'LoiCouple_' + series + '_' + str(case) + '.png', ax, dpi=dpi)
-    P.plotR1(discretization, 'LoiMarg_' + series + '_' + str(case) + '.png', dpi=dpi)
+    P.plotR1R2('./figures/LoiCouple_' + series + '_' + str(case) + '.png', ax, dpi=dpi)
+    P.plotR1('./figures/LoiMarg_' + series + '_' + str(case) + '.png', dpi=dpi)
     FIG = plt.figure()
     AX = FIG.gca()
     abscisse= np.linspace(start=mini, stop=maxi, num=maxi-mini)
-    AX.plot(abscisse, chain[0, mini:maxi], 'g')
+    AX.plot(abscisse, chain[mini:maxi], 'g')
     #plt.title('Trajectory (Fuzzy jumps)')
     AX.set_xlabel('$n$', fontsize=fontS)
     AX.set_ylim(0., 1.05)
-    plt.savefig('Traj_' + series + '_' + str(case) + '.png',bbox_inches='tight', dpi=dpi)
+    plt.savefig('./figures/Traj_' + series + '_' + str(case) + '.png', bbox_inches='tight', dpi=dpi)
+
 
     # NORMTRAP = 1. - (2.*(ALPHA+BETA) + GAMMA*(DELTA_U+DELTA_D))
     # trapeze = trapeze_Serie4_gen(momtype=0, name='trapeze_serie4', a=0., b=1., shapes="NORMTRAP, GAMMA, DELTA_D, DELTA_U")
@@ -157,8 +164,10 @@ class LoiAPrioriSeries4(LoiAPriori):
     Implementation of the fourth law described in the report Calcul_Simu_CGOFMSM.pdf
     """
 
-    def __init__(self, alpha, gamma, delta_d, delta_u):
+    def __init__(self, EPS, discretization, alpha, gamma, delta_d, delta_u):
         """Constructeur to set the parameters of the density."""
+
+        LoiAPriori.__init__(self, EPS, discretization)
 
         if delta_d != delta_u:
             input('ATTENTION: LES CALCULS NE SONT PAS BONS LORSQUE DELTA_D >< DELTA_U !!!!!')
@@ -200,6 +209,9 @@ class LoiAPrioriSeries4(LoiAPriori):
         str1 = "alpha=" + str(self.__alpha) + ", beta=" + str(self.__beta)
         str1 += ", delta_d=" + str(self.__delta_d) + ", delta_u=" + str(self.__delta_u) + ", gamma=" + str(self.__gamma)
         return str1
+
+    def stringName(self):
+        return '4:'+str(self.__alpha)+':'+str(self.__gamma)+':'+str(self.__delta_d)+':'+str(self.__delta_u)
 
     def getTheoriticalHardTransition(self, n_r):
 

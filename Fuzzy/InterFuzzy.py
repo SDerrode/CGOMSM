@@ -83,25 +83,23 @@ def simulateFuzzy(filenameParam, FSParameters, N):
     Y = Z[s_xz, :]
     return n_r, X, R, Y
 
-def InterLineaire_Vector(Mean, alpha):
-    """ Return the mean by linear interpolation of vectors in Mean."""
+def InterLineaire_Vector(Vect, alpha):
+    """ Return the Vect_alpha by linear interpolation of vectors in Vect."""
     assert alpha >= 0 and alpha <= 1.
-    Mean_r = (1. - alpha) * Mean[0, :] + alpha * Mean[1, :]
-    return Mean_r
+    assert np.shape(Vect)[0] == 2, print('The number of matrices should be 2') 
+    return (1. - alpha) * Vect[0, :] + alpha * Vect[1, :]
 
-def InterBiLineaire_Matrix(Matrice, alpha, beta):
-    """
-    Return the matrice obtained by bilinear interpolation of matrices in Matrice.
-    """
+def InterLineaire_Matrix(Matrix, alpha):
+    """ Return the Matrix_alpha by linear interpolation of matrices in Matrix."""
+    assert alpha >= 0 and alpha <= 1.
+    assert np.shape(Matrix)[0] == 2, print('The number of matrices should be 2') 
+    return (1. - alpha) * Matrix[0, :] + alpha * Matrix[1, :]
+
+def InterBiLineaire_Matrix(Matrix, alpha, beta):
+    """Return Matrix_alpha_beta obtained by bilinear interpolation of Matrices in Matrix."""
     assert alpha >= 0 and alpha <= 1.
     assert beta  >= 0 and beta  <= 1.
-
-    n_r_2, n_z_2 = np.shape(Matrice)[0:2]
-    n_z          = int(n_z_2/2)
-
-    Matrice_alpha_beta = np.zeros((n_z, n_z))
-    Matrice_alpha_beta = (1. - alpha) * (1. - beta) * Matrice[0, :, :] \
-        + alpha * beta * Matrice[3, :, :] + alpha * (1. - beta) * Matrice[2, :, :] \
-        + beta * (1. - alpha) * Matrice[1, :, :]
-
-    return Matrice_alpha_beta
+    assert np.shape(Matrix)[0] == 4, print('The number of Matrixs should be 4')
+    return (1. - alpha) * (1. - beta) * Matrix[0, :, :] \
+        + alpha * beta * Matrix[3, :, :] + alpha * (1. - beta) * Matrix[2, :, :] \
+        + beta * (1. - alpha) * Matrix[1, :, :]
