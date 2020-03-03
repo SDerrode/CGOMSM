@@ -44,22 +44,22 @@ def calcF(rnp1, EPS, STEPS, ProbaF, FS, znp1, CovZ, MeanZ):
     #import time
     #start_time = time.time()
     #for K in range(10000):
-    if STEPS != 0:
-        for i in range(STEPS):
-            # ON NE PEUT PAS REMPLACER PAR UNE SIMPLE SOMME POUR GAGNER DU TEMPS!!!! parce que probaR2CondR1 n'est pas discret
+    for i in range(STEPS):
+        # ON NE PEUT PAS REMPLACER PAR UNE SIMPLE SOMME POUR GAGNER DU TEMPS!!!! parce que probaR2CondR1 n'est pas discret
 
-            # Cette solution est plus lebte que l suivante de 30%
-            # ATemp, errATemp = sc.integrate.quad(func=loiForw1, a=float(i)/STEPS+EPS, b=float(i+1)/STEPS-EPS, args=argument1, epsabs=1E-2, epsrel=1E-2, limit=50)
-            # A += ATemp
-            # print('ATemp    =', ATemp)
+        # Cette solution est plus lebte que l suivante de 30%
+        # ATemp, errATemp = sc.integrate.quad(func=loiForw1, a=float(i)/STEPS+EPS, b=float(i+1)/STEPS-EPS, args=argument1, epsabs=1E-2, epsrel=1E-2, limit=50)
+        # A += ATemp
+        # print('ATemp    =', ATemp)
 
-            # Cette solution est la plus rapide
-            ATemp, errATemp = sc.integrate.quad(func=loiForw2, a=float(i)/STEPS+EPS, b=float(i+1)/STEPS-EPS, args=argument2, epsabs=1E-2, epsrel=1E-2, limit=50)
-            A += ATemp * ProbaF.get(float(i)/STEPS+2.*EPS)
-            # print('ATemp    =', ATemp * ProbaF.get(float(i)/STEPS+EPS))
-            # input('attente')
-        # La solution suivante est équivalente mais prend 10% de temps en plus
-        # C, errCTemp = sc.integrate.quad(func=loiForw1, a=EPS, b=1.-EPS, args=argument, epsabs=1E-5, epsrel=1E-1, limit=50)
+        # Cette solution est la plus rapide
+        ATemp, errATemp = sc.integrate.quad(func=loiForw2, a=float(i)/STEPS+EPS, b=float(i+1)/STEPS-EPS, args=argument2, epsabs=1E-2, epsrel=1E-2, limit=50)
+        A += ATemp * ProbaF.get(float(i)/STEPS+2.*EPS) # le 2*EPS sert à être sur que l'on est sur le pallier
+        # print('ATemp    =', ATemp * ProbaF.get(float(i)/STEPS+EPS))
+        # input('attente')
+    # La solution suivante est équivalente mais prend 10% de temps en plus
+    # C, errCTemp = sc.integrate.quad(func=loiForw1, a=EPS, b=1.-EPS, args=argument, epsabs=1E-5, epsrel=1E-1, limit=50)
+    
     # print('\nA=', A)
     # print('B=', B)
     # print('C=', C)
@@ -68,8 +68,8 @@ def calcF(rnp1, EPS, STEPS, ProbaF, FS, znp1, CovZ, MeanZ):
 
     # A0 = loiForw1(0., rnp1, ProbaF, FS.probaR2CondR1)
     # A1 = loiForw1(1., rnp1, ProbaF, FS.probaR2CondR1)
-    A0 = loiForw2(0., rnp1, FS.probaR2CondR1) * ProbaF.get(0.)
-    A1 = loiForw2(1., rnp1, FS.probaR2CondR1) * ProbaF.get(1.)
+    A0 = FS.probaR2CondR1(0., rnp1) * ProbaF.get(0.)
+    A1 = FS.probaR2CondR1(1., rnp1) * ProbaF.get(1.)
     # print('A0 = ', A0)
     # print('A1 = ', A1)
     # input('STOP')
@@ -124,17 +124,16 @@ def calcB(rn, EPS, STEPS, ProbaB, FS, znp1, CovZ, MeanZ):
     argument1 = (rn, ProbaB, FS.probaR2CondR1, znp1, CovZ, MeanZ)
     argument2 = (rn, FS.probaR2CondR1, znp1, CovZ, MeanZ)
     A         = 0.
-    if STEPS != 0:
-        for i in range(STEPS):
-            # ON NE PEUT PAS REMPLACER PAR UNE SIMPLE SOMME POUR GAGNER DU TEMPS!!!! parce que probaR2CondR1 n'est pas discret
+    for i in range(STEPS):
+        # ON NE PEUT PAS REMPLACER PAR UNE SIMPLE SOMME POUR GAGNER DU TEMPS!!!! parce que probaR2CondR1 n'est pas discret
 
-            # Cette solution est plus lente
-            # ATemp, errATemp = sc.integrate.quad(func=loiBackw1, a=float(i)/STEPS+EPS, b=float(i+1)/STEPS-EPS, args=argument1, epsabs=1E-10, epsrel=1E-10, limit=200)
-            # A += ATemp
+        # Cette solution est plus lente
+        # ATemp, errATemp = sc.integrate.quad(func=loiBackw1, a=float(i)/STEPS+EPS, b=float(i+1)/STEPS-EPS, args=argument1, epsabs=1E-10, epsrel=1E-10, limit=200)
+        # A += ATemp
 
-            # Cette solution est la plus rapide
-            ATemp, errATemp = sc.integrate.quad(func=loiBackw2, a=float(i)/STEPS+EPS, b=float(i+1)/STEPS-EPS, args=argument2, epsabs=1E-2, epsrel=1E-2, limit=50)
-            B += ATemp * ProbaB.get(float(i)/STEPS+2.*EPS)
+        # Cette solution est la plus rapide
+        ATemp, errATemp = sc.integrate.quad(func=loiBackw2, a=float(i)/STEPS+EPS, b=float(i+1)/STEPS-EPS, args=argument2, epsabs=1E-2, epsrel=1E-2, limit=50)
+        A += ATemp * ProbaB.get(float(i)/STEPS+2.*EPS) # le 2*EPS sert à être sur que l'on est sur le pallier
     # print('\nA=', A)
     # print('B=', B)
     # input('TIME')
@@ -163,16 +162,17 @@ def calcB(rn, EPS, STEPS, ProbaB, FS, znp1, CovZ, MeanZ):
 ############################################################################################################
 class Loi1DDiscreteFuzzy_HMC():
 
-    def __init__(self, EPS, STEPS, Rcentres):
-        self.__EPS   = EPS
-        self.__STEPS = STEPS
+    def __init__(self, EPS, Rcentres):
+        self.__EPS      = EPS
+        self.__STEPS    = len(Rcentres)
+        self.__Rcentres = Rcentres
         self.__p0 = 0.
         self.__p1 = 0.
         if self.__STEPS != 0:
-            self.__p01 = np.zeros(shape=(STEPS))
+            self.__p01 = np.zeros(shape=(self.__STEPS))
         else:
             self.__p01 = np.empty(shape=(0,))
-        self.__Rcentres = Rcentres
+       
 
     def getRcentre(self):
         return self.__Rcentres
@@ -232,7 +232,7 @@ class Loi1DDiscreteFuzzy_HMC():
         # input('pause - set1_1D')
 
     def setone_1D(self):
-        for i, rnp1 in enumerate(self.__Rcentres):
+        for i in range(self.__STEPS):
             self.__p01[i] = 1.
         self.__p0 = 1.
         self.__p1 = 1.
@@ -253,18 +253,18 @@ class Loi1DDiscreteFuzzy_HMC():
         if self.__p1 < 1e-300:
             self.__p1 = 1e-300 #np.nextafter(0, 1)*10
 
-        for i, rnp1 in enumerate(self.__Rcentres):
+        for i in range(self.__STEPS):
             if self.__p01[i] < 1e-300:
                 self.__p01[i] = 1e-300 #np.nextafter(0, 1)*10
 
     def normalisation(self, norm):
-        for i, rnp1 in enumerate(self.__Rcentres):
+        for i in range(self.__STEPS):
             self.__p01[i] /= norm
         self.__p0 /= norm
         self.__p1 /= norm
 
     def ProductFB(self, probaforw, probabackw):
-        for i, r in enumerate(self.__Rcentres):
+        for i in range(self.__STEPS):
             self.__p01[i] = probaforw.__p01[i] * probabackw.__p01[i]
         self.__p0 = probaforw.__p0 * probabackw.__p0
         self.__p1 = probaforw.__p1 * probabackw.__p1
@@ -320,7 +320,7 @@ class Loi1DDiscreteFuzzy_HMC():
         if self.__STEPS == 0:
             return self.__p0 + self.__p1
         else:
-            return self.__p0 + self.__p1 + sum(self.__p01)/self.__STEPS
+            return self.__p0 + self.__p1 + np.trapz(y=self.__p01, x=self.__Rcentres)
 
     def plot(self, title):
 

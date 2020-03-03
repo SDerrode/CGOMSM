@@ -118,10 +118,10 @@ class LoiAPriori:
 
     def probaQuart(self, r1, r2, minR1, maxR1, minR2, maxR2):
 
+        R1 = np.linspace(start=minR1+self.__EPS, stop=maxR1-self.__EPS, num=self.__discretization, endpoint=True)
         R2 = np.linspace(start=minR2+self.__EPS, stop=maxR2-self.__EPS, num=self.__discretization, endpoint=True)
         pR2 = np.ndarray(shape=(R2.shape[0]))
         
-
         integ = 0.
 
         # D'abord les 4 droites
@@ -135,22 +135,22 @@ class LoiAPriori:
             integ  += np.trapz(y=pR2, x=R2)
 
         if r2==0.:
-            for j, r in enumerate(self.__R1): self.__pR1[j] = self.probaR1R2(r, 0.)
-            integ  += np.trapz(y=self.__pR1, x=self.__R1)
+            for j, r in enumerate(R1): self.__pR1[j] = self.probaR1R2(r, 0.)
+            integ  += np.trapz(y=self.__pR1, x=R1)
 
         if r2==1.:
-            for j, r in enumerate(self.__R1): self.__pR1[j] = self.probaR1R2(r, 1.)
-            integ  += np.trapz(y=self.__pR1, x=self.__R1)
+            for j, r in enumerate(R1): self.__pR1[j] = self.probaR1R2(r, 1.)
+            integ  += np.trapz(y=self.__pR1, x=R1)
 
         # Ensuite les 4 angles
         integ += self.probaR1R2(r1, r2)
 
         # La surface à l'intérieur
-        for i, r1 in enumerate(self.__R1):
+        for i, r1 in enumerate(R1):
             for j, r2 in enumerate(R2):
                 pR2[j] = self.probaR1R2(r1, r2)
             self.__pR1[i] = np.trapz(y=pR2, x=R2)
-        integ += np.trapz(y=self.__pR1, x=self.__R1)
+        integ += np.trapz(y=self.__pR1, x=R1)
 
         return integ
 
@@ -243,12 +243,13 @@ class LoiAPriori:
 
     def sumR1(self):
         """
-        Integration of density p(r), should sum one
+        Integration of density p(r1), should sum to one
         """
 
         for i, r in enumerate(self.__R1):
             self.__pR1[i] = self.probaR(r)
-        integ = sum(self.__pR1) / self.__discretization
+        #integ = sum(self.__pR1) / self.__discretization
+        integ = np.trapz(y=self.__pR1, x=self.__R1)
 
         # Les deux bords
         integ += self.probaR(0.) + self.probaR(1.)
@@ -257,12 +258,13 @@ class LoiAPriori:
 
     def sumR2CondR1(self, r1):
         """
-        Integration of density p(r), should sum one
+        Integration of density p(r2 | r1), should sum to one
         """
 
         for i, r in enumerate(self.__R1):
             self.__pR1[i] = self.probaR2CondR1 (r1, r)
-        integ = sum(self.__pR1) / self.__discretization
+        #integ = sum(self.__pR1) / self.__discretization
+        integ = np.trapz(y=self.__pR1, x=self.__R1)
 
         # Les deux bords
         integ += self.probaR2CondR1(r1, 0.) + self.probaR2CondR1(r1, 1.)

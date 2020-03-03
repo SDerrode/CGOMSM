@@ -67,21 +67,21 @@ def main():
         print('The number of values of the two files are differents!!!\n')
         exit(1)
 
-    plt.figure()
-    plt.plot(Ytrain[0,:], color='r', label='Ytrain')
-    plt.legend()
-    plt.savefig('Ytrain.png', bbox_inches='tight', dpi=150)    
-    plt.close()
+    # plt.figure()
+    # plt.plot(Ytrain[0,:], color='r', label='Ytrain')
+    # plt.legend()
+    # plt.savefig('Ytrain.png', bbox_inches='tight', dpi=150)    
+    # plt.close()
 
-    plt.figure()
-    plt.plot(Xtrain[0,:], color='b', label='Xtrain')
-    plt.legend()
-    plt.savefig('Xtrain.png', bbox_inches='tight', dpi=150)    
-    plt.close()
+    # plt.figure()
+    # plt.plot(Xtrain[0,:], color='b', label='Xtrain')
+    # plt.legend()
+    # plt.savefig('Xtrain.png', bbox_inches='tight', dpi=150)    
+    # plt.close()
 
     # Learning
     Ztrain = np.zeros(shape=(n_x+n_y, len_x))
-    Ztrain[0:n_x, :]       = Xtrain
+    Ztrain[0  :n_x,     :] = Xtrain
     Ztrain[n_x:n_x+n_y, :] = Ytrain
     aCGOFMSM_learn = CGOFMSMlearn(STEPS, Ztrain, n_x, n_y, verbose)
     aCGOFMSM_learn.run_several(nbIterSEM, nbRealSEM)
@@ -95,7 +95,7 @@ from Fuzzy.APrioriFuzzyLaw_Series2ter import LoiAPrioriSeries2ter
 class CGOFMSMlearn:
     def __init__(self, STEPS, Ztrain, n_x, n_y, verbose):
         
-        self.__n_r     = 2 # default value, can be changed by reading of parameters (see below)
+        self.__n_r     = 2
         self.__N       = np.shape(Ztrain)[1]
         self.__Ztrain  = Ztrain
         self.__verbose = verbose
@@ -107,11 +107,6 @@ class CGOFMSMlearn:
         self.__n_y    = n_y
         self.__n_z    = self.__n_x + self.__n_y
 
-        self.__alpha0 = 0.
-        self.__alpha1 = 0.
-        self.__beta   = 0.
-        self.__eta    = 3./8.*(1. - self.__alpha0 - self.__alpha1 - 2.*self.__beta)
-
         if self.__STEPS != 0:
             self.__Rcentres = np.linspace(start=1./(2.*self.__STEPS), stop=1.0-1./(2.*self.__STEPS), num=self.__STEPS, endpoint=True)
         else:
@@ -119,14 +114,13 @@ class CGOFMSMlearn:
 
         # Init of parameters : kmeans with 2+STEPS hard classes
         kmeans = KMeans(n_clusters=2+self.__STEPS, random_state=0).fit(np.transpose(self.__Ztrain))
-        I = np.argsort(kmeans.cluster_centers_[:, 0])
-        hard0 = I[0]   # le plus faible
-        hard1 = I[-1]  # le plus élevé
+        I      = np.argsort(kmeans.cluster_centers_[:, 0])
+        hard0  = I[0]   # le plus petit
+        hard1  = I[-1]  # le plus grand
         
         # Parameter for fuzzy markov model called APrioriFuzzyLaw_serie2ter.py
-        self.__alpha0_init, self.__alpha1_init, self.__beta_init = self.EmpiricalFuzzyjointMatrix(kmeans.labels_, hard0, hard1)
-        self.__eta_init = 3./8.*(1. - self.__alpha0_init - self.__alpha1_init - 2.*self.__beta_init)
-        self.__FS = LoiAPrioriSeries2ter(alpha0=self.__alpha0_init, alpha1=self.__alpha1_init, beta=self.__beta_init)
+        self.__alpha0, self.__alpha1, self.__beta = self.EmpiricalFuzzyJointMatrix(kmeans.labels_, hard0, hard1)
+        self.__FS = LoiAPrioriSeries2ter(self.__EPS, discretization=0, alpha0=self.__alpha0, alpha1=self.__alpha1, beta=self.__beta)
         #print(self.__FS)
         #input('pause')
 
@@ -145,14 +139,10 @@ class CGOFMSMlearn:
         #     print('CovZ_rnp1=', CovZ_rnp1)
         # input('attente')
 
-
-    def getParams_init(self):
-        return self.__alpha0_init, self.__alpha1_init, self.__beta_init, self.__eta_init
-
     def getParams(self):
-        return self.__alpha0, self.__alpha1, self.__beta, self.__eta
+        return self.__alpha0, self.__alpha1, self.__beta, self.__FS.getEta()
 
-    def EmpiricalFuzzyjointMatrix(self, Rsimul, hard0, hard1):
+    def EmpiricalFuzzyJointMatrix(self, Rsimul, hard0, hard1):
         
         alpha0, alpha1, beta = 0., 0., 0.
         
@@ -163,7 +153,7 @@ class CGOFMSMlearn:
                 alpha1 += 1
             if (Rsimul[n-1] == hard0 and Rsimul[n] == hard1) or (Rsimul[n-1] == hard1 and Rsimul[n] == hard0):
                 beta +=1
-        beta /= 2 # ca compte les transitions 0-1, 1-0, donc on divise par deux
+        beta /= 2. # ca compte les transitions 0-1, 1-0, donc on divise par deux
 
         alpha0 /= self.__N
         alpha1 /= self.__N
@@ -189,12 +179,12 @@ class CGOFMSMlearn:
         # The variance
         Cov_Z = np.zeros(shape=(self.__n_r, self.__n_z, self.__n_z))
         VectZ = np.zeros(shape=(self.__n_z, 1))
-        for n in range(0, self.__N):
+        for n in range(self.__N):
             if (Rsimul[n] == hard0 or Rsimul[n] == hard1):
                 if Rsimul[n] == hard0: q=0
                 if Rsimul[n] == hard1: q=1
                 VectZ = (np.transpose(self.__Ztrain[:, n]) - Mean_Z[q, :]).reshape(self.__n_z, 1)
-                Cov_Z[q, :] += np.dot(VectZ,np.transpose(VectZ))
+                Cov_Z[q, :] += np.dot(VectZ, np.transpose(VectZ))
         Cov_Z[0, :] /= cpt[0]
         Cov_Z[1, :] /= cpt[1]
 
@@ -202,11 +192,6 @@ class CGOFMSMlearn:
 
 
     def run_several(self,  nbIterSEM, nbRealSEM):
-
-        self.__alpha0 = self.__alpha0_init
-        self.__alpha1 = self.__alpha1_init
-        self.__beta   = self.__beta_init
-        self.__eta    = self.__eta_init
 
         for i in range(nbIterSEM):
             print('ITERATION ', i)
@@ -220,9 +205,9 @@ class CGOFMSMlearn:
         # Simuler une chaines de Markov a posteriori
         ##############################################
         # Proba sauts
-        ProbaForward, tab_normalis = self.compute_jumps_forward ()
-        ProbaBackward              = self.compute_jumps_backward(tab_normalis)
-        ProbaLissage               = self.compute_jumps_smooth  (ProbaForward, ProbaBackward)
+        ProbaForward, tab_normalis = self.compute_fuzzyjumps_forward ()
+        ProbaBackward              = self.compute_fuzzyjumps_backward(tab_normalis)
+        ProbaLissage               = self.compute_fuzzyjumps_smooth  (ProbaForward, ProbaBackward)
 
         input('Fin proba FB')
 
@@ -242,7 +227,7 @@ class CGOFMSMlearn:
         return True
 
 
-    def compute_jumps_forward(self):
+    def compute_fuzzyjumps_forward(self):
         
         ProbaForward = []
         tab_normalis = []
@@ -251,7 +236,7 @@ class CGOFMSMlearn:
         # Initialisation
         np1  = 0
         znp1 = self.__Ztrain[:, np1]
-        ProbaForward.append(Loi1DDiscreteFuzzy_HMC(self.__EPS, self.__STEPS, self.__Rcentres))
+        ProbaForward.append(Loi1DDiscreteFuzzy_HMC(self.__EPS, self.__Rcentres))
         ProbaForward[np1].CalcForw1(self.__FS.probaR, znp1, self.__CovZ, self.__MeanZ)
 
         tab_normalis.append(ProbaForward[np1].sum())
@@ -266,10 +251,11 @@ class CGOFMSMlearn:
                 print('\r         forward np1=', np1, ' sur N=', self.__N, end='', flush = True)
 
             znp1 = self.__Ztrain[:, np1]
-            ProbaForward.append(Loi1DDiscreteFuzzy_HMC(self.__EPS, self.__STEPS, self.__Rcentres))
+            ProbaForward.append(Loi1DDiscreteFuzzy_HMC(self.__EPS, self.__Rcentres))
             ProbaForward[np1].CalcForB(calcF, ProbaForward[np1-1], self.__FS, znp1, self.__CovZ, self.__MeanZ)
             ProbaForward[np1].nextAfterZeros() # on evite des proba de zero
-
+            #ProbaForward[np1].print()
+            # print('sum forw=', ProbaForward[np1].sum())
             tab_normalis.append(ProbaForward[np1].sum())
             ProbaForward[np1].normalisation(tab_normalis[np1])
             # print('sum forw=', ProbaForward[np1].sum())
@@ -282,14 +268,14 @@ class CGOFMSMlearn:
         return ProbaForward, tab_normalis
 
 
-    def compute_jumps_backward(self, tab_normalis):
+    def compute_fuzzyjumps_backward(self, tab_normalis):
 
         # Proba backward
         ProbaBackward = []
 
         # on créé la liste
         for n in range(self.__N):
-            ProbaBackward.append(Loi1DDiscreteFuzzy_HMC(self.__EPS, self.__STEPS, self.__Rcentres))
+            ProbaBackward.append(Loi1DDiscreteFuzzy_HMC(self.__EPS, self.__Rcentres))
 
         ######################
         # initialisation de beta
@@ -312,10 +298,14 @@ class CGOFMSMlearn:
             znp1 = self.__Ztrain[:, n+1]
             ProbaBackward[n].CalcForB(calcB, ProbaBackward[n+1], self.__FS, znp1, self.__CovZ, self.__MeanZ)
             #ProbaBackward[n].nextAfterZeros() # on evite des proba de zero
+            print('sum backw=', ProbaBackward[n].sum())
+            print('tab_normalis[n+1]=', tab_normalis[n+1])
             ProbaBackward[n].normalisation(tab_normalis[n+1])
+            print('sum backw=', ProbaBackward[n].sum())
+
             #ProbaBackward[n].plot('$p(r_{n+1} | y_1^{n+1})$')
             # ProbaBackward[n].print()
-            # input('backward')
+            input('backward')
 
         if self.__verbose >= 2:
             print(' ')
@@ -323,7 +313,7 @@ class CGOFMSMlearn:
         return ProbaBackward
 
 
-    def compute_jumps_smooth(self, ProbaForward, ProbaBackward):
+    def compute_fuzzyjumps_smooth(self, ProbaForward, ProbaBackward):
 
         tab_p_rn_dp_y1_to_yN = []
 
@@ -334,15 +324,17 @@ class CGOFMSMlearn:
                 print('\r         proba lissage n=', n, ' sur N=', self.__N, end='   ', flush = True)
 
             # calcul du produit forward * backward
-            tab_p_rn_dp_y1_to_yN.append(Loi1DDiscreteFuzzy_HMC(self.__EPS, self.__STEPS, self.__Rcentres))
+            tab_p_rn_dp_y1_to_yN.append(Loi1DDiscreteFuzzy_HMC(self.__EPS, self.__Rcentres))
             tab_p_rn_dp_y1_to_yN[n].ProductFB(ProbaForward[n], ProbaBackward[n])
 
             # normalisation : uniquement due pour compenser des pb liés aux approximations numeriques de forward et de backward
             # Si F= 20, on voit que la normalisation n'est pas necessaire (deja la somme == 1.)
-            print('tab_p_rn_dp_y1_to_yN[n].sum()=', tab_p_rn_dp_y1_to_yN[n].sum())
+            if tab_p_rn_dp_y1_to_yN[n].sum() > 1+1E-3 or tab_p_rn_dp_y1_to_yN[n].sum()< 1.-1E-3:
+                print('tab_p_rn_dp_y1_to_yN[n].sum()=', tab_p_rn_dp_y1_to_yN[n].sum())
+                input('Attente')
             tab_p_rn_dp_y1_to_yN[n].normalisation(tab_p_rn_dp_y1_to_yN[n].sum())
             #tab_p_rn_dp_y1_to_yN[n].print()
-            print('sum gamma=', tab_p_rn_dp_y1_to_yN[n].sum())
+            #print('sum gamma=', tab_p_rn_dp_y1_to_yN[n].sum())
             #print('sum=', tab_p_rn_dp_y1_to_yN[n].sum())
             #input('Attente')
 

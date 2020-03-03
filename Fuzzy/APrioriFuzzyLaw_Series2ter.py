@@ -18,8 +18,8 @@ mpl.rc('xtick', labelsize=fontS)
 mpl.rc('ytick', labelsize=fontS)
 dpi = 300
 
-#from Fuzzy.APrioriFuzzyLaw import LoiAPriori, plotSample
-from APrioriFuzzyLaw import LoiAPriori, plotSample
+from Fuzzy.APrioriFuzzyLaw import LoiAPriori, plotSample
+#from APrioriFuzzyLaw import LoiAPriori, plotSample
 
 def main():
 
@@ -35,7 +35,7 @@ def main():
     print('*********************SERIES 2 ter')
     series = 'Serie2ter'
 
-    P, case = LoiAPrioriSeries2ter(EPS, discretization, alpha0 = 0.10, alpha1 = 0.20, beta=0.06, ), 1
+    P, case = LoiAPrioriSeries2ter(EPS, discretization, alpha0 = 0.10, alpha1 = 0.20, beta=0.06), 1
     #P, case = LoiAPrioriSeries2ter(EPS, discretization, alpha0 = 0.05, alpha1 = 0.02, beta=0.01), 2
 
     print(P)
@@ -45,6 +45,7 @@ def main():
     # Test de sommes à 1
     sum_R1R2 = P.sumR1R2()
     sum_R1   = P.sumR1()
+
     sum_R2CondR1_0   = P.sumR2CondR1(0.)
     sum_R2CondR1_20  = P.sumR2CondR1(0.10)
     sum_R2CondR1_50  = P.sumR2CondR1(0.50)
@@ -57,6 +58,7 @@ def main():
     print("sum_R2CondR1_50  = ", sum_R2CondR1_50)
     print("sum_R2CondR1_90  = ", sum_R2CondR1_90)
     print("sum_R2CondR1_100 = ", sum_R2CondR1_100)
+    input('pause')
     print('maxiHardJump = ', P.maxiHardJump())
     
     # Calcul théorique et empirique de la proportion de suats durs
@@ -135,10 +137,9 @@ class LoiAPrioriSeries2ter(LoiAPriori):
 
         self.__alpha0 = alpha0
         self.__alpha1 = alpha1
-        self.__beta = beta
-        self.__eta = 3./8.*(1. - alpha0 - alpha1 - 2.*beta)
+        self.__beta   = beta
+        self.__eta = 3./8.*(1. - self.__alpha0 - self.__alpha1 - 2.*self.__beta)
         #print('self.__eta=', self.__eta)
-        #print('sum=', self.__alpha0+self.__alpha1+self.__beta+self.__eta)
 
         self.__D0 = self.__alpha0 + self.__beta + self.__eta / 2.
         self.__D1 = self.__alpha1 + self.__beta + self.__eta / 2.
@@ -158,6 +159,10 @@ class LoiAPrioriSeries2ter(LoiAPriori):
         """ Return the params of the law model."""
         return self.__alpha0, self.__alpha1, self.__beta, self.__eta
 
+    def getEta(self):
+        """ Return the eta param of the law model."""
+        return self.__eta
+        
     def __str__(self):
         return "alpha0=" + str(self.__alpha0) +  ", alpha1=" + str(self.__alpha1) + ", beta=" + str(self.__beta) + ", eta=" + str(self.__eta)
 

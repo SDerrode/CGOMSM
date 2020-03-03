@@ -18,8 +18,8 @@ mpl.rc('xtick', labelsize=fontS)
 mpl.rc('ytick', labelsize=fontS)
 dpi = 300
 
-#from Fuzzy.APrioriFuzzyLaw import LoiAPriori, plotSample
-from APrioriFuzzyLaw import LoiAPriori, plotSample
+from Fuzzy.APrioriFuzzyLaw import LoiAPriori, plotSample
+#from APrioriFuzzyLaw import LoiAPriori, plotSample
 
 def main():
 
