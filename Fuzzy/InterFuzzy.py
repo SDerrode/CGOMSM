@@ -85,13 +85,13 @@ def simulateFuzzy(filenameParam, FSParameters, N):
 
 def InterLineaire_Vector(Vect, alpha):
     """ Return the Vect_alpha by linear interpolation of vectors in Vect."""
-    assert alpha >= 0 and alpha <= 1.
-    assert np.shape(Vect)[0] == 2, print('The number of matrices should be 2') 
+    assert alpha >= 0. and alpha <= 1.
+    assert np.shape(Vect)[0] == 2, print('The number of vectors should be 2') 
     return (1. - alpha) * Vect[0, :] + alpha * Vect[1, :]
 
 def InterLineaire_Matrix(Matrix, alpha):
     """ Return the Matrix_alpha by linear interpolation of matrices in Matrix."""
-    assert alpha >= 0 and alpha <= 1.
+    assert alpha >= 0. and alpha <= 1.
     assert np.shape(Matrix)[0] == 2, print('The number of matrices should be 2') 
     return (1. - alpha) * Matrix[0, :] + alpha * Matrix[1, :]
 

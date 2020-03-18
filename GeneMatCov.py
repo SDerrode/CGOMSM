@@ -101,7 +101,7 @@ def main():
         # print('  Fill des Mat Cov CGPMSM Direct')
         MatCov = Fill_MatCovCGPMSM(MatCorr, MatCov, n_r, n_z)
         # print('  TEST des Mat Cov CGPMSM Direct')
-        OK1 = Check_CovMatrix(MatCov, n_r)
+        OK1 = Check_CovMatrices(MatCov, n_r)
         print('   ->', OK1)
         if OK1 == True:
             print('---> OK1 = true, cpt=', cpt)
@@ -109,7 +109,7 @@ def main():
         # print('  Calcul des Mat Cov CGPMSM Reverse')
         MatCov_REV = GetBackCov_CGPMSM(MatCov, n_x=n_x)
         # print('  TEST des Mat Cov CGPMSM Reverse')
-        OK2 = Check_CovMatrix(MatCov_REV, n_r)
+        OK2 = Check_CovMatrices(MatCov_REV, n_r)
         if OK2 == True:
             print('---> OK2 = true, cpt=', cpt)
 
@@ -123,7 +123,7 @@ def main():
         else:
             print('Le modele direct est un CGOMSM.')
         # print('   TEST des Mat Cov CGO Direct')
-        OK3 = Check_CovMatrix(Cov_CGOMSM_DIR, n_r)
+        OK3 = Check_CovMatrices(Cov_CGOMSM_DIR, n_r)
         if OK3 == True:
             print('---> OK3 = true, cpt=', cpt)
 
@@ -141,7 +141,7 @@ def main():
         else:
             print('Le modele reverse est un CGOMSM.')
         # print('TEST des Mat Cov CGO Reverse')
-        OK4 = Check_CovMatrix(Cov_CGOMSM_REV, n_r)
+        OK4 = Check_CovMatrices(Cov_CGOMSM_REV, n_r)
         if OK4 == True:
             print('---> OK4 = true, cpt=', cpt)
 
@@ -176,18 +176,25 @@ def Fill_MatCovCGPMSM(MatCorr, MatCov, n_r, n_z):
     # input('pause')
     return MatCov
 
+def Check_CovMatrix(MatCov):
 
-def Check_CovMatrix(MatCov, n_r):
+    w, v = np.linalg.eig(MatCov)
+
+    # print("eig value:", w)
+    # print(np.all(w>0.))
+    # print(np.all(np.logical_not(np.iscomplex(w))))
+    # input('pause')
+
+    if np.all(np.logical_not(np.iscomplex(w))) == False or np.all(w>0.) == False:
+        return False
+
+    return True
+
+def Check_CovMatrices(MatCov, n_r):
 
     for l in range(n_r**2):
-        w, v = np.linalg.eig(MatCov[l, :, :])
 
-        # print("eig value:", w)
-        # print(np.all(w>0.))
-        # print(np.all(np.logical_not(np.iscomplex(w))))
-        # input('pause')
-
-        if np.all(np.logical_not(np.iscomplex(w))) == False or np.all(w>0.) == False:
+        if Check_CovMatrix(MatCov[l, :, :]) == False:
             return False
 
     return True

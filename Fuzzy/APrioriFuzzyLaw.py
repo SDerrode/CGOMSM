@@ -248,11 +248,17 @@ class LoiAPriori:
 
         for i, r in enumerate(self.__R1):
             self.__pR1[i] = self.probaR(r)
-        #integ = sum(self.__pR1) / self.__discretization
-        integ = np.trapz(y=self.__pR1, x=self.__R1)
+        # integ = sum(self.__pR1) / self.__discretization
+        # print('integ=', integ)
+        # integ = np.mean(self.__pR1)
+        # print('integ=', integ)
+        # integ = np.trapz(y=self.__pR1, x=self.__R1)
+        # print('self.__R1=', self.__R1)
+        # print('integ=', integ)
+        # input('pause integ')
 
         # Les deux bords
-        integ += self.probaR(0.) + self.probaR(1.)
+        integ = self.probaR(0.) + self.probaR(1.) + np.trapz(y=self.__pR1, x=self.__R1)
 
         return integ
 

@@ -19,7 +19,7 @@ mpl.rc('ytick', labelsize=fontS)
 dpi = 300
 
 from Fuzzy.APrioriFuzzyLaw import LoiAPriori, plotSample
-#from APrioriFuzzyLaw import LoiAPriori, plotSample
+# from APrioriFuzzyLaw import LoiAPriori, plotSample
 
 def main():
 
@@ -35,8 +35,10 @@ def main():
     print('*********************SERIES 2 ter')
     series = 'Serie2ter'
 
-    P, case = LoiAPrioriSeries2ter(EPS, discretization, alpha0 = 0.10, alpha1 = 0.20, beta=0.06), 1
+    #P, case = LoiAPrioriSeries2ter(EPS, discretization, alpha0 = 0.10, alpha1 = 0.20, beta=0.06), 1
     #P, case = LoiAPrioriSeries2ter(EPS, discretization, alpha0 = 0.05, alpha1 = 0.02, beta=0.01), 2
+    P, case = LoiAPrioriSeries2ter(EPS, discretization, alpha0 = 0.144, alpha1 = 0.050, beta=0.000), 4
+
 
     print(P)
     ALPHA0, ALPHA1, BETA, ETA = P.getParam()
@@ -139,6 +141,7 @@ class LoiAPrioriSeries2ter(LoiAPriori):
         self.__alpha1 = alpha1
         self.__beta   = beta
         self.__eta = 3./8.*(1. - self.__alpha0 - self.__alpha1 - 2.*self.__beta)
+        if self.__eta<0.: self.__eta=0. # erreur d'arrondi
         #print('self.__eta=', self.__eta)
 
         self.__D0 = self.__alpha0 + self.__beta + self.__eta / 2.
@@ -164,7 +167,7 @@ class LoiAPrioriSeries2ter(LoiAPriori):
         return self.__eta
         
     def __str__(self):
-        return "alpha0=" + str(self.__alpha0) +  ", alpha1=" + str(self.__alpha1) + ", beta=" + str(self.__beta) + ", eta=" + str(self.__eta)
+        return "alpha0=" + str('%.3f'%(self.__alpha0)) +  ", alpha1=" + str('%.3f'%(self.__alpha1)) + ", beta=" + str('%.3f'%(self.__beta)) + ", eta=" + str('%.3f'%(self.__eta))
 
     def stringName(self):
         return '2ter:'+str(self.__alpha0)+':'+str(self.__alpha1)+':'+str(self.__beta)
@@ -223,7 +226,7 @@ class LoiAPrioriSeries2ter(LoiAPriori):
 
         return self.__eta * (3./2. + r - r*r)
 
-    def probaR2CondR1(self, r1, r2, verbose=False):
+    def probaR2CondR1(self, r1, r2):
         """ Return the conditional proba at r2 knowing r1."""
 
         if r1 == 0.0:
