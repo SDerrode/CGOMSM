@@ -82,13 +82,7 @@ def calcF(indrnp1, rnp1, EPS, STEPS, Rcentres, ProbaF, FS, Tab_GaussXY_np1):
 
 
 def loiBackw(rnp1, rn, probaR2CondR1):
-
-    result = probaR2CondR1(rn, rnp1)
-    if not np.isfinite(result):
-        print('probaR2CondR1(rn, rnp1)=', probaR2CondR1(rn, rnp1))
-        input('Attente loiForw')
-
-    return result
+    return loiForw(rn, rnp1, probaR2CondR1)
 
 
 def calcB(indrn, rn, EPS, STEPS, Rcentres, ProbaB, FS, Tab_GaussXY_np1):
@@ -151,35 +145,21 @@ class Loi2DDiscreteFuzzy_TMC():
 
 
     def get(self, r1, r2):
-        
         if r1==1.:
-            if r2==1.:
-                return self.__p11
-            elif r2>0.:
-                indice = math.floor(r2*self.__STEPS)
-                return self.__p10_11[indice]
-            else:
-                return self.__p10
+            if r2==0.: return self.__p10
+            if r2==1.: return self.__p11
+            return self.__p10_11[math.floor(r2*self.__STEPS)]   
 
         if r1==0.:
-            if r2==1.:
-                return self.__p01
-            elif r2>0.:
-                indice = math.floor(r2*self.__STEPS)
-                return self.__p01_00[indice]
-            else:
-                return self.__p00
-
-        if r2==1.:
-            indr1 = math.floor(r1*self.__STEPS)
-            return self.__p11_01[indr1]
-        elif r2>0.:
-            indr1 = math.floor(r1*self.__STEPS)
-            indr2 = math.floor(r2*self.__STEPS)
-            return self.__p[indr1, indr2]
-        else:
-            indr1 = math.floor(r1*self.__STEPS)
-            return self.__p00_10[indr1]
+            if r2==0.: return self.__p00
+            if r2==1.: return self.__p01
+            return self.__p01_00[math.floor(r2*self.__STEPS)]
+        
+        indr1 = math.floor(r1*self.__STEPS)
+        if r2==0.: return self.__p00_10[indr1]
+        if r2==1.: return self.__p11_01[indr1]
+        return self.__p[indr1, math.floor(r2*self.__STEPS)]
+        
 
     def Calc_GaussXY(self, M, Lambda2, P, Pi2, zn, znp1):
 
@@ -373,23 +353,15 @@ class Loi1DDiscreteFuzzy_TMC():
         return self.__EPS
 
     def get(self, r):
-        if r==1.:
-            return self.__p1
-        elif r>0.:
-            indice = math.floor(r*self.__STEPS)
-            return self.__p01[indice]
-        else:
-            return self.__p0
+        if r==0.: return self.__p0
+        if r==1.: return self.__p1
+        return self.__p01[math.floor(r*self.__STEPS)]    
 
     def set(self, r, val):
-        if r==1.:
-            self.__p1=val
-        elif r>0.:
-            indice = math.floor(r*self.__STEPS)
-            self.__p01[indice]=val
-        else:
-            self.__p0 = val
-
+        if   r==0.: self.__p0=val
+        elif r==1.: self.__p1=val
+        else:       self.__p01[math.floor(r*self.__STEPS)]=val
+ 
     def print(self):
         print('__p0 = ', self.__p0)
         for i, rnp1 in enumerate(self.__Rcentres):
@@ -397,10 +369,13 @@ class Loi1DDiscreteFuzzy_TMC():
         print('__p1 = ', self.__p1)
 
     def CalcForw1(self, FS, z, MeanCovFuzzy):
+        
         alpha, ind = 0., 0 # le premier
         self.__p0 = FS.probaR(alpha) * multivariate_normal.pdf(z, mean=MeanCovFuzzy.getMean(ind), cov=MeanCovFuzzy.getCov(ind))
+        
         for ind, alpha in enumerate(self.__Rcentres):
             self.__p01[ind] = FS.probaR(alpha) * multivariate_normal.pdf(z, mean=MeanCovFuzzy.getMean(ind+1), cov=MeanCovFuzzy.getCov(ind+1))
+        
         alpha, ind = 1., self.__STEPS+1 # le dernier
         self.__p1   = FS.probaR(alpha) * multivariate_normal.pdf(z, mean=MeanCovFuzzy.getMean(ind), cov=MeanCovFuzzy.getCov(ind))
 
