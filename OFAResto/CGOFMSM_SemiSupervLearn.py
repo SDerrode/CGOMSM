@@ -1,4 +1,6 @@
 import numpy as np
+import warnings
+import scipy as sp
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -8,6 +10,8 @@ from sklearn.cluster import KMeans
 
 from OFAResto.LoiDiscreteFuzzy_TMC    import Loi1DDiscreteFuzzy_TMC, Loi2DDiscreteFuzzy_TMC, calcF, calcB
 from Fuzzy.APrioriFuzzyLaw_Series2ter import LoiAPrioriSeries2ter
+from CommonFun.CommonFun import From_FQ_to_Cov_Lyapunov, Test_if_CGPMSM
+
 
 def Check_CovMatrix(Mat):
     w, v = np.linalg.eig(Mat)
@@ -146,14 +150,84 @@ class CGOFMSM_SemiSupervLearn:
 
     def ConvertandSaveParameters(self, filename):
 
-        print(" TO BE DONE...")
+        # Convert from Param 3 to Param 1 (using equations from Zied) ############################################################@
+        A = np.zeros(((self.__STEPS+2)**2, self.__n_z, self.__n_z))
+        Q = np.zeros(((self.__STEPS+2)**2, self.__n_z, self.__n_z))
+        for indrn in range(self.__STEPS+2):
+            for indrnp1 in range(self.__STEPS+2):
+                ind = indrn*(self.__STEPS+2) + indrnp1
+                ### Q d'abord
+                Q[ind, 1, 1] = self.__Lambda2[indrn, indrnp1]
+                Q[ind, 0, 1] = self.__M[indrn, indrnp1, 0, 2] * self.__Lambda2[indrn, indrnp1]
+                Q[ind, 0, 0] = self.__Pi2[indrn, indrnp1] + self.__M[indrn, indrnp1, 0, 2]**2 * self.__Lambda2[indrn, indrnp1]
+                Q[ind, 1, 0] = Q[ind, 0, 1]
+                
+                ### A ensuite
+                A[ind, 0, 0] = self.__M[indrn, indrnp1, 0, 0]
+                A[ind, 0, 1] = self.__M[indrn, indrnp1, 0, 1] + self.__M[indrn, indrnp1, 0, 2] * self.__P[indrn, indrnp1, 0, 1]
+                A[ind, 1, 0] = 0.
+                A[ind, 1, 1] = self.__P[indrn, indrnp1, 0, 0]
+        # print('Q:', Q)
+        # print('A:', A)
+        #input('attente')
 
-        # Convert from Param 3 to Param 1 (using equations from Zied)
+        # B = np.zeros(((self.__STEPS+2)**2, self.__n_z, self.__n_z))
+        # for i in range((self.__STEPS+2)**2):
+        #     with warnings.catch_warnings():
+        #         warnings.simplefilter('error')
+        #         B[i, :, :] = sp.linalg.sqrtm(Q[i, :, :])
 
-        # Convert from Param 1 to Param 2 
+        MeanX = np.zeros(shape=(self.__STEPS+2, self.__n_x))
+        MeanY = np.zeros(shape=(self.__STEPS+2, self.__n_y))
+        for indrn in range(self.__STEPS+2):
+            MeanY[indrn] = self.__P[indrn, indrn, 0, 1] / (1.- self.__P[indrn, indrn, 0, 0])
+            MeanX[indrn] = (self.__M[indrn, indrn, 0, 3] + MeanY[indrn] * (self.__M[indrn, indrn, 0, 1]+self.__M[indrn, indrn, 0, 2])) / (1. - self.__M[indrn, indrn, 0, 0])
 
-        # Save the CGOFMSM file
+        # Convert from Param 1 to Param 2 ########################################################################################@
+        Cov = From_FQ_to_Cov_Lyapunov(A, Q, self.__n_x)
+        # Test if the matrices form a CGPMSM
+        if Test_if_CGPMSM(Cov) == False:
+            print('The cov matrices in the parameter file doest not respect shape for CGPMSM!!')
+            exit(1)
 
+        # Save the CGOFMSM file ##################################################################################################@
+        
+        # L'entete
+        print('filename=', filename)
+        f = open(filename, 'w')
+        f.write('#=====================================#\n# parameters for CGOFMSM with F discrete classes # \n#=====================================# \n# \n# \n# matrix Cov_XY \n# ===============================================#\n# \n')
+        f.close()
+
+        f = open(filename, 'ab')
+        
+        # the number of fuzzy steps
+        np.savetxt(f, np.array([self.__STEPS], dtype=int), delimiter=" ", header='number of fuzzy steps'+'\n================================', footer='\n')
+      
+        # Les covariances
+        for j in range(self.__STEPS+2):
+            for k in range(self.__STEPS+2):
+                ind = j*(self.__STEPS+2) + k
+                np.savetxt(f, Cov[ind,:,:], delimiter=" ", header='Cov_xy'+str(j)+str(k)+'\n----------------------------', footer='\n', fmt='%.4f')
+        
+        # Les moyennes
+        np.savetxt(f, MeanX, delimiter=" ", header='mean of X'+'\n================================', footer='\n', fmt='%.4f')
+        np.savetxt(f, MeanY, delimiter=" ", header='mean of Y'+'\n================================', footer='\n', fmt='%.4f')
+
+        f.close()
+
+        # Generate the command to run the predictor #
+        #############################################################################@
+
+        #################################
+        # Commande d'appel au programme
+        hard, filt, smooth, predic = 1, 1, 0, 0
+        chWork = str(hard) + ',' + str(filt) + ',' + str(smooth)
+        A  = 'python3 XXXXXXXXXXXX.py ' + filanemaneParam + ' 2ter:' + str(self.__alpha0) + ':' + str(self.__alpha1) + ':' + str(self.__beta) + ' '
+        A += chWork + ' ' + name1 + ' ' + steps + ' ' + str(verbose) + ' ' + str(plot) 
+
+        clipboard.copy(A.strip()) # mise ne moire de la commande à exécuter
+        print('pour restaurer le signal:')
+        print('\n', A, '\n')
 
 
     def printParam(self):

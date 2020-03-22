@@ -95,7 +95,7 @@ def main():
     aCGOFMSM_learn.run_several(nbIterSEM, nbRealSEM)
 
     # Convert parametrization 3 to parametrization 1 
-    filenameParam = './Parameters/Fuzzy/' + pathlib.Path(fileTrainX).suffix + '_' + pathlib.Path(fileTrainY).suffix + '.param'
+    filenameParam = './Parameters/Fuzzy/' + pathlib.Path(fileTrainX).stem + '_' + pathlib.Path(fileTrainY).stem + '_F=' + str(STEPS) + '.param'
     aCGOFMSM_learn.ConvertandSaveParameters(filenameParam)
 
 
