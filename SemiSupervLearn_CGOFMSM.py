@@ -199,9 +199,10 @@ class CGOFMSMlearn:
     def run_one(self, numIterSEM, nbRealSEM):
 
         # MAJ des proba sur la base des paramètres courants
-        ProbaForwardNorm, tab_normalis      = self.compute_fuzzyjumps_forward ()
-        ProbaBackwardNorm                   = self.compute_fuzzyjumps_backward(ProbaForwardNorm)
-        ProbaGamma, ProbaPsi, ProbaJumpCond = self.compute_fuzzyjumps_gammapsicond(ProbaForwardNorm, ProbaBackwardNorm)
+        Tab_GaussXY                         = self.compute_tab_GaussXY ()
+        ProbaForwardNorm                    = self.compute_fuzzyjumps_forward (Tab_GaussXY)
+        ProbaBackwardNorm                   = self.compute_fuzzyjumps_backward(ProbaForwardNorm, Tab_GaussXY)
+        ProbaGamma, ProbaPsi, ProbaJumpCond = self.compute_fuzzyjumps_gammapsicond(ProbaForwardNorm, ProbaBackwardNorm, Tab_GaussXY)
 
         listeFS, listeM, listeLambda2, listeP, listePi2, listeMeanCovFuzzy = [], [], [], [], [], []
         for r in range(nbRealSEM):
@@ -216,6 +217,7 @@ class CGOFMSMlearn:
                 fname = './Result/Fuzzy/SimulatedR/Rsimul_Iter_' + str(numIterSEM) + '_Real_'+ str(r) + '_cl' + str(self.__STEPS+2) + '.png'
                 title = 'Simulated R - Iter ' + str(numIterSEM) + ', Real ' + str(r)
                 self.plotRsimul(fname=fname, title=title)
+                #input('Dessin de rsimul')
     
             # Update of param for the simulated R (by kmeans here for init)
             FS, M, Lambda2, P, Pi2, aMeanCovFuzzy = self.updateParamFromRsimul(ProbaJumpCond=ProbaJumpCond)
@@ -316,11 +318,12 @@ class CGOFMSMlearn:
         Mean_Zf /= nbRealSEM
         Cov_Zf  /= nbRealSEM
 
-        aMeanCovFuzzy = MeanCovFuzzy(self.__Ztrain, self.__n_x, self.__n_y, self.__n_r, self.__STEPS, self.__Rcentres, self.__verbose)
+        aMeanCovFuzzy = MeanCovFuzzy(self.__Ztrain, self.__n_z, self.__STEPS, self.__verbose)
         aMeanCovFuzzy.setMeanAll(Mean_Zf)
         aMeanCovFuzzy.setCovAll(Cov_Zf)
         
         return FS, M, Lambda2, P, Pi2, aMeanCovFuzzy
+
 
     def simulRealization(self, ProbaGamma_0, ProbaJumpCond):
 
@@ -330,11 +333,12 @@ class CGOFMSMlearn:
 
         # next ones according to conditional law
         for np1 in range(1, self.__N):
+            # print('np1=', np1, ', self.__Rsimul[np1-1]=', self.__Rsimul[np1-1])
+            # ProbaJumpCond[np1-1][self.__Rsimul[np1-1]].print()
+            # print('sum ProbaJumpCond = ', ProbaJumpCond[np1-1][self.__Rsimul[np1-1]].Integ())
             self.__Rsimul[np1] = ProbaJumpCond[np1-1][self.__Rsimul[np1-1]].getSample()
-            # print('n=', np1, ', self.__Rsimul[np1]=', self.__Rsimul[np1])
-            # input('pause realization')
-
-        # input('end simulRealization')
+            # print('  --> self.__Rsimul[np1]=', self.__Rsimul[np1])
+            # input('pause simul realization')
 
 
     def updateParamFromRsimul(self, ProbaJumpCond=None):
@@ -359,7 +363,7 @@ class CGOFMSMlearn:
         # input('pause')
         # Parameters for the first p(r_1 | z_1)
         # necessaire pour le forward n=1
-        aMeanCovFuzzy = MeanCovFuzzy(self.__Ztrain, self.__n_x, self.__n_y, self.__n_r, self.__STEPS, self.__Rcentres, self.__verbose)
+        aMeanCovFuzzy = MeanCovFuzzy(self.__Ztrain, self.__n_z, self.__STEPS, self.__verbose)
         aMeanCovFuzzy.update(self.__Rsimul)
         # print('Fin update MeanCovFuzzy')
 
@@ -502,10 +506,33 @@ class CGOFMSMlearn:
 
         return M, Lambda2, P, Pi2
 
-    def compute_fuzzyjumps_forward(self):
+    def compute_tab_GaussXY(self):
+
+        tab_GaussXY = []
+
+        # La premiere ne sert à rien, uniquementà a synchroniser les indices
+        tab_GaussXY.append(Loi2DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
+
+        for np1 in range(1, self.__N):
+            if self.__verbose >= 2:
+                print('\r         proba tnp1 con tn np1=', np1, ' sur N=', self.__N, end='   ', flush = True)
+
+            zn   = self.__Ztrain[:, np1-1]
+            znp1 = self.__Ztrain[:, np1]
+
+            tab_GaussXY.append(Loi2DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
+            tab_GaussXY[np1].Calc_GaussXY(self.__M, self.__Lambda2, self.__P, self.__Pi2, zn, znp1)
+
+        if self.__verbose >= 2:
+            print(' ')
+
+        return tab_GaussXY
+
+
+    def compute_fuzzyjumps_forward(self, Tab_GaussXY):
         
         ProbaForward = []
-        tab_normalis = np.zeros(shape=(self.__N))
+        #tab_normalis = np.zeros(shape=(self.__N))
 
         ######################
         # Initialisation
@@ -514,10 +541,10 @@ class CGOFMSMlearn:
         ProbaForward.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
 
         ProbaForward[np1].CalcForw1(self.__FS, znp1, self.__aMeanCovFuzzy)
-        tab_normalis[np1] = ProbaForward[np1].Integ()
+        #tab_normalis[np1] = ProbaForward[np1].Integ()
         # normalisation (devijver)
-        ProbaForward[np1].normalisation(tab_normalis[np1])
-        # ProbaForward[np1].print()
+        ProbaForward[np1].normalisation(ProbaForward[np1].Integ())
+        #ProbaForward[np1].print()
         #ProbaForward[np1].plot('$p(r_n | y_1^n)$')
         #input('attente forward n=' + str(np1))
 
@@ -527,17 +554,15 @@ class CGOFMSMlearn:
             if self.__verbose >= 2:
                 print('\r         forward np1=', np1, ' sur N=', self.__N, end='', flush = True)
 
-            zn   = self.__Ztrain[:, np1-1]
-            znp1 = self.__Ztrain[:, np1]
             ProbaForward.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
             #print('self.__Rcentres=', self.__Rcentres)
-            ProbaForward[np1].CalcForB(calcF, ProbaForward[np1-1], self.__FS, self.__M, self.__Lambda2, self.__P, self.__Pi2, zn, znp1)
+            ProbaForward[np1].CalcForB(calcF, ProbaForward[np1-1], self.__FS, Tab_GaussXY[np1])
             #ProbaForward[np1].nextAfterZeros() # on evite des proba de zero
             #ProbaForward[np1].print()
             # print('sum forw=', ProbaForward[np1].Integ())
-            tab_normalis[np1] = ProbaForward[np1].Integ()
+            # tab_normalis[np1] = ProbaForward[np1].Integ()
             # normalisation (devijver)
-            ProbaForward[np1].normalisation(tab_normalis[np1])
+            ProbaForward[np1].normalisation(ProbaForward[np1].Integ())
             # print('sum forw=', ProbaForward[np1].Integ())
             # ProbaForward[np1].print()
             # input('attente forward n=' + str(np1))
@@ -545,10 +570,10 @@ class CGOFMSMlearn:
         if self.__verbose >= 2:
             print(' ')
 
-        return ProbaForward, tab_normalis
+        return ProbaForward#, tab_normalis
 
 
-    def compute_fuzzyjumps_backward(self, ProbaForwardNorm):
+    def compute_fuzzyjumps_backward(self, ProbaForwardNorm, Tab_GaussXY):
 
         # Proba backward
         ProbaBackward = []
@@ -577,12 +602,9 @@ class CGOFMSMlearn:
         for n in range(self.__N-2, -1, -1):
             if self.__verbose >= 2:
                 print('\r         backward n=', n, ' sur N=', self.__N, end='             ', flush = True)
-
-            zn   = self.__Ztrain[:, n]
-            znp1 = self.__Ztrain[:, n+1]
         
             try:
-                ProbaBackward[n].CalcForB(calcB, ProbaBackward[n+1], self.__FS, self.__M, self.__Lambda2, self.__P, self.__Pi2, zn, znp1)
+                ProbaBackward[n].CalcForB(calcB, ProbaBackward[n+1], self.__FS, Tab_GaussXY[n+1])
             except:
                 print('ProbaBackward[n+1]=', ProbaBackward[n+1])
                 input('pb')
@@ -613,7 +635,7 @@ class CGOFMSMlearn:
         return ProbaBackward
 
 
-    def compute_fuzzyjumps_gammapsicond(self, ProbaForward, ProbaBackward):
+    def compute_fuzzyjumps_gammapsicond(self, ProbaForward, ProbaBackward, Tab_GaussXY):
 
         tab_gamma = []
         tab_psi   = []
@@ -625,7 +647,7 @@ class CGOFMSMlearn:
             if self.__verbose >= 2:
                 print('\r         proba gamma psi cond n=', n, ' sur N=', self.__N, end='   ', flush = True)
 
-            # calcul du produit forward norm * backward norm
+            # calcul de gamma = produit forward norm * backward norm ****************************************************************
             tab_gamma.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
             tab_gamma[n].ProductFB(ProbaForward[n], ProbaBackward[n])
             #tab_gamma[n].nextAfterZeros() # on evite des proba de zero
@@ -639,15 +661,10 @@ class CGOFMSMlearn:
                 input('PB PB PB Gamma')
                 tab_gamma[n].normalisation(tab_gamma[n].Integ())
 
-            # cacul de psi
-            zn   = self.__Ztrain[:, n]
-            znp1 = self.__Ztrain[:, n+1]
+            # calcul de psi (loi jointe a posteriori) ****************************************************************
             tab_psi.append(Loi2DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
-            tab_psi[n].CalcPsi(ProbaForward[n], ProbaBackward[n+1], self.__FS, self.__M, self.__Lambda2, self.__P, self.__Pi2, zn, znp1)
-
+            tab_psi[n].CalcPsi(ProbaForward[n], ProbaBackward[n+1], self.__FS, Tab_GaussXY[n+1])
             # normalisation
-            # print('tab_psi[n].Integ()=', tab_psi[n].Integ())
-            
             integ = tab_psi[n].Integ()
             if integ == 0.:
                 print("Tab Spi normalisation")
@@ -657,32 +674,47 @@ class CGOFMSMlearn:
             # print('tab_psi[n].Integ()=', tab_psi[n].Integ())
             # input('STOP')
 
-            # cacul de p(r_2 | r_1, z_1^M)
-            # on créé une liste de lois 1D (c'est mieux que du 2D)
+            # calcul de p(rnp1 | rn, z_1^M)  ****************************************************************
+            # on créé une liste, pour chaque valeur de rn, de lois 1D
             Liste = []
-            for qn in range(self.__STEPS+2):
+            for indrn in range(self.__STEPS+2):
+                
+                if   indrn == 0:              rn=0.
+                elif indrn == self.__STEPS+1: rn=1.
+                else:                         rn=self.__Rcentres[indrn-1]
+                
                 Liste.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
-                if   qn == 0:                 rn=0.
-                elif qn == self.__STEPS+1:    rn=1.
-                else:                         rn=self.__Rcentres[qn-1]
-                # if 0, then Liste[qn] is all 0
                 if tab_gamma[n].get(rn) != 0.:
-                    Liste[qn].CalcCond(rn, tab_gamma[n].get(rn), tab_psi[n])
+                    Liste[indrn].CalcCond(rn, tab_gamma[n].get(rn), tab_psi[n])
                 else:
-                    if self.__verbose>=2:
-                        print('\n          n=', n, ', rn=', rn, ', qn=', qn)
-                        print('          tab_gamma[n].get(rn) == 0.')
+                    if self.__verbose>1:
+                        print('PBPB tab_gamma[n].get(rn) == 0.')
+                        input('ATTENTE ERROR')
+                    else:
+                        # loi uniforme
+                        Liste[indrn].setValCste(1.)
+                        Liste[indrn].normalisation(Liste[indrn].Integ())
+                
             tab_cond.append(Liste)
 
+        # for n in range(self.__N-1):
+        #     print('n=', n)
+        #     tab_gamma[n]  .print()
+        #     tab_psi[n]    .print()
+        #     tab_cond[n][0].print()
+        #     tab_cond[n][1].print()
+        #     input('tempo')
+        
+
         # le dernier pour gamma
-        n = self.__N-1
-        tab_gamma.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
-        tab_gamma[n].ProductFB(ProbaForward[n], ProbaBackward[n])
-        #tab_gamma[n].nextAfterZeros() # on evite des proba de zero
-        if abs(1.-tab_gamma[n].Integ()) > 1E-3:
-            print('tab_gamma[n].Integ()=', tab_gamma[n].Integ())
-            input('PB PB PB Gamma')
-            tab_gamma[n].normalisation(tab_gamma[n].Integ())
+        # n = self.__N-1
+        # tab_gamma.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
+        # tab_gamma[n].ProductFB(ProbaForward[n], ProbaBackward[n])
+        # #tab_gamma[n].nextAfterZeros() # on evite des proba de zero
+        # if abs(1.-tab_gamma[n].Integ()) > 1E-3:
+        #     print('tab_gamma[n].Integ()=', tab_gamma[n].Integ())
+        #     input('PB PB PB Gamma')
+        #     tab_gamma[n].normalisation(tab_gamma[n].Integ())
 
         if self.__verbose >= 2:
             print(' ')
@@ -694,42 +726,43 @@ class CGOFMSMlearn:
 ###################################################################################################
 class MeanCovFuzzy:
 
-    def __init__(self, Ztrain, n_x, n_y, n_r, STEPS, Rcentres, verbose):
-        self.__n_r      = n_r
+    def __init__(self, Ztrain, n_z, STEPS, verbose):
         self.__verbose  = verbose
         self.__STEPS    = STEPS
-        self.__Rcentres = Rcentres
-        self.__Ztrain  = Ztrain
-
-        self.__n_x      = n_x
-        self.__n_y      = n_y
-        self.__n_z      = self.__n_x + self.__n_y
+        self.__Ztrain   = Ztrain
+        self.__n_z      = n_z
 
         self.__Mean_Zf  = np.zeros(shape=(self.__STEPS+2, self.__n_z))
         self.__Cov_Zf   = np.zeros(shape=(self.__STEPS+2, self.__n_z, self.__n_z))
+        self.__cpt      = np.zeros(shape=(self.__STEPS+2), dtype=int)
 
     def update(self, Rlabels):
 
         N   = np.shape(Rlabels)[0]
-        cpt = np.zeros(shape=(self.__STEPS+2))
+        # print('N=', N)
+
+        # Remise à 0.
+        self.__Mean_Zf.fill(0.)
+        self.__Cov_Zf.fill(0.)
+        self.__cpt.fill(0)
     
         # The means
         for n in range(N):
             self.__Mean_Zf[Rlabels[n], :] += self.__Ztrain[:, n]
-            cpt[Rlabels[n]] += 1.
-        # print('cpt=', cpt)
-        # print(self.__Mean_Zf)
+            self.__cpt[Rlabels[n]] += 1
         for q in range(self.__STEPS+2):
-            self.__Mean_Zf[q, :] /= cpt[q]
+            self.__Mean_Zf[q, :] /= self.__cpt[q]
+        # print('cpt=', self.__cpt, ', sum=', np.sum(self.__cpt))
+        # print(self.__Mean_Zf)
         # input('hard mean')
         
-        # The variance
+        # The variances
         VectZ = np.zeros(shape=(self.__n_z, 1))
         for n in range(N):
             VectZ = (np.transpose(self.__Ztrain[:, n]) - self.__Mean_Zf[Rlabels[n], :]).reshape(self.__n_z, 1)
             self.__Cov_Zf[Rlabels[n], :, :] += np.dot(VectZ, np.transpose(VectZ))
         for q in range(self.__STEPS+2):
-            self.__Cov_Zf[q, :, :] /= cpt[q]
+            self.__Cov_Zf[q, :, :] /= self.__cpt[q]
             # check if cov matrix
             if Check_CovMatrix( self.__Cov_Zf[q, :, :]) == False:
                 print(self.__Cov_Zf[q, :, :])
