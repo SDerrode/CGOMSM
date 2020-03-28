@@ -26,7 +26,7 @@ def main():
         argv[4] : nb of realizations for SEM-based learning
         argv[5] : number of discrete fuzzy steps (so-called 'F' or 'STEPS')
         argv[6] : verbose (0/1/2)
-        argv[7] : plot the graphics (0:none/1:few/2:many)
+        argv[7] : plot the graphics (0:none/1:few/2:many/3:all)
     """
 
     print('Ligne de commandes : ', sys.argv, flush=True)

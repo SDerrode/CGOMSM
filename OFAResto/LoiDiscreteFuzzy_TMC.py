@@ -18,7 +18,6 @@ from CommonFun.CommonFun import From_Cov_to_FQ_bis
 
 def getGaussXY(M, Lambda2, P, Pi2, xn, yn, xnpun, ynpun, verb=False):
     
-    #print('Lambda2=', Lambda2)
     MeanX = M[0, 0] * xn + M[0, 1] * yn + M[0, 2] * ynpun + M[0, 3]
     if verb == True:
         print('\n  MeanX  =', MeanX)
@@ -30,7 +29,6 @@ def getGaussXY(M, Lambda2, P, Pi2, xn, yn, xnpun, ynpun, verb=False):
     else:
         return 0.
 
-    #print('Pi2=', Pi2)
     MeanY = P[0, 0] * yn + P[0, 1]
     if verb == True:
         print('  MeanY  =', MeanY)
@@ -66,7 +64,6 @@ def calcF(indrnp1, rnp1, EPS, STEPS, Rcentres, ProbaF, FS, Tab_GaussXY_np1):
         if GaussXY > 0.:
             ATemp, errTemp = sc.integrate.quad(func=loiForw, a=float(indrn)/STEPS+EPS, b=float(indrn+1)/STEPS-EPS, args=argument, epsabs=1E-2, epsrel=1E-2, limit=50)
             A += ATemp * GaussXY * ProbaF.get(rn)
-            # input('temp')
     
     rn = 0.
     A0 = FS.probaR2CondR1(rn, rnp1) * Tab_GaussXY_np1.get(rn, rnp1) * ProbaF.get(rn)
@@ -99,7 +96,6 @@ def calcB(indrn, rn, EPS, STEPS, Rcentres, ProbaB, FS, Tab_GaussXY_np1):
         if GaussXY > 0.:
             ATemp, errTemp = sc.integrate.quad(func=loiBackw, a=float(indrnp1)/STEPS+EPS, b=float(indrnp1+1)/STEPS-EPS, args=argument, epsabs=1E-2, epsrel=1E-2, limit=50)
             A += ATemp * GaussXY * ProbaB.get(rnp1)
-            #input('temp')
     
     rnp1 = 0.
     A0   = FS.probaR2CondR1(rn, rnp1) * Tab_GaussXY_np1.get(rn, rnp1) * ProbaB.get(rnp1)
@@ -145,6 +141,7 @@ class Loi2DDiscreteFuzzy_TMC():
 
 
     def get(self, r1, r2):
+        
         if r1==1.:
             if r2==0.: return self.__p10
             if r2==1.: return self.__p11
@@ -182,7 +179,7 @@ class Loi2DDiscreteFuzzy_TMC():
         rnp1, indrnp1  = 1., self.__STEPS+1
         self.__p01     = getGaussXY(M[indrn, indrnp1], Lambda2[indrn, indrnp1], P[indrn, indrnp1], Pi2[indrn, indrnp1], xn, yn, xnpun, ynpun)
 
-        # Pour les arètes
+        # Pour les arètes et le coeur
         for ind, r in enumerate(self.__Rcentres):
             
             # self.__p00_10
@@ -208,7 +205,6 @@ class Loi2DDiscreteFuzzy_TMC():
 
     def CalcPsi(self, PForward_n, PBackward_np1, FS, Tab_GaussXY_np1):
 
-
         # Pour les masses
         rn, indrn      = 0., 0
         rnp1, indrnp1  = 0., 0
@@ -226,7 +222,7 @@ class Loi2DDiscreteFuzzy_TMC():
         rnp1, indrnp1  = 1., self.__STEPS+1
         self.__p01     = PForward_n.get(rn) * PBackward_np1.get(rnp1) * Tab_GaussXY_np1.get(rn, rnp1) * FS.probaR2CondR1(rn, rnp1)
 
-        # Pour les arètes
+        # Pour les arètes et le coeur
         for ind, r in enumerate(self.__Rcentres):
             
             # self.__p00_10
@@ -295,7 +291,7 @@ class Loi2DDiscreteFuzzy_TMC():
         print('  p00=', self.__p00, ',  p10=', self.__p10)
 
         if self.__STEPS != 0:
-            print("Les bords:")
+            print("Les arêtes:")
             for i, rnp1 in enumerate(self.__Rcentres):
                 print(self.__p00_10[i], end=' ')
             print("\n")
@@ -363,6 +359,7 @@ class Loi1DDiscreteFuzzy_TMC():
             print('  __p01[',rnp1, ']=', self.__p01[i])
         print('__p1 = ', self.__p1)
 
+
     def CalcForw1(self, FS, z, MeanCovFuzzy):
         
         alpha, ind = 0., 0 # le premier
@@ -374,11 +371,13 @@ class Loi1DDiscreteFuzzy_TMC():
         alpha, ind = 1., self.__STEPS+1 # le dernier
         self.__p1   = FS.probaR(alpha) * multivariate_normal.pdf(z, mean=MeanCovFuzzy.getMean(ind), cov=MeanCovFuzzy.getCov(ind))
 
+
     def setValCste(self, val):
         self.__p0 = val
         for i in range(self.__STEPS):
             self.__p01[i] = val
         self.__p1 = val
+
 
     def CalcForB(self, FctCalculForB, probaForB, FS, Tab_GaussXY_np1):
 
@@ -392,6 +391,7 @@ class Loi1DDiscreteFuzzy_TMC():
         r, ind = 1., self.__STEPS+1
         self.__p1 = FctCalculForB(ind, r, self.__EPS, self.__STEPS, self.__Rcentres, probaForB, FS, Tab_GaussXY_np1)
 
+
     # def nextAfterZeros(self):
     #     if self.__p0 < 1e-300:
     #         self.__p0 = 1e-300 #np.nextafter(0, 1)*10
@@ -403,13 +403,16 @@ class Loi1DDiscreteFuzzy_TMC():
     #         if self.__p01[i] < 1e-300:
     #             self.__p01[i] = 1e-300 #np.nextafter(0, 1)*10
 
-    def normalisation(self, norm):
+
+    def normalisation(self, norm, verbose=2):
         if norm != 0.:
             self.__p0  /= norm
             self.__p01 /= norm
             self.__p1  /= norm
         else:
-            input('ATTENTION : norm == 0.')
+            if verbose>2:
+                print('ATTENTION : norm == 0.')
+
 
     def CalcCond(self, rn, ProbaGamma_n_rn, ProbaPsi_n, verbose):
 
@@ -424,11 +427,9 @@ class Loi1DDiscreteFuzzy_TMC():
 
         # This integral is converging to 1 if F growth. In case F small (i.e<10) it is better to normalise
         integ = self.Integ()
-        #print('\ninteg=', integ)
-        # input('CalcCond')
 
         # test if all 0 
-        if self.TestIsAllZero() and verbose>1:
+        if self.TestIsAllZero() and verbose>2:
             print('\nWarning: all the proba cond is 0. when rn=' + str(rn))
             #input('Attente')
         else:
@@ -441,11 +442,16 @@ class Loi1DDiscreteFuzzy_TMC():
 
 
     def TestIsAllZero(self):
+
         if self.__p0 != 0.: return False
+        
         for ind in range(self.__STEPS):
             if self.__p01[ind] != 0.: return False
+        
         if self.__p1 != 0.: return False
+        
         return True
+
 
     def getSample(self):
 
@@ -459,15 +465,12 @@ class Loi1DDiscreteFuzzy_TMC():
         typeSample = random.choices(population=[0, self.__STEPS+1, 2], weights=proba)[0]
         if typeSample != 2:
             indr = int(typeSample)
-            #print('tirage saut dur')
         else: # it is fuzzy
-            # probaF = np.zeros(shape=(self.__STEPS))
             probaF = self.__p01 / np.sum(self.__p01)
             indr = random.choices(population=list(range(1, self.__STEPS+1)), weights=probaF)[0]
-            #print('tirage saut flou')
-        #print('indr=', indr)
-        #input('getSample - 1D')
+
         return indr
+
 
     def Integ(self):
         if self.__STEPS == 0:

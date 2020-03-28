@@ -46,6 +46,11 @@ class CGOFMSM_SemiSupervLearn:
         self.__STEPS     = STEPS
         self.__EPS       = 1E-8
 
+        # used for simualtion of discretized fuzzy r (in [0..self.__STEPS+1])
+        self.__Nsimul = self.__nbRealSEM*self.__N
+        self.__Rsimul = np.zeros(shape=(self.__Nsimul), dtype=int)
+        
+        # dimensions
         self.__n_x       = n_x
         self.__n_y       = n_y
         self.__n_z       = self.__n_x + self.__n_y
@@ -54,9 +59,6 @@ class CGOFMSM_SemiSupervLearn:
             self.__Rcentres = np.linspace(start=1./(2.*self.__STEPS), stop=1.0-1./(2.*self.__STEPS), num=self.__STEPS, endpoint=True)
         else:
             self.__Rcentres = np.empty(shape=(0,))
-
-        # used for simualtion of discretized fuzzy r (in [0..self.__STEPS+1])
-        self.__Rsimul = np.zeros(shape=(self.__N), dtype=int)
 
         # used to print the evolution of FS parameters
         self.__Tab_ParamFS   = np.zeros(shape=(self.__nbIterSEM+1, 4)) 
@@ -67,25 +69,29 @@ class CGOFMSM_SemiSupervLearn:
 
         # Init of parameters : kmeans with 2+STEPS classes
         ###################################################
-        #kmeans = KMeans(n_clusters=2+self.__STEPS, random_state=4, init='random', n_init=200).fit(np.transpose(Ztrain))
-        kmeans = KMeans(n_clusters=2+self.__STEPS, random_state=None, init='random', n_init=200).fit(np.transpose(Ztrain))
-        #kmeans = KMeans(n_clusters=2+self.__STEPS, n_init=200).fit(np.transpose(Ztrain))
-        # print(kmeans.inertia_, kmeans.n_iter_)
-        # print('kmeans.cluster_centers_=', kmeans.cluster_centers_)
-        # Sorting of labels according to the X-coordinate of cluster centers
-        sortedlabel = np.argsort(kmeans.cluster_centers_[:, 0])
-        # print('sortedlabel=', sortedlabel)
-        for n in range(self.__N):
-            self.__Rsimul[n] =  np.where(sortedlabel == kmeans.labels_[n])[0][0]
+        for real in range(self.__nbRealSEM):
+            #kmeans = KMeans(n_clusters=2+self.__STEPS, random_state=4, init='random', n_init=1).fit(np.transpose(Ztrain))
+            kmeans = KMeans(n_clusters=2+self.__STEPS, random_state=None, init='random', n_init=1).fit(np.transpose(Ztrain))
+            #kmeans = KMeans(n_clusters=2+self.__STEPS, n_init=1).fit(np.transpose(Ztrain))
+            # print(kmeans.inertia_, kmeans.n_iter_)
+            # print('kmeans.cluster_centers_=', kmeans.cluster_centers_)
+            # Sorting of labels according to the X-coordinate of cluster centers
+            sortedlabel = np.argsort(kmeans.cluster_centers_[:, 0])
+            # print('sortedlabel=', sortedlabel)
+
+            for n in range(self.__N):
+                self.__Rsimul[real*self.__N + n] = np.where(sortedlabel == kmeans.labels_[n])[0][0]
 
         if self.__graphics >= 2:
-            fname = './Result/Fuzzy/SimulatedR/Rsimul_Kmeans_cl' + str(self.__STEPS+2) + '.png'
-            title = 'Simulated R - Kmeans'
+            fname = './Result/Fuzzy/SimulatedR/Rsimul_Kmeans_cl' + str(self.__STEPS+2)
+            title = 'Simulated R - Kmeans - Iter 0'
             self.plotRsimul(fname=fname, title=title)
 
         # Update of param for the simulated R (by kmeans here for init)
         self.__FS, self.__M, self.__Lambda2, self.__P, self.__Pi2, self.__aMeanCovFuzzy = \
             self.updateParamFromRsimul(ProbaJumpCond=None)
+        
+        # for plottig the convergence of parameters
         self.__Tab_ParamFS[0,:]   = self.__FS.getParam()
         self.__Tab_M_00[0,:]      = self.__M[0,0,0,:]
         self.__Tab_Lambda_00[0,0] = np.sqrt(self.__Lambda2[0,0])
@@ -102,7 +108,7 @@ class CGOFMSM_SemiSupervLearn:
     def EmpiricalFuzzyJointMatrix(self):
         
         alpha0, alpha1, beta = 0., 0., 0.
-        for n in range(1, self.__N):
+        for n in range(1, self.__Nsimul):
             if self.__Rsimul[n-1] == 0 and self.__Rsimul[n] == 0:
                 alpha0 += 1.
             if self.__Rsimul[n-1] == self.__STEPS+1 and self.__Rsimul[n] == self.__STEPS+1:
@@ -111,9 +117,9 @@ class CGOFMSM_SemiSupervLearn:
                 beta   += 1.
         beta /= 2. # ca compte les transitions 0-1, 1-0, donc on divise par deux
 
-        alpha0 /= (self.__N-1.)
-        alpha1 /= (self.__N-1.)
-        beta   /= (self.__N-1.)
+        alpha0 /= (self.__Nsimul-1.)
+        alpha1 /= (self.__Nsimul-1.)
+        beta   /= (self.__Nsimul-1.)
 
         return alpha0, alpha1, beta
 
@@ -121,72 +127,11 @@ class CGOFMSM_SemiSupervLearn:
     def run_several(self, ):
 
         for i in range(1, self.__nbIterSEM+1):
-            print('ITERATION ', i)
+            print('ITERATION ', i, ' over ', self.__nbIterSEM)
             self.__Tab_ParamFS[i,:], self.__Tab_M_00[i,:], self.__Tab_Lambda_00[i,0], self.__Tab_P_00[i,:], self.__Tab_Pi_00[i,0] = self.run_one(i)
 
         if self.__graphics >= 1 and self.__nbIterSEM>0:
-            ax = plt.figure().gca()
-            plt.plot(self.__Tab_ParamFS[:, 0], color='g', label=r'$\alpha_0$')
-            plt.plot(self.__Tab_ParamFS[:, 1], color='r', label=r'$\alpha_1$')
-            plt.plot(self.__Tab_ParamFS[:, 2], color='b', label=r'$\beta$')
-            plt.plot(self.__Tab_ParamFS[:, 3], color='k', label=r'$\eta$')
-            plt.ylim(ymax=1.05, ymin=-0.05)
-            plt.xlim(xmax=self.__nbIterSEM, xmin=0)
-            plt.xlabel('SEM iteration')
-            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-            plt.legend()
-            plt.title('Evolution of FS param - Fuzzy steps (F)=' + str(self.__STEPS)+ ', mean of ' + str(self.__nbRealSEM) + ' realizations')
-            fname = './Result/Fuzzy/SimulatedR/'
-            plt.savefig(fname + 'ParamFS_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
-            plt.close()
-
-            ax = plt.figure().gca()
-            plt.plot(self.__Tab_M_00[:, 0], color='g', label=r'$\mathcal{A}_{0}^{0}$')
-            plt.plot(self.__Tab_M_00[:, 1], color='r', label=r'$\mathcal{B}_{0}^{0}$')
-            plt.plot(self.__Tab_M_00[:, 2], color='b', label=r'$\mathcal{C}_{0}^{0}$')
-            #plt.plot(self.__Tab_M_00[:, 3], color='k', label=r'$\mathcal{D}_{0}^{0}$')
-            plt.xlim(xmax=self.__nbIterSEM, xmin=0)
-            plt.xlabel('SEM iteration')
-            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-            plt.legend()
-            plt.title(r'Evolution of $\mathcal{M}_{0}^{0}$ param - Fuzzy steps (F)=' + str(self.__STEPS)+ ', mean of ' + str(self.__nbRealSEM) + ' realizations')
-            fname = './Result/Fuzzy/SimulatedR/'
-            plt.savefig(fname + 'MOO_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
-            plt.close()
-
-            ax = plt.figure().gca()
-            plt.plot(self.__Tab_P_00[:, 0], color='g', label=r'$\mathcal{F}_{0}^{0}$')
-            #plt.plot(self.__Tab_P_00[:, 1], color='r', label=r'$\mathcal{G}_{0}^{0}$')
-            plt.xlim(xmax=self.__nbIterSEM, xmin=0)
-            plt.xlabel('SEM iteration')
-            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-            plt.legend()
-            plt.title(r'Evolution of $\mathcal{P}_{0}^{0}$ param - Fuzzy steps (F)=' + str(self.__STEPS)+ ', mean of ' + str(self.__nbRealSEM) + ' realizations')
-            fname = './Result/Fuzzy/SimulatedR/'
-            plt.savefig(fname + 'POO_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
-            plt.close()
-
-            ax = plt.figure().gca()
-            plt.plot(self.__Tab_Lambda_00[:, 0], color='g', label=r'$\lambda_{0}^{0}$')
-            plt.xlim(xmax=self.__nbIterSEM, xmin=0)
-            plt.xlabel('SEM iteration')
-            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-            plt.legend()
-            plt.title(r'Evolution of $\lambda_{0}^{0}$ param - Fuzzy steps (F)=' + str(self.__STEPS)+ ', mean of ' + str(self.__nbRealSEM) + ' realizations')
-            fname = './Result/Fuzzy/SimulatedR/'
-            plt.savefig(fname + 'Lambda_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
-            plt.close()
-
-            ax = plt.figure().gca()
-            plt.plot(self.__Tab_Pi_00[:, 0],     color='g', label=r'$\pi_{0}^{0}$')
-            plt.xlim(xmax=self.__nbIterSEM, xmin=0)
-            plt.xlabel('SEM iteration')
-            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-            plt.legend()
-            plt.title(r'Evolution of $\pi_{0}^{0}$ param - Fuzzy steps (F)=' + str(self.__STEPS)+ ', mean of ' + str(self.__nbRealSEM) + ' realizations')
-            fname = './Result/Fuzzy/SimulatedR/'
-            plt.savefig(fname + 'Pi_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
-            plt.close()
+            self.PlotConvSEM()
 
 
     def run_one(self, numIterSEM):
@@ -197,38 +142,23 @@ class CGOFMSM_SemiSupervLearn:
         ProbaBackwardNorm                   = self.compute_fuzzyjumps_backward(ProbaForwardNorm, Tab_GaussXY, Tab_Normalis)
         ProbaGamma, ProbaPsi, ProbaJumpCond = self.compute_fuzzyjumps_gammapsicond(ProbaForwardNorm, ProbaBackwardNorm, Tab_GaussXY)
 
-        listeFS, listeM, listeLambda2, listeP, listePi2, listeMeanCovFuzzy = [], [], [], [], [], []
-        for r in range(self.__nbRealSEM):
+        # Simuler une chaîne de Markov a posteriori sur la base de la valeur des paramètres courants
+        if self.__verbose >= 2: print('         simul realization')
+        self.simulRealization(ProbaGamma[0], ProbaJumpCond)
 
-            if self.__verbose >= 2:
-                print('\r         realization r=', r, ' sur ', self.__nbRealSEM, end='', flush = True)
+        if self.__graphics >= 2:
+            fname = './Result/Fuzzy/SimulatedR/Rsimul_Iter_' + str(numIterSEM) + '_cl' + str(self.__STEPS+2)
+            title = 'Simulated R - Iter ' + str(numIterSEM)
+            self.plotRsimul(fname=fname, title=title)
 
-            # Simuler une chaîne de Markov a posteriori sur la base de la valeur des paramètres courants
-            self.simulRealization(ProbaGamma[0], ProbaJumpCond)
-            
-            if self.__graphics >= 2:
-                fname = './Result/Fuzzy/SimulatedR/Rsimul_Iter_' + str(numIterSEM) + '_Real_'+ str(r) + '_cl' + str(self.__STEPS+2) + '.png'
-                title = 'Simulated R - Iter ' + str(numIterSEM) + ', Real ' + str(r)
-                self.plotRsimul(fname=fname, title=title)
-                #input('Dessin de rsimul')
-    
-            # Update of param for the simulated R (by kmeans here for init)
-            FS, M, Lambda2, P, Pi2, aMeanCovFuzzy = self.updateParamFromRsimul(ProbaJumpCond=ProbaJumpCond)
-            listeFS.append(FS) 
-            listeM.append(M) 
-            listeLambda2.append(Lambda2) 
-            listeP.append(P) 
-            listePi2.append(Pi2) 
-            listeMeanCovFuzzy.append(aMeanCovFuzzy)
-
-        # calcul des moyennes des paramètres
+        # Update of param for the simulated R
+        if self.__verbose >= 2: print('         update parameters')
         self.__FS, self.__M, self.__Lambda2, self.__P, self.__Pi2, self.__aMeanCovFuzzy = \
-            self.setMeanParamRealization(listeFS, listeM, listeLambda2, listeP, listePi2, listeMeanCovFuzzy)
+                self.updateParamFromRsimul(ProbaJumpCond=ProbaJumpCond)
 
         # Print des paramètres
         if self.__verbose >= 1: self.printParam()
-    
-        # input('fin de run_one mean')
+
         return self.__FS.getParam(), self.__M[0,0,0,:], np.sqrt(self.__Lambda2[0,0]), self.__P[0,0,0,:], np.sqrt(self.__Pi2[0,0])
 
 
@@ -355,82 +285,36 @@ class CGOFMSM_SemiSupervLearn:
 
     def plotRsimul(self, fname, title):
 
-        RsimulFuzzy = np.zeros(shape=(len(self.__Rsimul)))
-        for n in range(self.__N):
-            RsimulFuzzy[n] = getrnFromindrn(self.__Rcentres, self.__Rsimul[n])
+        RsimulFuzzy = np.zeros(shape=(self.__N))
 
-        plt.figure()
-        plt.plot(RsimulFuzzy, color='g')
-        plt.ylim(ymax = 1.05, ymin = -0.05)
-        plt.xlim(xmax = self.__N-1, xmin = 0)
-        plt.title(title)
-        plt.savefig(fname, bbox_inches='tight', dpi=150)    
-        plt.close()
+        for real in range(self.__nbRealSEM):
 
-    def setMeanParamRealization(self, listeFS, listeM, listeLambda2, listeP, listePi2, listeMeanCovFuzzy):
+            for n in range(self.__N):
+                RsimulFuzzy[n] = getrnFromindrn(self.__Rcentres, self.__Rsimul[real*self.__N + n])
 
-        nbRealSEM = len(listeFS)
+            fnamereal = fanme + '_Real_'+ str(real) + '.png'
+            titlereal = title +  + ', Real ' + str(real)
 
-        # Moyennes des FS ######################################
-        Tab_ParamFS = np.zeros(shape=(3, nbRealSEM))
-        for r in range(nbRealSEM):
-            L = listeFS[r].getParam()
-            Tab_ParamFS[0][r] += L[0]
-            Tab_ParamFS[1][r] += L[1]
-            Tab_ParamFS[2][r] += L[2]
-        Means = np.mean(Tab_ParamFS, axis=1)
-        FS = LoiAPrioriSeries2ter(EPS=self.__EPS, discretization=0, alpha0=Means[0], alpha1=Means[1], beta=Means[2])
-
-            
-        # Moyennes des M ######################################
-        M       = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 1, 4))
-        P       = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 1, 2))
-        Lambda2 = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2))
-        Pi2     = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2))
-        for r in range(nbRealSEM):
-            M       += listeM[r]
-            P       += listeP[r]
-            Lambda2 += listeLambda2[r]
-            Pi2     += listePi2[r]
-        M       /= nbRealSEM
-        P       /= nbRealSEM
-        Lambda2 /= nbRealSEM
-        Pi2     /= nbRealSEM
-
-        # Moyennes des MeanCovFuzzy ######################################
-        Mean_Zf = np.zeros(shape=(self.__STEPS+2, self.__n_z))
-        Cov_Zf  = np.zeros(shape=(self.__STEPS+2, self.__n_z, self.__n_z))
-        for r in range(nbRealSEM):
-            Mean_Zf += listeMeanCovFuzzy[r].getMeanAll()
-            Cov_Zf  += listeMeanCovFuzzy[r].getCovAll()
-        Mean_Zf /= nbRealSEM
-        Cov_Zf  /= nbRealSEM
-
-        aMeanCovFuzzy = MeanCovFuzzy(self.__Ztrain, self.__n_z, self.__STEPS, self.__verbose)
-        aMeanCovFuzzy.setMeanAll(Mean_Zf)
-        aMeanCovFuzzy.setCovAll(Cov_Zf)
-        
-        return FS, M, Lambda2, P, Pi2, aMeanCovFuzzy
+            plt.figure()
+            plt.plot(RsimulFuzzy, color='g')
+            plt.ylim(ymax = 1.05, ymin = -0.05)
+            plt.xlim(xmax = self.__N-1, xmin = 0)
+            plt.title(titlereal)
+            plt.savefig(fnamereal, bbox_inches='tight', dpi=150)    
+            plt.close()
 
 
     def simulRealization(self, ProbaGamma_0, ProbaJumpCond):
-
-        # sampling of the first from gamma
-        np1=0
-        # print('np1=', np1)
-        # ProbaGamma_0.print()
-        self.__Rsimul[np1] = ProbaGamma_0.getSample()
-        # print('  --> self.__Rsimul[np1]=', self.__Rsimul[np1])
-        # input('pause simul realization')
-
-        # next ones according to conditional law
-        for np1 in range(1, self.__N):
-            # print('np1=', np1, ', self.__Rsimul[np1-1]=', self.__Rsimul[np1-1])
-            # ProbaJumpCond[np1-1][self.__Rsimul[np1-1]].print()
-            # print('sum ProbaJumpCond = ', ProbaJumpCond[np1-1][self.__Rsimul[np1-1]].Integ())
-            self.__Rsimul[np1] = ProbaJumpCond[np1-1][self.__Rsimul[np1-1]].getSample()
-            # print('  --> self.__Rsimul[np1]=', self.__Rsimul[np1])
-            # input('pause simul realization')
+        
+        for real in range(self.__nbRealSEM):
+            
+            # sampling of the first from gamma
+            np1=0
+            self.__Rsimul[real*self.__N + np1] = ProbaGamma_0.getSample()
+            
+            # next ones according to conditional law
+            for np1 in range(1, self.__N):
+                self.__Rsimul[real*self.__N + np1] = ProbaJumpCond[np1-1][self.__Rsimul[real*self.__N + np1 - 1]].getSample()
 
 
     def updateParamFromRsimul(self, ProbaJumpCond=None):
@@ -438,28 +322,19 @@ class CGOFMSM_SemiSupervLearn:
         # Parameter for fuzzy Markov model called APrioriFuzzyLaw_serie2ter.py
         alpha0, alpha1, beta = self.EmpiricalFuzzyJointMatrix()
         FS = LoiAPrioriSeries2ter(EPS=self.__EPS, discretization=0, alpha0=alpha0, alpha1=alpha1, beta=beta)
-        #print('Fin EmpiricalFuzzyJointMatrix')
         
         # Parameters of parametrization 3 (M=[A, B, C, D], Lambda**2, and P=[F, G], Pi**2)
         if ProbaJumpCond == None:
-            #input('ProbaJumpCond == None')
             M, Lambda2, P, Pi2 = self.EstimParam2ter(FSprobaR2CondR1=FS.probaR2CondR1, ProbaJumpCond=None)
         else:
-            #input('ProbaJumpCond')
             M, Lambda2, P, Pi2 = self.EstimParam2ter(FSprobaR2CondR1=None, ProbaJumpCond=ProbaJumpCond)
 
-        # print('Fin de EstimParam2ter')
-
-        # for n in range(self.__N):
-        #     print('n=', n ,', self.__Rsimul[n]=', self.__Rsimul[n])
-        # input('pause')
-        # Parameters for the first p(r_1 | z_1)
-        # necessaire pour le forward n=1
+        # Parameters for the first p(r_1 | z_1) - Nécessaire pour le forward n=1
         aMeanCovFuzzy = MeanCovFuzzy(self.__Ztrain, self.__n_z, self.__STEPS, self.__verbose)
         aMeanCovFuzzy.update(self.__Rsimul)
-        # print('Fin update MeanCovFuzzy')
 
         return FS, M, Lambda2, P, Pi2, aMeanCovFuzzy
+
 
     def EstimParam2ter(self, FSprobaR2CondR1=None, ProbaJumpCond=None):
 
@@ -470,38 +345,33 @@ class CGOFMSM_SemiSupervLearn:
         PNum      = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 1, 2))
         PDenom    = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 2, 2))
 
-        for n in range(self.__N-1):
-            indrn    = self.__Rsimul[n]
-            indrnp1 = self.__Rsimul[n+1]
-            rn       = getrnFromindrn(self.__Rcentres, indrn)
-            rnp1    = getrnFromindrn(self.__Rcentres, indrnp1)
-            #print('indrn=', indrn, ', indrnp1=', indrnp1, ', rn=', rn, ', rnp1=', rnp1)
-            # input('attente')
+        for real in range(self.__nbRealSEM):
+            for n in range(self.__N-1):
+                indrn   = self.__Rsimul[real * self.__N + n]
+                indrnp1 = self.__Rsimul[real * self.__N + n+1]
+                rn      = getrnFromindrn(self.__Rcentres, indrn)
+                rnp1    = getrnFromindrn(self.__Rcentres, indrnp1)
 
-            zn    = self.__Ztrain[:, n].reshape((2, 1))
-            yn    = (self.__Ztrain[self.__n_x:self.__n_z, n])  .item()
-            ynpun = (self.__Ztrain[self.__n_x:self.__n_z, n+1]).item()
-            xn    = (self.__Ztrain[0:self.__n_x, n])           .item()
-            xnpun = (self.__Ztrain[0:self.__n_x, n+1])         .item()
+                zn    = self.__Ztrain[:, n].reshape((2, 1))
+                yn    = (self.__Ztrain[self.__n_x:self.__n_z, n])  .item()
+                ynpun = (self.__Ztrain[self.__n_x:self.__n_z, n+1]).item()
+                xn    = (self.__Ztrain[0:self.__n_x, n])           .item()
+                xnpun = (self.__Ztrain[0:self.__n_x, n+1])         .item()
 
-            if FSprobaR2CondR1 != None:
-                probacond = FSprobaR2CondR1(rn, rnp1)
-            else:
-                probacond = ProbaJumpCond[n][indrn].get(rnp1)
+                if FSprobaR2CondR1 != None:
+                    probacond = FSprobaR2CondR1(rn, rnp1)
+                else:
+                    probacond = ProbaJumpCond[n][indrn].get(rnp1)
 
-            ################## M ########################
-            vect     = np.array([xn, yn, ynpun, 1]) 
-            MDenom[indrn, indrnp1,:,:] += probacond * np.outer(vect, vect)
-            MNum  [indrn, indrnp1, 0, :] += probacond * xnpun * vect
-            # print('MNum=', MNum)
-            # input('Estim Param - Parametrization 2ter - M')
+                ################## M ########################
+                vect     = np.array([xn, yn, ynpun, 1]) 
+                MDenom[indrn, indrnp1,:,:] += probacond * np.outer(vect, vect)
+                MNum  [indrn, indrnp1, 0, :] += probacond * xnpun * vect
 
-            ################## P ########################
-            vect     = np.array([yn, 1])
-            PDenom[indrn, indrnp1,:,:] += probacond * np.outer(vect, vect)
-            PNum  [indrn, indrnp1, 0, :] += probacond * ynpun * vect
-            #print('PNum=', PNum)
-            #input('Estim Param - Parametrization 2ter - P')
+                ################## P ########################
+                vect     = np.array([yn, 1])
+                PDenom[indrn, indrnp1,:,:] += probacond * np.outer(vect, vect)
+                PNum  [indrn, indrnp1, 0, :] += probacond * ynpun * vect
         
         M = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 1, 4))
         P = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 1, 2))
@@ -511,56 +381,45 @@ class CGOFMSM_SemiSupervLearn:
                     M[indrn, indrnp1,:,:] = np.dot(MNum[indrn, indrnp1,:,:], np.linalg.inv(MDenom[indrn, indrnp1,:,:]))
                 except np.linalg.LinAlgError:
                     M[indrn, indrnp1,:,:] = 0.
-                    #print('\nindrn=', indrn, 'indrnp1=', indrnp1)
-                    # print('MNum=', MNum[indrn, indrnp1,:,:])
-                    # print('MDenom', MDenom[indrn, indrnp1,:,:])
-                    #input('pause M ')
 
                 try:
                     P[indrn, indrnp1,:,:] = np.dot(PNum[indrn, indrnp1,:,:], np.linalg.inv(PDenom[indrn, indrnp1,:,:]))
                 except np.linalg.LinAlgError:
                     P[indrn, indrnp1,:,:] = 0.
-                    #print('\nindrn=', indrn, 'indrnp1=', indrnp1)
-                    #input('pause P ')
 
 
         # Pi2 and Lambda2 ##################################################################################
         Pi2     = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2))
         Lambda2 = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2))
         Denom   = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2))
-        for n in range(self.__N-1):
-            indrn    = self.__Rsimul[n]
-            indrnp1 = self.__Rsimul[n+1]
-            rn       = getrnFromindrn(self.__Rcentres, indrn)
-            rnp1    = getrnFromindrn(self.__Rcentres, indrnp1)
-            #print('indrn=', indrn, ', indrnp1=', indrnp1, ', rn=', rn, ', rnp1=', rnp1)
-            # input('attente')
+        for real in range(self.__nbRealSEM):
+            for n in range(self.__N-1):
+                indrn   = self.__Rsimul[real * self.__N + n]
+                indrnp1 = self.__Rsimul[real * self.__N + n+1]
+                rn      = getrnFromindrn(self.__Rcentres, indrn)
+                rnp1    = getrnFromindrn(self.__Rcentres, indrnp1)
 
-            yn    = (self.__Ztrain[self.__n_x:self.__n_z, n])  .item()
-            ynpun = (self.__Ztrain[self.__n_x:self.__n_z, n+1]).item()
-            xn    = (self.__Ztrain[0:self.__n_x, n])           .item()
-            xnpun = (self.__Ztrain[0:self.__n_x, n+1])         .item()
+                yn    = (self.__Ztrain[self.__n_x:self.__n_z, n])  .item()
+                ynpun = (self.__Ztrain[self.__n_x:self.__n_z, n+1]).item()
+                xn    = (self.__Ztrain[0:self.__n_x, n])           .item()
+                xnpun = (self.__Ztrain[0:self.__n_x, n+1])         .item()
 
-            if FSprobaR2CondR1 != None:
-                probacond = FSprobaR2CondR1(rn, rnp1)
-            else:
-                probacond = ProbaJumpCond[n][indrn].get(rnp1)
-            
-            Lambda2[indrn, indrnp1] += probacond * (xnpun - (xn * M[indrn, indrnp1, 0, 0] + yn * M[indrn, indrnp1, 0, 1] + ynpun * M[indrn, indrnp1, 0, 2] + M[indrn, indrnp1, 0, 3]))**2
-            Pi2[indrn, indrnp1]     += probacond * (ynpun - (yn * P[indrn, indrnp1, 0, 0] + P[indrn, indrnp1, 0, 1]))**2
-            Denom[indrn, indrnp1]   += probacond
+                if FSprobaR2CondR1 != None:
+                    probacond = FSprobaR2CondR1(rn, rnp1)
+                else:
+                    probacond = ProbaJumpCond[n][indrn].get(rnp1)
+                
+                Lambda2[indrn, indrnp1] += probacond * (xnpun - (xn * M[indrn, indrnp1, 0, 0] + yn * M[indrn, indrnp1, 0, 1] + ynpun * M[indrn, indrnp1, 0, 2] + M[indrn, indrnp1, 0, 3]))**2
+                Pi2[indrn, indrnp1]     += probacond * (ynpun - (yn * P[indrn, indrnp1, 0, 0] + P[indrn, indrnp1, 0, 1]))**2
+                Denom[indrn, indrnp1]   += probacond
 
         for indrn in range(self.__STEPS+2):
             for indrnp1 in range(self.__STEPS+2):
-                if Lambda2[indrn, indrnp1] != 0.:
-                    Lambda2[indrn, indrnp1] /= Denom[indrn, indrnp1]
-                if Pi2[indrn, indrnp1] != 0.:
-                    Pi2    [indrn, indrnp1] /= Denom[indrn, indrnp1]
-        # print('Lambda2=', Lambda2)
-        # print('Pi2=', Pi2)
-        # input('pause')
+                if Lambda2[indrn, indrnp1] != 0.:  Lambda2[indrn, indrnp1] /= Denom[indrn, indrnp1]
+                if Pi2[indrn, indrnp1] != 0.:      Pi2    [indrn, indrnp1] /= Denom[indrn, indrnp1]
 
         return M, Lambda2, P, Pi2
+
 
     def compute_tab_GaussXY(self):
 
@@ -569,17 +428,13 @@ class CGOFMSM_SemiSupervLearn:
         # La premiere ne sert à rien, uniquementà a synchroniser les indices
         tab_GaussXY.append(Loi2DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
 
+        # Les suivantes
         for np1 in range(1, self.__N):
             if self.__verbose >= 2:
                 print('\r         proba tnp1 condit. to tn np1=', np1, ' sur N=', self.__N, end='   ', flush = True)
 
             tab_GaussXY.append(Loi2DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
             tab_GaussXY[np1].Calc_GaussXY(self.__M, self.__Lambda2, self.__P, self.__Pi2, self.__Ztrain[:, np1-1], self.__Ztrain[:, np1])
-
-            # if tab_GaussXY[np1].Integ()<1E-10:
-            #     print('np1 = ', np1)
-            #     tab_GaussXY[np1].print()
-            #     input('Tab Gauss')
 
         if self.__verbose >= 2:
             print(' ')
@@ -600,11 +455,8 @@ class CGOFMSM_SemiSupervLearn:
 
         ProbaForward[np1].CalcForw1(self.__FS, znp1, self.__aMeanCovFuzzy)
         Tab_Normalis[np1] = ProbaForward[np1].Integ()
-        # ProbaForward[np1].print()
         # normalisation (devijver)
         ProbaForward[np1].normalisation(Tab_Normalis[np1])
-        #ProbaForward[np1].plot('$p(r_n | y_1^n)$')
-        # input('attente forward n=' + str(np1))
 
         ###############################
         # Boucle
@@ -613,20 +465,10 @@ class CGOFMSM_SemiSupervLearn:
                 print('\r         forward np1=', np1, ' sur N=', self.__N, end='', flush = True)
 
             ProbaForward.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
-            # print('self.__Rcentres=', self.__Rcentres)
             ProbaForward[np1].CalcForB(calcF, ProbaForward[np1-1], self.__FS, Tab_GaussXY[np1])
-            # ProbaForward[np1].nextAfterZeros() # on evite des proba de zero
-            # ProbaForward[np1].print()
-            # if ProbaForward[np1].get(0.) < ProbaForward[np1].get(1.):
-            #     ProbaForward[np1].print()
-            #     input('attente forward n=' + str(np1))
-            # print('sum forw=', ProbaForward[np1].Integ())
             Tab_Normalis[np1] = ProbaForward[np1].Integ()
             # normalisation (devijver)
             ProbaForward[np1].normalisation(Tab_Normalis[np1])
-            # print('sum forw=', ProbaForward[np1].Integ())
-            # ProbaForward[np1].print()
-            # input('attente forward n=' + str(np1))
 
         if self.__verbose >= 2:
             print(' ')
@@ -643,29 +485,14 @@ class CGOFMSM_SemiSupervLearn:
         for n in range(self.__N):
             ProbaBackward.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
 
-        # REMARQUE ; la normalisation loi norm (thèse de Abassi), et la même que utiliser Tab_Normalis
-        # Donc j''utilise ci-dfessous Tab_Normalis
-        # loinorm = Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres)
+        # REMARQUE: la normalisation loi norm (thèse de Abassi), et la même que utiliser Tab_Normalis
 
         loicorrective = Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres)
 
         ##############################
         # initialisation de beta
         n = self.__N-1
-        # print('n=', n)
-        # input('temp')
         ProbaBackward[n].setValCste(1.0)
-        # normalisation (devijver)
-        # loinorm.ProductFB(ProbaBackward[n], ProbaForwardNorm[n])
-        # loinorm.nextAfterZeros() # on evite des proba de zero
-        # ProbaBackward[n].normalisation(loinorm.Integ())
-        # print('  -->loinorm.Integ()=', loinorm.Integ())
-        # ProbaBackward[n].plot('$p(r_{n+1} | y_1^{n+1})$')
-        # ProbaBackward[n].print()
-        if ProbaBackward[n].get(0.) < ProbaBackward[n].get(1.):
-            ProbaBackward[n].print()
-            print('  -->sum backw=', ProbaBackward[n].Integ())
-            input('attente backward n=' + str(n))
 
         ###############################
         # Boucle pour backward
@@ -678,24 +505,8 @@ class CGOFMSM_SemiSupervLearn:
             # normalisation (devijver)
             ProbaBackward[n].normalisation(Tab_Normalis[n+1])
 
-            # loinorm.ProductFB(ProbaForwardNorm[n], ProbaBackward[n])
-            # loinorm.nextAfterZeros() # on evite des proba de zero
-            # if loinorm.Integ() == 0.:
-            #     print('loinorm.Integ()=', loinorm.Integ())
-            #     print('ProbaForwardNorm[n]=', ProbaForwardNorm[n])
-            #     print('ProbaBackward[n]=', ProbaBackward[n])
-            #     input('pb loinorm.Integ() == 0.')
-            # ProbaBackward[n].normalisation(loinorm.Integ())
-            # ProbaBackward[n].print()
-            # print('sum back=', ProbaBackward[n].Integ())
-            # ProbaBackward[n].nextAfterZeros() # on evite des proba de zero
-            # print('\n  -->sum backw=', ProbaBackward[n].Integ())
-            # print('  -->loinorm.Integ()=', loinorm.Integ())
-            # if abs(Tab_Normalis[n+1]-loinorm.Integ()) > 1E-14:
-            #     print('  -->Tab_Normalis[n+1]-oinorm.Integ()=', Tab_Normalis[n+1]-loinorm.Integ())
-            #     input('backward')
-
             # Cette normalisation n'est implémentée que pour contre-carrer la dérive suite à l'intégration numérique
+            input('VERIFIER CETTE NORMALISATION')
             loicorrective.ProductFB(ProbaForwardNorm[n], ProbaBackward[n])
             ProbaBackward[n].normalisation(loicorrective.Integ())
             
@@ -720,13 +531,6 @@ class CGOFMSM_SemiSupervLearn:
             # calcul de gamma = produit forward norm * backward norm ****************************************************************
             tab_gamma.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
             tab_gamma[n].ProductFB(ProbaForward[n], ProbaBackward[n])
-            #tab_gamma[n].nextAfterZeros() # on evite des proba de zero
-            #tab_gamma[n].print()
-            
-            # if n<10 or n>self.__N-10:
-            #     integ = tab_gamma[n].Integ()
-            #     print('\ntab_gamma[n].Integ()=', integ)
-            #     input('pause')
 
             # normalisation : uniquement due pour compenser des pb liés aux approximations numeriques de forward et de backward
             # Si F= 20, on voit que la normalisation n'est pas necessaire (deja la somme == 1.)
@@ -762,7 +566,7 @@ class CGOFMSM_SemiSupervLearn:
                 if tab_gamma[n].get(rn) != 0.:
                     Liste[indrn].CalcCond(rn, tab_gamma[n].get(rn), tab_psi[n], self.__verbose)
                 else:
-                    if self.__verbose>1:
+                    if self.__verbose>2:
                         print('\nPBPB tab_gamma[n].get(rn) == 0. when rn=', rn)
                         #input('ATTENTE ERROR')
 
@@ -771,35 +575,80 @@ class CGOFMSM_SemiSupervLearn:
                     Liste[indrn].normalisation(Liste[indrn].Integ())
                 
             tab_cond.append(Liste)
-            #input('pause sdf')
-
-        # for n in range(self.__N-1):
-        #     print('n=', n)
-        #     tab_gamma[n]  .print()
-        #     tab_psi[n]    .print()
-        #     tab_cond[n][0].print()
-        #     tab_cond[n][1].print()
-        #     input('tempo')
         
 
-        # le dernier pour gamma
-        # n = self.__N-1
-        # tab_gamma.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
-        # tab_gamma[n].ProductFB(ProbaForward[n], ProbaBackward[n])
-        # integ = tab_gamma[n].Integ()
-        # print('\ntab_gamma[n].Integ()=', integ)
-        # input('pause')
-        # #tab_gamma[n].nextAfterZeros() # on evite des proba de zero
-        # if abs(1.-tab_gamma[n].Integ()) > 1E-3:
-        #     print('tab_gamma[n].Integ()=', tab_gamma[n].Integ())
-        #     input('PB PB PB Gamma')
-        #     tab_gamma[n].normalisation(tab_gamma[n].Integ())
+        # le dernier gamma : on n'en n'a pas besoin
 
         if self.__verbose >= 2:
             print(' ')
 
         return tab_gamma, tab_psi, tab_cond
 
+
+    def PlotConvSEM(self):
+
+        ax = plt.figure().gca()
+        plt.plot(self.__Tab_ParamFS[:, 0], color='g', label=r'$\alpha_0$')
+        plt.plot(self.__Tab_ParamFS[:, 1], color='r', label=r'$\alpha_1$')
+        plt.plot(self.__Tab_ParamFS[:, 2], color='b', label=r'$\beta$')
+        plt.plot(self.__Tab_ParamFS[:, 3], color='k', label=r'$\eta$')
+        plt.ylim(ymax=1.05, ymin=-0.05)
+        plt.xlim(xmax=self.__nbIterSEM, xmin=0)
+        plt.xlabel('SEM iteration')
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+        plt.legend()
+        plt.title('Evolution of FS param - Fuzzy steps (F)=' + str(self.__STEPS)+ ', mean of ' + str(self.__nbRealSEM) + ' realizations')
+        fname = './Result/Fuzzy/SimulatedR/'
+        plt.savefig(fname + 'ParamFS_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
+        plt.close()
+
+        ax = plt.figure().gca()
+        plt.plot(self.__Tab_M_00[:, 0], color='g', label=r'$\mathcal{A}_{0}^{0}$')
+        plt.plot(self.__Tab_M_00[:, 1], color='r', label=r'$\mathcal{B}_{0}^{0}$')
+        plt.plot(self.__Tab_M_00[:, 2], color='b', label=r'$\mathcal{C}_{0}^{0}$')
+        #plt.plot(self.__Tab_M_00[:, 3], color='k', label=r'$\mathcal{D}_{0}^{0}$')
+        plt.xlim(xmax=self.__nbIterSEM, xmin=0)
+        plt.xlabel('SEM iteration')
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+        plt.legend()
+        plt.title(r'Evolution of $\mathcal{M}_{0}^{0}$ param - Fuzzy steps (F)=' + str(self.__STEPS)+ ', mean of ' + str(self.__nbRealSEM) + ' realizations')
+        fname = './Result/Fuzzy/SimulatedR/'
+        plt.savefig(fname + 'MOO_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
+        plt.close()
+
+        ax = plt.figure().gca()
+        plt.plot(self.__Tab_P_00[:, 0], color='g', label=r'$\mathcal{F}_{0}^{0}$')
+        #plt.plot(self.__Tab_P_00[:, 1], color='r', label=r'$\mathcal{G}_{0}^{0}$')
+        plt.xlim(xmax=self.__nbIterSEM, xmin=0)
+        plt.xlabel('SEM iteration')
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+        plt.legend()
+        plt.title(r'Evolution of $\mathcal{P}_{0}^{0}$ param - Fuzzy steps (F)=' + str(self.__STEPS)+ ', mean of ' + str(self.__nbRealSEM) + ' realizations')
+        fname = './Result/Fuzzy/SimulatedR/'
+        plt.savefig(fname + 'POO_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
+        plt.close()
+
+        ax = plt.figure().gca()
+        plt.plot(self.__Tab_Lambda_00[:, 0], color='g', label=r'$\lambda_{0}^{0}$')
+        plt.xlim(xmax=self.__nbIterSEM, xmin=0)
+        plt.xlabel('SEM iteration')
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+        plt.legend()
+        plt.title(r'Evolution of $\lambda_{0}^{0}$ param - Fuzzy steps (F)=' + str(self.__STEPS)+ ', mean of ' + str(self.__nbRealSEM) + ' realizations')
+        fname = './Result/Fuzzy/SimulatedR/'
+        plt.savefig(fname + 'Lambda_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
+        plt.close()
+
+        ax = plt.figure().gca()
+        plt.plot(self.__Tab_Pi_00[:, 0],     color='g', label=r'$\pi_{0}^{0}$')
+        plt.xlim(xmax=self.__nbIterSEM, xmin=0)
+        plt.xlabel('SEM iteration')
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+        plt.legend()
+        plt.title(r'Evolution of $\pi_{0}^{0}$ param - Fuzzy steps (F)=' + str(self.__STEPS)+ ', mean of ' + str(self.__nbRealSEM) + ' realizations')
+        fname = './Result/Fuzzy/SimulatedR/'
+        plt.savefig(fname + 'Pi_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
+        plt.close()
 
 
 ###################################################################################################
@@ -811,6 +660,8 @@ class MeanCovFuzzy:
         self.__Ztrain   = Ztrain
         self.__n_z      = n_z
 
+        self.__N = np.shape(Ztrain)[1]
+
         self.__Mean_Zf  = np.zeros(shape=(self.__STEPS+2, self.__n_z))
         self.__Cov_Zf   = np.zeros(shape=(self.__STEPS+2, self.__n_z, self.__n_z))
         self.__cpt      = np.zeros(shape=(self.__STEPS+2), dtype=int)
@@ -818,9 +669,9 @@ class MeanCovFuzzy:
 
     def update(self, Rlabels):
 
-        N = np.shape(Rlabels)[0]
-        # print('N=', N)
-
+        # nombre de realisation
+        nbreal = int(len(Rlabels)/self.__N)
+        
         # Remise à 0.
         self.__Mean_Zf.fill(0.)
         self.__Cov_Zf.fill(0.)
@@ -828,20 +679,24 @@ class MeanCovFuzzy:
         # print('self.__Mean_Zf=', self.__Mean_Zf)
     
         # The means
-        for n in range(N):
-            self.__Mean_Zf[Rlabels[n], :] += self.__Ztrain[:, n]
-            self.__cpt[Rlabels[n]] += 1
+        for real in range(nbreal):
+            for n in range(self.__N):
+                label = Rlabels[real*self.__N+n]
+                self.__Mean_Zf[label,:] += self.__Ztrain[:, n]
+                self.__cpt[label] += 1
+        #print('cpt=', self.__cpt, ', sum=', np.sum(self.__cpt))
         for indrn in range(self.__STEPS+2):
             self.__Mean_Zf[indrn, :] /= self.__cpt[indrn]
-        print('cpt=', self.__cpt, ', sum=', np.sum(self.__cpt))
         # print(self.__Mean_Zf)
-        # input('hard mean')
+        #input('hard mean')
         
         # The variances
         VectZ = np.zeros(shape=(self.__n_z, 1))
-        for n in range(N):
-            VectZ = (np.transpose(self.__Ztrain[:, n]) - self.__Mean_Zf[Rlabels[n], :]).reshape(self.__n_z, 1)
-            self.__Cov_Zf[Rlabels[n],:,:] += np.outer(VectZ, VectZ)
+        for real in range(nbreal):
+            for n in range(self.__N):
+                label = Rlabels[real*self.__N+n]
+                VectZ = (np.transpose(self.__Ztrain[:, n]) - self.__Mean_Zf[label,:]).reshape(self.__n_z, 1)
+                self.__Cov_Zf[label,:,:] += np.outer(VectZ, VectZ)
         for indrn in range(self.__STEPS+2):
             self.__Cov_Zf[indrn,:,:] /= self.__cpt[indrn]
             # check if cov matrix
