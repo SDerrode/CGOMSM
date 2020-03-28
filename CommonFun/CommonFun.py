@@ -31,6 +31,7 @@ def ImpressionMatLatex(Mat, ch, n_r, M, decim=3, file=sys.stdin):
         print('\\end{bmatrix}', file=file)
     print('\\end{eqnarray*}', file=file)
 
+
 def Test_isCGOMSM_from_F(F, n_x, tol=1E-8, verbose=False):
 
     n_r_2, n_z = np.shape(F)[0:2]
@@ -80,63 +81,92 @@ def From_Cov_to_FQ(Cov_Z1_Z2_dp_R1_R2):
     n_r_2, n_z_2 = np.shape(Cov_Z1_Z2_dp_R1_R2)[0:2]
     n_z          = int(n_z_2/2)
 
-    F = np.zeros((n_r_2, n_z, n_z))
-    Q = np.zeros((n_r_2, n_z, n_z))
+    F = np.zeros(shape=(n_r_2, n_z, n_z))
+    Q = np.zeros(shape=(n_r_2, n_z, n_z))
     for i in range(n_r_2):
-        F[i, :, :], Q[i, :, :] = From_Cov_to_FQ_bis(Cov_Z1_Z2_dp_R1_R2[i, :, :], n_z)
+        F[i,:,:], Q[i,:,:] = From_Cov_to_FQ_bis(Cov_Z1_Z2_dp_R1_R2[i,:,:], n_z)
+        print('Q[i,:,:]=', Q[i,:,:])
+        if is_pos_def(Q[i,:,:]) == False:
+            print('i=', i, ' --> PROBLEM with Q matrix in From_Cov_to_FQ!!')
+            print(Q[i,:,:])
+            input('pause in From_Cov_to_FQ')
 
-    # Test si toutes les variances de Q sont positives
-    for l in range(n_r_2):
-        for i in range(n_z):
-            if Q[l, i, i] < 0.:
-                print('l=', l)
-                print('F[l, :, :]=', F[l, :, :])
-                print('Q[l, :, :]=', Q[l, :, :])
-                input('PROBLEM From_Cov_to_FQ : varaince not positives')
-                #exit(1)
-
-    return (F, Q)
+    return F, Q
 
 def From_Cov_to_FQ_bis(Cov_Z1_Z2_dp_R1_R2, n_z):
     """
     Convert a cov matrix of the second parametrization of CGPMSM into a couple (F,Q) of the first parametrization.
     """
 
-    Ct_zn_zn     = Cov_Z1_Z2_dp_R1_R2[0:n_z,      0:n_z]
-    Ct_znp1_znp1 = Cov_Z1_Z2_dp_R1_R2[n_z:2*n_z , n_z:2*n_z]
-    Ct_znp1_zn   = Cov_Z1_Z2_dp_R1_R2[n_z:2*n_z , 0:n_z]
+    Ct_zn_zn     = Cov_Z1_Z2_dp_R1_R2[0:n_z,     0:n_z]
+    Ct_znp1_znp1 = Cov_Z1_Z2_dp_R1_R2[n_z:2*n_z, n_z:2*n_z]
+    Ct_zn_znp1   = Cov_Z1_Z2_dp_R1_R2[0:n_z,     n_z:2*n_z]
 
-    F = np.dot(Ct_znp1_zn, np.linalg.inv(Ct_zn_zn))
-    # Q = NearPD(Ct_znp1_znp1 - np.dot(F[:, :], Ct_znp1_zn.T))
-    Q = Ct_znp1_znp1 - np.dot(F, Ct_znp1_zn.T)
+    F = np.dot(np.transpose(Ct_zn_znp1), np.linalg.inv(Ct_zn_zn))
+    Q = Ct_znp1_znp1 - np.dot(F, Ct_zn_znp1)
 
-    return (F, Q)
+    return F, Q
 
 def From_FQ_to_Cov_Lyapunov(F, Q, n_x):
     n_r_2, n_z, n_z = np.shape(F)
     n_y = n_z - n_x
     n_r = int(np.sqrt(n_r_2))
+    print('n_r=', n_r)
+    print('n_z=', n_z)
+    print('n_y=', n_y)
+    print('n_x=', n_x)
 
-    Gamma = np.zeros((n_r, n_z, n_z))
-    Sigma = np.zeros((n_r_2, n_z, n_z))
-    Cov_Z1_Z2_dp_R1_R2 = np.zeros((n_r_2, n_z*2,n_z*2))
+    Gamma = np.zeros(shape=(n_r, n_z, n_z))
+    SigmaT = np.zeros(shape=(n_r_2, n_z, n_z))
+    Cov_Z1_Z2_dp_R1_R2 = np.zeros(shape=(n_r_2, n_z*2,n_z*2))
     
     for i in range(n_r):
-        temp = np.dot( np.linalg.inv(np.eye(n_z**2) - np.kron(F[i*n_r+i, :, :], F[i*n_r+i, :, :])), np.reshape(Q[i*n_r+i, :, :], (n_z**2, 1), order='F') )
-        Gamma[i,:,:] = np.reshape(temp, (n_z, n_z), order='F')
+        # temp = np.dot( np.linalg.inv(np.eye(n_z**2) - np.kron(F[i*n_r+i,:,:], F[i*n_r+i,:,:])), np.reshape(Q[i*n_r+i,:,:], (n_z**2, 1), order='F') )
+        # Gamma[i,:,:] = np.reshape(temp, (n_z, n_z), order='F')
+        # print('Fei: Gamma[i,:,:]=', Gamma[i,:,:])
+    
+        # Identical to Fei algo (above), but maybe more efficient
+        Gamma[i,:,:] = sp.linalg.solve_discrete_lyapunov(F[i*n_r+i,:,:], Q[i*n_r+i,:,:], method=None)
+        print('scipy: Gamma[i,:,:]=', Gamma[i,:,:])
+        
+        if is_pos_def(Gamma[i,:,:]) == False:
+            print('i=', i, ' --> PROBLEM with Gamma matrix in From_FQ_to_Cov_Lyapunov!!')
+            print(Gamma[i,:,:])
+            input('pause in From_FQ_to_Cov_Lyapunov')
+
+         # test si A X A ^t - X + Q == 0
+        TestLyapunov = np.dot(np.dot(F[i*n_r+i,:,:], Gamma[i,:,:]), np.transpose(F[i*n_r+i,:,:])) - Gamma[i,:,:] + Q[i*n_r+i,:,:]
+        if np.all(TestLyapunov<1E-5) == False:
+            print('i=', i, 'TestLyapunov=', TestLyapunov)
+            input('temp TEST')
+
+    input('attente')
+
+    for i in range(n_r_2):
+        j = i//n_r
+        # k = i%n_r
+        SigmaT[i,:,:] = np.dot(F[i,:,:], Gamma[j,:,:])
+        print('scipy: SigmaT[i,:,:]=', SigmaT[i,:,:])
+    input('attente')
     
     for i in range(n_r_2):
         j = i//n_r
         k = i%n_r
-        Sigma[i, :, :] = np.dot(F[i, :, :], Gamma[j, :, :])
-    
+        Cov_Z1_Z2_dp_R1_R2[i, 0:n_z, 0:n_z] = Gamma[j,:,:]
+        Cov_Z1_Z2_dp_R1_R2[i, n_z:,  n_z:]  = Gamma[k,:,:]
+        Cov_Z1_Z2_dp_R1_R2[i, 0:n_z, n_z:]  = np.transpose(SigmaT[i,:,:])
+        Cov_Z1_Z2_dp_R1_R2[i, n_z:,  0:n_z] = SigmaT[i,:,:]
+        
+    if Test_isCGOMSM_from_Cov(Cov_Z1_Z2_dp_R1_R2, n_x) == False:
+        print('i=', i, ' --> PROBLEM with Cov_Z1_Z2_dp_R1_R2 matrix : not CGOMSM!!')
+        print(Cov_Z1_Z2_dp_R1_R2[i,:,:])
+        input('pause in From_FQ_to_Cov_Lyapunov')
+
     for i in range(n_r_2):
-        j = i//n_r
-        k = i%n_r
-        Cov_Z1_Z2_dp_R1_R2[i, 0:n_z, 0:n_z] = Gamma[j, :, :]
-        Cov_Z1_Z2_dp_R1_R2[i, n_z:,  n_z:]  = Gamma[k, :, :]
-        Cov_Z1_Z2_dp_R1_R2[i, 0:n_z, n_z:]  = Sigma[i, :, :].T
-        Cov_Z1_Z2_dp_R1_R2[i, n_z:,  0:n_z] = Sigma[i, :, :]
+        if is_pos_def(Cov_Z1_Z2_dp_R1_R2[i,:,:]) == False:
+            print('i=', i, ' --> PROBLEM with Cov_Z1_Z2_dp_R1_R2 matrix in From_FQ_to_Cov_Lyapunov!!')
+            print(Cov_Z1_Z2_dp_R1_R2[i,:,:])
+            input('pause in From_FQ_to_Cov_Lyapunov')
 
     return Cov_Z1_Z2_dp_R1_R2
 
@@ -312,12 +342,12 @@ def Readin_ABMeansProba(filenameParam):
             print('The dimension of B matrices are not corrects!!!')
             exit(1)
 
-    A = np.zeros((n_r**2, n_z, n_z))
+    A = np.zeros(shape=(n_r**2, n_z, n_z))
     for l in range(n_r**2):
         A[l, :, :] = locals()['A%s'%(l+1)]
 
-    B = np.zeros((n_r**2, n_z, n_z))
-    Q = np.zeros((n_r**2, n_z, n_z))
+    B = np.zeros(shape=(n_r**2, n_z, n_z))
+    Q = np.zeros(shape=(n_r**2, n_z, n_z))
     for l in range(n_r**2):
         B[l, :, :] = locals()['B%s'%(l+1)]
         Q[l, :, :] = np.dot(B[l, :, :], np.transpose(B[l, :, :]))
@@ -358,11 +388,13 @@ def Readin_ABMeansProba(filenameParam):
 
 def Readin_CovMeansProba(filenameParam):
 
-    K1   = 0
-    flag = 0
-    m    = 0
-    Name = ''
-    okJump = False
+    K1      = 0
+    flag    = 0
+    m       = 0
+    Name    = ''
+    STEPS   = 0
+    okJump  = False
+    okSTEPS = False
     with open(filenameParam, 'r') as f:
         for line in f:
 
@@ -370,6 +402,8 @@ def Readin_CovMeansProba(filenameParam):
                 flag=0
             else:
                 flag=1
+            if line.startswith("# number of fuzzy steps"):
+                Name='STEPS'
             if line.startswith("# Cov"):
                 Name = 'Cov'
                 K1 = K1+1
@@ -382,6 +416,9 @@ def Readin_CovMeansProba(filenameParam):
 
             if (flag == 1 and Name == 'Cov'):
                 locals()['Cov_%s'%K1] = mat_read(m, line)
+            if (flag==1 and Name=='STEPS'):
+                okSTEPS = True
+                STEPS=int(mat_read(m,line).item())
             if (flag==1 and Name=='joint_proba'):
                 okJump = True
                 joint_proba=mat_read(m,line)
@@ -395,36 +432,39 @@ def Readin_CovMeansProba(filenameParam):
     # Verification of the dimensions of matrices and vectors
     if okJump == True:
         n_rp1, n_rp2 = np.shape(joint_proba)
-    n_rX, n_x    = np.shape(Mean_X)
-    n_rY, n_y    = np.shape(Mean_Y)
+    n_rX, n_x = np.shape(Mean_X)
+    n_rY, n_y = np.shape(Mean_Y)
+    n_rX -= STEPS
+    n_rY -= STEPS
     n_z          = n_x + n_y
     n_z_2        = n_z*2
 
-    if (okJump == True and (not (n_rp1 == n_rp2 == n_rX == n_rY))) or (okJump == False and (not (n_rX == n_rY))):
+    if ((okJump == True) and (not (n_rp1 == n_rp2 == n_rX == n_rY))) or (okJump == False and (not (n_rX == n_rY))):
         input('probleme - n_r dimension incoherent in the parameter file')
         exit(1)
-    else:
-        n_r = n_rX
+    n_r = n_rX
 
     # Test the number of matrices
     OK = True
-    for r in range(n_r**2):
+    for r in range((n_r+STEPS)**2):
         if 'Cov_'+str(r+1) not in locals():
             print('r=', r)
             OK = False
             break
     if OK == False:
-        input('PROBLEM')
+        input('PROBLEM - Readin_CovMeansProba')
 
     # Test the dimensions of matrices
-    for r in range(n_r**2):
+    for r in range((n_r+STEPS)**2):
         siz = np.shape(locals()['Cov_%s'%(r+1)])
         if siz[0] != n_z_2 or siz[1] != n_z_2 :
             print('The dimension of cov matrices are not corrects!!!')
             exit(1)
 
-    Cov = np.zeros((n_r**2, n_z_2, n_z_2))
-    for l in range(n_r**2):
+    print((n_r+STEPS)**2)
+    print(n_z_2)
+    Cov = np.zeros(shape=((n_r+STEPS)**2, n_z_2, n_z_2))
+    for l in range((n_r+STEPS)**2):
         Cov[l, :, :] = locals()['Cov_%s'%(l+1)]
         # test if they are positive definite
         if is_pos_def(Cov[l, :, :]) == False:
@@ -440,11 +480,11 @@ def Readin_CovMeansProba(filenameParam):
 
     # Obtention des matrices A, B, Q
     A, Q = From_Cov_to_FQ(Cov)
-    B    = np.zeros((n_r**2, n_z, n_z))
-    for i in range(n_r**2):
+    B    = np.zeros(shape=((n_r+STEPS)**2, n_z, n_z))
+    for i in range((n_r+STEPS)**2):
         with warnings.catch_warnings():
             warnings.simplefilter('error')
-            B[i,:,:] = sp.linalg.sqrtm(Q[i, :, :])
+            B[i,:,:] = sp.linalg.sqrtm(Q[i,:,:])
 
     # Obtention des proba marg et cond à partir de proba joint
     if okJump == True:
@@ -479,7 +519,7 @@ def Test_if_CGPMSM(Cov):
     n_z = int(n_z_2/2)
 
     # Recuperation of the Sigma matrices
-    Sigma = np.zeros((n_r, n_z, n_z))
+    Sigma = np.zeros(shape=(n_r, n_z, n_z))
     for r in range(n_r):
         l = r*n_r+r
         Sigma[r, :, :] = Cov[l, 0:n_z, 0:n_z]
@@ -490,9 +530,9 @@ def Test_if_CGPMSM(Cov):
         k = l%n_r
         sig1 = Cov[l, 0:n_z, 0:n_z]
         sig2 = Cov[l, n_z:2*n_z, n_z:2*n_z]
-        if not np.allclose(sig1, Sigma[j, :, :], atol = 1E-8) or not np.allclose(sig2, Sigma[k, :, :], atol = 1E-8):
-            print(not np.allclose(sig1, Sigma[j, :, :], atol = 1E-8))
-            print(not np.allclose(sig2, Sigma[k, :, :], atol = 1E-8))
+        if not np.allclose(sig1, Sigma[j,:,:], atol = 1E-8) or not np.allclose(sig2, Sigma[k,:,:], atol = 1E-8):
+            print(not np.allclose(sig1, Sigma[j,:,:], atol = 1E-8))
+            print(not np.allclose(sig2, Sigma[k,:,:], atol = 1E-8))
             print(Cov[l, :, :])
             print('The cov matrix l=', l, 'is not well shaped !!!')
             input('attente')
@@ -504,17 +544,14 @@ def is_pos_def(A):
         return True
     if np.allclose(A, A.T, atol=1E-8):
         try:
-            Z = np.linalg.cholesky(A)
+            np.linalg.cholesky(A)
             return True
         except np.linalg.LinAlgError:
             print('PB is_pos_def : ce n''est pas un matrice définie positive')
-            print('Voici la matrice de corrélations')
-            corr = np.zeros(shape = np.shape(A))
-            for i in range(np.shape(corr)[0]):
-                for j in range(np.shape(corr)[1]):
-                    corr[i, j] = A[i, j]/np.sqrt(A[i,i] * A[j,j])
-            print(corr)
-            input('pause')
+            std_ = np.sqrt(np.diag(A))
+            corr = A / np.outer(std_, std_)
+            print('correlation matrix=', corr)
+            # input('pause')
             return False
     else:
         print('PB is_pos_def : la mat n''est pas symétrique')
@@ -571,7 +608,7 @@ def Est_p_R1_R2(R, N, psi=None):
         n_r = len(np.unique(R))
         R_value = np.linspace(0, n_r-1, n_r).astype(int)
         Couple_R = np.vstack((R[0:-1], R[1:]))
-        num_R1_R2 = np.zeros((n_r**2))
+        num_R1_R2 = np.zeros(shape=(n_r**2))
         for i in range(n_r**2):
             Sign_R1_R2_temp = (np.sum(Couple_R == np.array([[R_value[i//n_r]],\
              [R_value[i%n_r]]]), 0) == 2)

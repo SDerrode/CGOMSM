@@ -103,13 +103,14 @@ def main():
 
 class CGOFMSM:
 
-    def __init__(self, N, filenameParamCov, verbose, FSParametersStr):
+    def __init__(self, N, filenameParamCov, verbose, FSParametersStr, interpolation=True):
         assert N > 1, print('number of samples must be greater than 2')
 
-        self.__n_r = 2 # default value, can be changed by reading of parameters (see below)
-        self.__N   = N
+        self.__n_r              = 2 # default value, can be changed by reading of parameters (see below)
+        self.__N                = N
         self.__filenameParamCov = filenameParamCov
         self.__verbose          = verbose
+        self.__interpolation    = interpolation
         self.__FSParameters     = list(map(str, FSParametersStr.split(':')))
 
     def getParams(self):
@@ -155,7 +156,7 @@ class CGOFMSM:
         start_time = time.time()
 
         # Create main objects
-        Resto = RestorationOFAFuzzy(self.__filenameParamCov, STEPS[0], self.__FSParameters, self.__verbose)
+        Resto = RestorationOFAFuzzy(self.__filenameParamCov, STEPS[0], self.__FSParameters, self.__interpolation, self.__verbose)
         # print(Resto.getFS().getParam())
         # input('pause')
 

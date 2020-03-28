@@ -245,11 +245,18 @@ class RestorationOFAFuzzy:
     """
     Optimal filtering approximation
     """
-    def __init__(self, filenameParam, STEPS, FSParameters, verbose):
-        self.__STEPS   = STEPS
-        self.__verbose = verbose
+    def __init__(self, filenameParam, STEPS, FSParameters, interpolation, verbose):
+        self.__STEPS         = STEPS
+        self.__interpolation = interpolation
+        self.__verbose       = verbose
 
         self.__n_r, A, useless, Q, self.__Cov, self.__Mean_X, self.__Mean_Y = Readin_CovMeansProba(filenameParam)
+        print('self.__Mean_X=', self.__Mean_X)
+        print('self.__Mean_Y=', self.__Mean_Y)
+        input('pause1')
+        print('Cov = , self.__Cov')
+        input('pause2')
+
         self.__n_x = np.shape(self.__Mean_X)[1]
         self.__n_y = np.shape(self.__Mean_Y)[1]
         self.__n_z = self.__n_x + self.__n_y

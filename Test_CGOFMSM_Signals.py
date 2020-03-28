@@ -16,9 +16,6 @@ from Test_CGOFMSM import CGOFMSM
 from pandas.plotting import register_matplotlib_converters
 register_matplotlib_converters()
 
-# matplotlib.rc('xtick', labelsize=fontS)
-# matplotlib.rc('ytick', labelsize=fontS)
-
 
 if __name__ == '__main__':
 
@@ -30,12 +27,13 @@ if __name__ == '__main__':
         >> python3 Test_CGOFMSM_Signals.py Parameters/Signal.param 2:0.07:0.24:0.09 1,1,0 ./Data/Kaggle/input/JoseRizalBridgeNorth_ATemp.csv 3 2 1
         >> python3 Test_CGOFMSM_Signals.py Parameters/Signal.param 2:0.07:0.24:0.09 1,1,0 ./Data/Kaggle/input/JoseRizalBridgeNorth_ATemp.csv 1,2,3,5,7,10 10 0 1
         >> nohup python3 Test_CGOFMSM_Signals.py Parameters/Signal.param 4:0.15:0.15:0.:0.1 1,1,0 ./Data/Kaggle/input/JoseRizalBridgeNorth_ATemp.csv 1,2,3,5,7,10 10 0 1 > serie2.out &
+        >> python3 Test_CGOFMSM_Signals.py ./Parameters/Fuzzy/TMU6048TrainX_extract_TMU6048TrainY_extract_F=3.param 2ter:0.3:0.3:0.05 1,1,0,1 ./Data/Traffic/Zied1/TMU6048TrainY.txt -1 2 0
 
-        argv[1] : Nom du fichier de paramètres
-        argv[2] : Fuzzy joint law model and parameters. e.g. 2:0.07:0.24:0.09, or 4:0.15:0.15:0.:0.1
-        argv[3] : hard(0/1),filter(0/1),smoother(0/1)
-        argv[4] : Signal filename
-        argv[5] : Valeurs de F (une seule, ou plusieurs séparées par des virgules)
+        argv[1] : Name of the file of parameters (cov and means)
+        argv[2] : Fuzzy joint law model and parameters; e.g. 2ter:0.3:0.3:0.05
+        argv[3] : Hard (0/1), filter (0/1), smoother (0/1), predictor (0/1); e.g. 0,1,0,1
+        argv[4] : Observed signal filename
+        argv[5] : If interpolation, number of discrete fuzzy, aka 'F'; e.g. 3.  If -1 then F is to be read in the parameter file
         argv[6] : Debug(3), pipelette (2), normal (1), presque muet (0)
         argv[7] : Plot graphique (0/1)
     """
@@ -66,6 +64,10 @@ if __name__ == '__main__':
     Plot             = True
     if int(sys.argv[7]) == 0: 
         Plot = False
+
+    interpolation = True
+    if STEPS == -1:
+        interpolation = False
 
     print(' . filenameParamCov =', filenameParamCov)
     print(' . FSParametersStr  =', FSParametersStr)
@@ -101,5 +103,6 @@ if __name__ == '__main__':
 
     # filtrage
     N = df['Y'].count()
-    aCGOFMSM     = CGOFMSM(N, filenameParamCov, verbose, FSParametersStr)
+    aCGOFMSM     = CGOFMSM(N, filenameParamCov, verbose, FSParametersStr, interpolation)
     elapsed_time = aCGOFMSM.restore_signal(Data=df, ch='Temper', STEPS=STEPS, hard=hard, filt=filt, smooth=smooth, Plot=Plot)
+    

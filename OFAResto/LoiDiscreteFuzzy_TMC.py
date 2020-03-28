@@ -170,7 +170,6 @@ class Loi2DDiscreteFuzzy_TMC():
         rnp1, indrnp1  = 0., 0
         self.__p00     = getGaussXY(M[indrn, indrnp1], Lambda2[indrn, indrnp1], P[indrn, indrnp1], Pi2[indrn, indrnp1], xn, yn, xnpun, ynpun)
         
-
         rn, indrn      = 1., self.__STEPS+1
         rnp1, indrnp1  = 0., 0
         self.__p10     = getGaussXY(M[indrn, indrnp1], Lambda2[indrn, indrnp1], P[indrn, indrnp1], Pi2[indrn, indrnp1], xn, yn, xnpun, ynpun)
@@ -211,43 +210,39 @@ class Loi2DDiscreteFuzzy_TMC():
 
 
         # Pour les masses
-        rn, rnp1       = 0., 0.
-        indrn, indrnp1 = 0, 0
+        rn, indrn      = 0., 0
+        rnp1, indrnp1  = 0., 0
         self.__p00     = PForward_n.get(rn) * PBackward_np1.get(rnp1) * Tab_GaussXY_np1.get(rn, rnp1) * FS.probaR2CondR1(rn, rnp1)
         
-        rn, rnp1       = 1., 0.
-        indrn, indrnp1 = self.__STEPS+1, 0
+        rn, indrn      = 1., self.__STEPS+1
+        rnp1, indrnp1  = 0., 0
         self.__p10     = PForward_n.get(rn) * PBackward_np1.get(rnp1) * Tab_GaussXY_np1.get(rn, rnp1) * FS.probaR2CondR1(rn, rnp1)
 
-        rn, rnp1       = 1., 1.
-        indrn, indrnp1 = self.__STEPS+1, self.__STEPS+1
+        rn, indrn      = 1., self.__STEPS+1
+        rnp1, indrnp1  = 1., self.__STEPS+1
         self.__p11     = PForward_n.get(rn) * PBackward_np1.get(rnp1) * Tab_GaussXY_np1.get(rn, rnp1) * FS.probaR2CondR1(rn, rnp1)
         
-        rn, rnp1       = 0., 1.
-        indrn, indrnp1 = 0, self.__STEPS+1
+        rn, indrn      = 0., 0
+        rnp1, indrnp1  = 1., self.__STEPS+1
         self.__p01     = PForward_n.get(rn) * PBackward_np1.get(rnp1) * Tab_GaussXY_np1.get(rn, rnp1) * FS.probaR2CondR1(rn, rnp1)
 
         # Pour les arètes
         for ind, r in enumerate(self.__Rcentres):
             
             # self.__p00_10
-            rnp1    = 0.
-            indrnp1 = 0
+            rnp1, indrnp1      = 0., 0
             self.__p00_10[ind] = PForward_n.get(r) * PBackward_np1.get(rnp1) * Tab_GaussXY_np1.get(r, rnp1) * FS.probaR2CondR1(r, rnp1)
 
             # self.__p10_11
-            rn      = 1.
-            indrn   = self.__STEPS+1
+            rn, indrn          = 1., self.__STEPS+1
             self.__p10_11[ind] = PForward_n.get(rn) * PBackward_np1.get(r) * Tab_GaussXY_np1.get(rn, r) * FS.probaR2CondR1(rn, r)
 
             # self.__p11_01
-            rnp1    = 1.
-            indrnp1 = self.__STEPS+1
+            rnp1 , indrnp1     = 1., self.__STEPS+1
             self.__p11_01[ind] = PForward_n.get(r) * PBackward_np1.get(rnp1) * Tab_GaussXY_np1.get(r, rnp1) * FS.probaR2CondR1(r, rnp1)
 
             # self.__p01_00
-            rn      = 0.
-            indrn   = 0
+            rn, indrn          = 0., 0
             self.__p01_00[ind] = PForward_n.get(rn) * PBackward_np1.get(r) * Tab_GaussXY_np1.get(rn, r) * FS.probaR2CondR1(rn, r)
 
             # Pour l'intérieur
@@ -416,7 +411,7 @@ class Loi1DDiscreteFuzzy_TMC():
         else:
             input('ATTENTION : norm == 0.')
 
-    def CalcCond(self, rn, ProbaGamma_n_rn, ProbaPsi_n):
+    def CalcCond(self, rn, ProbaGamma_n_rn, ProbaPsi_n, verbose):
 
         rnp1 = 0.
         self.__p0 = ProbaPsi_n.get(rn, rnp1) / ProbaGamma_n_rn
@@ -426,33 +421,26 @@ class Loi1DDiscreteFuzzy_TMC():
 
         rnp1 = 1.
         self.__p1 = ProbaPsi_n.get(rn, rnp1) / ProbaGamma_n_rn
-        #self.print()
 
         # This integral is converging to 1 if F growth. In case F small (i.e<10) it is better to normalise
         integ = self.Integ()
+        #print('\ninteg=', integ)
+        # input('CalcCond')
 
         # test if all 0 
-        if self.TestIsAllZero():
-            # print('integ', integ)
-            # print('integ ProbaGamma_n', ProbaGamma_n.Integ())
-            # print('integ ProbaPsi_n', ProbaPsi_n.Integ())
-            # self.print()
-            # ProbaGamma_n.print()
-            # ProbaPsi_n.print()
-            # print('p0 : ', ProbaPsi_n.get(rn, 0.), ProbaGamma_n_rn)
-            # print('p1 : ', ProbaPsi_n.get(rn, 1.), ProbaGamma_n_rn)
-            # input('pause')
-            input('\nWarning: all the proba cond is 0. when rn=' + str(rn))
+        if self.TestIsAllZero() and verbose>1:
+            print('\nWarning: all the proba cond is 0. when rn=' + str(rn))
+            #input('Attente')
         else:
             # this normalisation is only to avoid numerical integration pb due to the number of discrete fuzzy steps
+            # If the number of fuzzy steps is low then the numerical error is big (STEPS=1 gives about 20% error, STEPS = 5 gives about 2% of error)
+            # if abs(1.-integ) > 5.E-2: # no stop till 5% of error
+            #     print('  Integ R2 condit. to R1 and Z: integ', integ)
+            #     input('PB PB PB proba cond')
             self.normalisation(integ)
-            if abs(1.-self.Integ()) > 1E-3:
-                print('  Integ R2 Cond R1:', self.Integ())
-                input('PB PB PB proba cond')
 
 
     def TestIsAllZero(self):
-
         if self.__p0 != 0.: return False
         for ind in range(self.__STEPS):
             if self.__p01[ind] != 0.: return False

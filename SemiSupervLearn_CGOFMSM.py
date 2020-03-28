@@ -17,8 +17,8 @@ def main():
  
         :Example:
 
-        >> python3 SemiSupervLearn_CGOFMSM.py ./Data/Traffic/Zied1/TMU6048TrainX_extract.txt  ./Data/Traffic/Zied1/TMU6048TrainY_extract.txt 10 1 4 2 0
-        >> python3 SemiSupervLearn_CGOFMSM.py ./Data/Traffic/Zied1/TMU6048TrainX.txt  ./Data/Traffic/Zied1/TMU6048TrainY.txt 10 1 4 2 0
+        >> python3 SemiSupervLearn_CGOFMSM.py ./Data/Traffic/TMU5509/generated/TMU5509_trainX_300.txt ./Data/Traffic/TMU5509/generated/TMU5509_trainY_300.txt 10 1 4 2 0
+        >> python3 SemiSupervLearn_CGOFMSM.py ./Data/Traffic/TMU5509/generated/TMU5509_trainX.txt ./Data/Traffic/TMU5509/generated/TMU5509_trainY.txt 10 1 4 2 0
         
         argv[1] : filename for learning X (states) parameters
         argv[2] : filename for learning Y (observations) parameters
@@ -26,7 +26,7 @@ def main():
         argv[4] : nb of realizations for SEM-based learning
         argv[5] : number of discrete fuzzy steps (so-called 'F' or 'STEPS')
         argv[6] : verbose (0/1/2)
-        argv[7] : plot the graphics (0/1)
+        argv[7] : plot the graphics (0:none/1:few/2:many)
     """
 
     print('Ligne de commandes : ', sys.argv, flush=True)
@@ -36,13 +36,13 @@ def main():
         exit(1)
 
     # Default value for parameters
-    # fileTrainX = './Data/Traffic/Zied1/TMU6048TrainX.txt'
-    # fileTrainY = './Data/Traffic/Zied1/TMU6048TrainY.txt'
+    # fileTrainX = './Data/Traffic/TMU5509/generated/TMU5509_trainX.txt'
+    # fileTrainY = './Data/Traffic/TMU5509/generated/TMU5509_trainY.txt'
     # nbIterSEM  = 10
     # nbRealSEM  = 1
     # STEPS      = 4
     # verbose    = 2
-    # graphics   = 0
+    # graphics   = 1
 
     # Parameters from argv
     fileTrainX = sys.argv[1]
@@ -72,17 +72,18 @@ def main():
         print('The number of values in the 2 files are differents!!!\n')
         exit(1)
 
-    if graphics == 1:
+    if graphics >= 1:
         plt.figure()
-        plt.plot(Ytrain[0,:], color='r', label='Ytrain')
-        plt.xlim(xmax = len_x, xmin = 0)
+        maxi=len_x # maxi=len_x, maxi=500
+        plt.plot(Ytrain[0,:maxi], color='r', label='Ytrain')
+        plt.xlim(xmax=maxi, xmin=0)
         plt.legend()
         plt.savefig('./Result/Fuzzy/SimulatedR/Ytrain.png', bbox_inches='tight', dpi=150)    
         plt.close()
 
         plt.figure()
-        plt.plot(Xtrain[0,:], color='b', label='Xtrain')
-        plt.xlim(xmax = len_y, xmin = 0)
+        plt.plot(Xtrain[0,:maxi], color='b', label='Xtrain')
+        plt.xlim(xmax=maxi, xmin=0)
         plt.legend()
         plt.savefig('./Result/Fuzzy/SimulatedR/Xtrain.png', bbox_inches='tight', dpi=150)    
         plt.close()
@@ -91,8 +92,8 @@ def main():
     Ztrain = np.zeros(shape=(n_x+n_y, len_x))
     Ztrain[0  :n_x,     :] = Xtrain
     Ztrain[n_x:n_x+n_y, :] = Ytrain
-    aCGOFMSM_learn = CGOFMSM_SemiSupervLearn(STEPS, Ztrain, n_x, n_y, verbose, graphics)
-    aCGOFMSM_learn.run_several(nbIterSEM, nbRealSEM)
+    aCGOFMSM_learn = CGOFMSM_SemiSupervLearn(STEPS, nbIterSEM, nbRealSEM, Ztrain, n_x, n_y, verbose, graphics)
+    aCGOFMSM_learn.run_several()
 
     # Convert parametrization 3 to parametrization 1 
     filenameParam = './Parameters/Fuzzy/' + pathlib.Path(fileTrainX).stem + '_' + pathlib.Path(fileTrainY).stem + '_F=' + str(STEPS) + '.param'

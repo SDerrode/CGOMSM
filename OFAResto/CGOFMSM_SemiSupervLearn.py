@@ -1,16 +1,20 @@
 import numpy as np
 import warnings
 import scipy as sp
+import clipboard
 
 import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
+from matplotlib import rc
+rc('text', usetex=True)
 
 from sklearn.cluster import KMeans
 # from sklearn.cluster import AgglomerativeClustering
 
 from OFAResto.LoiDiscreteFuzzy_TMC    import Loi1DDiscreteFuzzy_TMC, Loi2DDiscreteFuzzy_TMC, calcF, calcB
 from Fuzzy.APrioriFuzzyLaw_Series2ter import LoiAPrioriSeries2ter
-from CommonFun.CommonFun import From_FQ_to_Cov_Lyapunov, Test_if_CGPMSM
+from CommonFun.CommonFun import From_FQ_to_Cov_Lyapunov, Test_if_CGPMSM, is_pos_def, From_Cov_to_FQ
 
 
 def Check_CovMatrix(Mat):
@@ -23,22 +27,28 @@ def Check_CovMatrix(Mat):
         return False
     return True
 
+def getrnFromindrn(Rcentres, indrn):
+    if indrn == 0:               return 0.
+    if indrn == len(Rcentres)+1: return 1.
+    return Rcentres[indrn-1]
 
 ###################################################################################################
 class CGOFMSM_SemiSupervLearn:
-    def __init__(self, STEPS, Ztrain, n_x, n_y, verbose, graphics):
+    def __init__(self, STEPS, nbIterSEM, nbRealSEM, Ztrain, n_x, n_y, verbose, graphics):
         
-        self.__n_r      = 2
-        self.__N        = np.shape(Ztrain)[1]
-        self.__Ztrain   = Ztrain
-        self.__verbose  = verbose
-        self.__graphics = graphics
-        self.__STEPS    = STEPS
-        self.__EPS      = 1E-8
+        self.__n_r       = 2
+        self.__nbIterSEM = nbIterSEM
+        self.__nbRealSEM = nbRealSEM
+        self.__N         = np.shape(Ztrain)[1]
+        self.__Ztrain    = Ztrain
+        self.__verbose   = verbose
+        self.__graphics  = graphics
+        self.__STEPS     = STEPS
+        self.__EPS       = 1E-8
 
-        self.__n_x      = n_x
-        self.__n_y      = n_y
-        self.__n_z      = self.__n_x + self.__n_y
+        self.__n_x       = n_x
+        self.__n_y       = n_y
+        self.__n_z       = self.__n_x + self.__n_y
 
         if self.__STEPS != 0:
             self.__Rcentres = np.linspace(start=1./(2.*self.__STEPS), stop=1.0-1./(2.*self.__STEPS), num=self.__STEPS, endpoint=True)
@@ -47,6 +57,13 @@ class CGOFMSM_SemiSupervLearn:
 
         # used for simualtion of discretized fuzzy r (in [0..self.__STEPS+1])
         self.__Rsimul = np.zeros(shape=(self.__N), dtype=int)
+
+        # used to print the evolution of FS parameters
+        self.__Tab_ParamFS   = np.zeros(shape=(self.__nbIterSEM+1, 4)) 
+        self.__Tab_M_00      = np.zeros(shape=(self.__nbIterSEM+1, 4)) 
+        self.__Tab_Lambda_00 = np.zeros(shape=(self.__nbIterSEM+1, 1)) 
+        self.__Tab_P_00      = np.zeros(shape=(self.__nbIterSEM+1, 2)) 
+        self.__Tab_Pi_00     = np.zeros(shape=(self.__nbIterSEM+1, 1)) 
 
         # Init of parameters : kmeans with 2+STEPS classes
         ###################################################
@@ -61,14 +78,19 @@ class CGOFMSM_SemiSupervLearn:
         for n in range(self.__N):
             self.__Rsimul[n] =  np.where(sortedlabel == kmeans.labels_[n])[0][0]
 
-        if self.__graphics == 1:
+        if self.__graphics >= 2:
             fname = './Result/Fuzzy/SimulatedR/Rsimul_Kmeans_cl' + str(self.__STEPS+2) + '.png'
             title = 'Simulated R - Kmeans'
             self.plotRsimul(fname=fname, title=title)
 
         # Update of param for the simulated R (by kmeans here for init)
         self.__FS, self.__M, self.__Lambda2, self.__P, self.__Pi2, self.__aMeanCovFuzzy = \
-            self.updateParamFromRsimul(ProbaJumpCond = None)
+            self.updateParamFromRsimul(ProbaJumpCond=None)
+        self.__Tab_ParamFS[0,:]   = self.__FS.getParam()
+        self.__Tab_M_00[0,:]      = self.__M[0,0,0,:]
+        self.__Tab_Lambda_00[0,0] = np.sqrt(self.__Lambda2[0,0])
+        self.__Tab_P_00[0, :]     = self.__P[0,0,0,:]
+        self.__Tab_Pi_00[0,0]     = np.sqrt(self.__Pi2[0,0])
 
         # Print des paramètres
         if self.__verbose >= 1: self.printParam()
@@ -96,33 +118,95 @@ class CGOFMSM_SemiSupervLearn:
         return alpha0, alpha1, beta
 
 
-    def run_several(self, nbIterSEM, nbRealSEM):
+    def run_several(self, ):
 
-        ok = True
-        for i in range(nbIterSEM):
+        for i in range(1, self.__nbIterSEM+1):
             print('ITERATION ', i)
-            ok &= self.run_one(i, nbRealSEM)
-        
-        return ok
+            self.__Tab_ParamFS[i,:], self.__Tab_M_00[i,:], self.__Tab_Lambda_00[i,0], self.__Tab_P_00[i,:], self.__Tab_Pi_00[i,0] = self.run_one(i)
 
-    def run_one(self, numIterSEM, nbRealSEM):
+        if self.__graphics >= 1 and self.__nbIterSEM>0:
+            ax = plt.figure().gca()
+            plt.plot(self.__Tab_ParamFS[:, 0], color='g', label=r'$\alpha_0$')
+            plt.plot(self.__Tab_ParamFS[:, 1], color='r', label=r'$\alpha_1$')
+            plt.plot(self.__Tab_ParamFS[:, 2], color='b', label=r'$\beta$')
+            plt.plot(self.__Tab_ParamFS[:, 3], color='k', label=r'$\eta$')
+            plt.ylim(ymax=1.05, ymin=-0.05)
+            plt.xlim(xmax=self.__nbIterSEM, xmin=0)
+            plt.xlabel('SEM iteration')
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+            plt.legend()
+            plt.title('Evolution of FS param - Fuzzy steps (F)=' + str(self.__STEPS)+ ', mean of ' + str(self.__nbRealSEM) + ' realizations')
+            fname = './Result/Fuzzy/SimulatedR/'
+            plt.savefig(fname + 'ParamFS_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
+            plt.close()
+
+            ax = plt.figure().gca()
+            plt.plot(self.__Tab_M_00[:, 0], color='g', label=r'$\mathcal{A}_{0}^{0}$')
+            plt.plot(self.__Tab_M_00[:, 1], color='r', label=r'$\mathcal{B}_{0}^{0}$')
+            plt.plot(self.__Tab_M_00[:, 2], color='b', label=r'$\mathcal{C}_{0}^{0}$')
+            #plt.plot(self.__Tab_M_00[:, 3], color='k', label=r'$\mathcal{D}_{0}^{0}$')
+            plt.xlim(xmax=self.__nbIterSEM, xmin=0)
+            plt.xlabel('SEM iteration')
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+            plt.legend()
+            plt.title(r'Evolution of $\mathcal{M}_{0}^{0}$ param - Fuzzy steps (F)=' + str(self.__STEPS)+ ', mean of ' + str(self.__nbRealSEM) + ' realizations')
+            fname = './Result/Fuzzy/SimulatedR/'
+            plt.savefig(fname + 'MOO_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
+            plt.close()
+
+            ax = plt.figure().gca()
+            plt.plot(self.__Tab_P_00[:, 0], color='g', label=r'$\mathcal{F}_{0}^{0}$')
+            #plt.plot(self.__Tab_P_00[:, 1], color='r', label=r'$\mathcal{G}_{0}^{0}$')
+            plt.xlim(xmax=self.__nbIterSEM, xmin=0)
+            plt.xlabel('SEM iteration')
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+            plt.legend()
+            plt.title(r'Evolution of $\mathcal{P}_{0}^{0}$ param - Fuzzy steps (F)=' + str(self.__STEPS)+ ', mean of ' + str(self.__nbRealSEM) + ' realizations')
+            fname = './Result/Fuzzy/SimulatedR/'
+            plt.savefig(fname + 'POO_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
+            plt.close()
+
+            ax = plt.figure().gca()
+            plt.plot(self.__Tab_Lambda_00[:, 0], color='g', label=r'$\lambda_{0}^{0}$')
+            plt.xlim(xmax=self.__nbIterSEM, xmin=0)
+            plt.xlabel('SEM iteration')
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+            plt.legend()
+            plt.title(r'Evolution of $\lambda_{0}^{0}$ param - Fuzzy steps (F)=' + str(self.__STEPS)+ ', mean of ' + str(self.__nbRealSEM) + ' realizations')
+            fname = './Result/Fuzzy/SimulatedR/'
+            plt.savefig(fname + 'Lambda_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
+            plt.close()
+
+            ax = plt.figure().gca()
+            plt.plot(self.__Tab_Pi_00[:, 0],     color='g', label=r'$\pi_{0}^{0}$')
+            plt.xlim(xmax=self.__nbIterSEM, xmin=0)
+            plt.xlabel('SEM iteration')
+            ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+            plt.legend()
+            plt.title(r'Evolution of $\pi_{0}^{0}$ param - Fuzzy steps (F)=' + str(self.__STEPS)+ ', mean of ' + str(self.__nbRealSEM) + ' realizations')
+            fname = './Result/Fuzzy/SimulatedR/'
+            plt.savefig(fname + 'Pi_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
+            plt.close()
+
+
+    def run_one(self, numIterSEM):
 
         # MAJ des proba sur la base des paramètres courants
         Tab_GaussXY                         = self.compute_tab_GaussXY ()
-        ProbaForwardNorm                    = self.compute_fuzzyjumps_forward (Tab_GaussXY)
-        ProbaBackwardNorm                   = self.compute_fuzzyjumps_backward(ProbaForwardNorm, Tab_GaussXY)
+        ProbaForwardNorm, Tab_Normalis      = self.compute_fuzzyjumps_forward (Tab_GaussXY)
+        ProbaBackwardNorm                   = self.compute_fuzzyjumps_backward(ProbaForwardNorm, Tab_GaussXY, Tab_Normalis)
         ProbaGamma, ProbaPsi, ProbaJumpCond = self.compute_fuzzyjumps_gammapsicond(ProbaForwardNorm, ProbaBackwardNorm, Tab_GaussXY)
 
         listeFS, listeM, listeLambda2, listeP, listePi2, listeMeanCovFuzzy = [], [], [], [], [], []
-        for r in range(nbRealSEM):
+        for r in range(self.__nbRealSEM):
 
             if self.__verbose >= 2:
-                print('\r         realization r=', r, ' sur ', nbRealSEM, end='', flush = True)
+                print('\r         realization r=', r, ' sur ', self.__nbRealSEM, end='', flush = True)
 
-            # Simuler une chaines de Markov a posteriori sur la base de la valeur des paramètres courants
+            # Simuler une chaîne de Markov a posteriori sur la base de la valeur des paramètres courants
             self.simulRealization(ProbaGamma[0], ProbaJumpCond)
             
-            if self.__graphics == 1:
+            if self.__graphics >= 2:
                 fname = './Result/Fuzzy/SimulatedR/Rsimul_Iter_' + str(numIterSEM) + '_Real_'+ str(r) + '_cl' + str(self.__STEPS+2) + '.png'
                 title = 'Simulated R - Iter ' + str(numIterSEM) + ', Real ' + str(r)
                 self.plotRsimul(fname=fname, title=title)
@@ -145,46 +229,74 @@ class CGOFMSM_SemiSupervLearn:
         if self.__verbose >= 1: self.printParam()
     
         # input('fin de run_one mean')
-        return True
+        return self.__FS.getParam(), self.__M[0,0,0,:], np.sqrt(self.__Lambda2[0,0]), self.__P[0,0,0,:], np.sqrt(self.__Pi2[0,0])
 
 
-    def ConvertandSaveParameters(self, filename):
+    def ConvertandSaveParameters(self, filenameParam):
 
         # Convert from Param 3 to Param 1 (using equations from Zied) ############################################################@
-        A = np.zeros(((self.__STEPS+2)**2, self.__n_z, self.__n_z))
-        Q = np.zeros(((self.__STEPS+2)**2, self.__n_z, self.__n_z))
-        for indrn in range(self.__STEPS+2):
-            for indrnp1 in range(self.__STEPS+2):
-                ind = indrn*(self.__STEPS+2) + indrnp1
-                ### Q d'abord
-                Q[ind, 1, 1] = self.__Lambda2[indrn, indrnp1]
-                Q[ind, 0, 1] = self.__M[indrn, indrnp1, 0, 2] * self.__Lambda2[indrn, indrnp1]
-                Q[ind, 0, 0] = self.__Pi2[indrn, indrnp1] + self.__M[indrn, indrnp1, 0, 2]**2 * self.__Lambda2[indrn, indrnp1]
-                Q[ind, 1, 0] = Q[ind, 0, 1]
-                
-                ### A ensuite
-                A[ind, 0, 0] = self.__M[indrn, indrnp1, 0, 0]
-                A[ind, 0, 1] = self.__M[indrn, indrnp1, 0, 1] + self.__M[indrn, indrnp1, 0, 2] * self.__P[indrn, indrnp1, 0, 1]
-                A[ind, 1, 0] = 0.
-                A[ind, 1, 1] = self.__P[indrn, indrnp1, 0, 0]
-        # print('Q:', Q)
-        # print('A:', A)
-        #input('attente')
-
-        # B = np.zeros(((self.__STEPS+2)**2, self.__n_z, self.__n_z))
-        # for i in range((self.__STEPS+2)**2):
-        #     with warnings.catch_warnings():
-        #         warnings.simplefilter('error')
-        #         B[i, :, :] = sp.linalg.sqrtm(Q[i, :, :])
-
         MeanX = np.zeros(shape=(self.__STEPS+2, self.__n_x))
         MeanY = np.zeros(shape=(self.__STEPS+2, self.__n_y))
         for indrn in range(self.__STEPS+2):
             MeanY[indrn] = self.__P[indrn, indrn, 0, 1] / (1.- self.__P[indrn, indrn, 0, 0])
             MeanX[indrn] = (self.__M[indrn, indrn, 0, 3] + MeanY[indrn] * (self.__M[indrn, indrn, 0, 1]+self.__M[indrn, indrn, 0, 2])) / (1. - self.__M[indrn, indrn, 0, 0])
+            # print('indrn = ', indrn)
+            # print('self.__P[indrn, indrn] = ', self.__P[indrn, indrn, 0, :])
+            # print('self.__M[indrn, indrn] = ', self.__M[indrn, indrn, 0, :])
+
+        # print('MeanX=', MeanX)
+        # print('MeanY=', MeanY)
+        # input('pause')
+
+        A = np.zeros(((self.__STEPS+2)**2, self.__n_z, self.__n_z))
+        Q = np.zeros(((self.__STEPS+2)**2, self.__n_z, self.__n_z))
+        for indrn in range(self.__STEPS+2):
+            for indrnp1 in range(self.__STEPS+2):
+                ind = indrn*(self.__STEPS+2) + indrnp1
+
+                ### A 
+                A[ind, 0, 0] = self.__M[indrn, indrnp1, 0, 0]
+                A[ind, 1, 1] = self.__P[indrn, indrnp1, 0, 0]
+                A[ind, 1, 0] = 0.
+                A[ind, 0, 1] = self.__M[indrn, indrnp1, 0, 1] + self.__P[indrn, indrnp1, 0, 0] * self.__M[indrn, indrnp1, 0, 2]
+
+                ### Q
+                Q[ind, 1, 1] = self.__Pi2[indrn, indrnp1]
+                Q[ind, 0, 1] = self.__M[indrn, indrnp1, 0, 2] * Q[ind, 1, 1]
+                Q[ind, 1, 0] = Q[ind, 0, 1]
+                Q[ind, 0, 0] = self.__Lambda2[indrn, indrnp1] + self.__M[indrn, indrnp1, 0, 2] * Q[ind, 1, 0]
+                
+                # print('ind=', ind)
+                if is_pos_def(Q[ind,:,:]) == False:
+                    print('ind=', ind, ' --> PROBLEM with Q matrix in parameter file!!')
+                    print(Q[ind,:,:])
+                    input('pause Q')
+                
+                
+        # print('Q:', Q)
+        # print('A:', A)
+
+        # B = np.zeros(((self.__STEPS+2)**2, self.__n_z, self.__n_z))
+        # for i in range((self.__STEPS+2)**2):
+        #     with warnings.catch_warnings():
+        #         warnings.simplefilter('error')
+        #         B[i,:, :] = sp.linalg.sqrtm(Q[i,:, :])
 
         # Convert from Param 1 to Param 2 ########################################################################################@
+        print('########## CONVERSION VERS COV')
         Cov = From_FQ_to_Cov_Lyapunov(A, Q, self.__n_x)
+        print('########## CONVERSION VERS INV')
+        Fbis, Qbis = From_Cov_to_FQ(Cov)
+        print('########## VERIF')
+        print(A-Fbis)
+        print(Q-Qbis)
+        input('fin verif lyapunov')
+        for ind in range((self.__STEPS+2)**2):
+            if is_pos_def(Cov[ind,:,:]) == False:
+                print('ind=', ind, ' --> PROBLEM with Cov matrix in parameter file!!')
+                print(Cov[ind,:,:])
+                input('pause Cov')
+
         # Test if the matrices form a CGPMSM
         if Test_if_CGPMSM(Cov) == False:
             print('The cov matrices in the parameter file doest not respect shape for CGPMSM!!')
@@ -193,12 +305,11 @@ class CGOFMSM_SemiSupervLearn:
         # Save the CGOFMSM file ##################################################################################################@
         
         # L'entete
-        print('filename=', filename)
-        f = open(filename, 'w')
+        f = open(filenameParam, 'w')
         f.write('#=====================================#\n# parameters for CGOFMSM with F discrete classes # \n#=====================================# \n# \n# \n# matrix Cov_XY \n# ===============================================#\n# \n')
         f.close()
 
-        f = open(filename, 'ab')
+        f = open(filenameParam, 'ab')
         
         # the number of fuzzy steps
         np.savetxt(f, np.array([self.__STEPS], dtype=int), delimiter=" ", header='number of fuzzy steps'+'\n================================', footer='\n')
@@ -220,12 +331,14 @@ class CGOFMSM_SemiSupervLearn:
 
         #################################
         # Commande d'appel au programme
-        hard, filt, smooth, predic = 1, 1, 0, 0
-        chWork = str(hard) + ',' + str(filt) + ',' + str(smooth)
-        A  = 'python3 XXXXXXXXXXXX.py ' + filanemaneParam + ' 2ter:' + str(self.__alpha0) + ':' + str(self.__alpha1) + ':' + str(self.__beta) + ' '
-        A += chWork + ' ' + name1 + ' ' + steps + ' ' + str(verbose) + ' ' + str(plot) 
+        hard, filt, smooth, predic = 0, 1, 0, 1
+        chWork = str(hard) + ',' + str(filt) + ',' + str(smooth) + ',' + str(predic)
+        param = self.__FS.getParam()
+        nameY = './Data/Traffic/TMU5509/generated/TMU5509_train.csv'
+        A  = 'python3 Test_CGOFMSM_Signals.py ' + filenameParam + ' 2ter:' + str('%.4f'%param[0]) + ':' + str('%.4f'%param[1]) + ':' + str('%.4f'%param[2]) + ' '
+        A += chWork + ' ' + nameY + ' -1 2 0'
 
-        clipboard.copy(A.strip()) # mise ne moire de la commande à exécuter
+        clipboard.copy(A.strip()) # mise en mémoire de la commande à exécuter
         print('pour restaurer le signal:')
         print('\n', A, '\n')
 
@@ -233,25 +346,22 @@ class CGOFMSM_SemiSupervLearn:
     def printParam(self):
         print('\n  Estimated parameters')
         print('    --> loi jointe à priori=', self.__FS)
-        # print('  --> param du modele (param 3)\n    M=', self.__M)
-        # print('  --> param du modele (param 3)\n    Lambda**2=', self.__Lambda2)
-        # print('  --> param du modele (param 3)\n    P=', self.__P)
-        # print('  --> param du modele (param 3)\n    Pi**2=', self.__Pi2)
+        # print('    --> param du modele (param 3)\n    M=', self.__M)
+        # print('    --> param du modele (param 3)\n    Lambda**2=', self.__Lambda2)
+        # print('    --> param du modele (param 3)\n    P=', self.__P)
+        # print('    --> param du modele (param 3)\n    Pi**2=', self.__Pi2)
         # if self.__verbose >= 2:
-            # input('pause')
+        #     input('pause')
 
     def plotRsimul(self, fname, title):
 
         RsimulFuzzy = np.zeros(shape=(len(self.__Rsimul)))
         for n in range(self.__N):
-            if   self.__Rsimul[n] == 0:              rn = 0.
-            elif self.__Rsimul[n] == self.__STEPS+1: rn = 1.
-            else:                                    rn = self.__Rcentres[self.__Rsimul[n]-1]
-            RsimulFuzzy[n] = rn
+            RsimulFuzzy[n] = getrnFromindrn(self.__Rcentres, self.__Rsimul[n])
 
         plt.figure()
         plt.plot(RsimulFuzzy, color='g')
-        plt.ylim(ymax = 1., ymin = 0)
+        plt.ylim(ymax = 1.05, ymin = -0.05)
         plt.xlim(xmax = self.__N-1, xmin = 0)
         plt.title(title)
         plt.savefig(fname, bbox_inches='tight', dpi=150)    
@@ -262,17 +372,16 @@ class CGOFMSM_SemiSupervLearn:
         nbRealSEM = len(listeFS)
 
         # Moyennes des FS ######################################
-        alpha0, alpha1, beta = 0., 0., 0.
+        Tab_ParamFS = np.zeros(shape=(3, nbRealSEM))
         for r in range(nbRealSEM):
             L = listeFS[r].getParam()
-            alpha0 += L[0]
-            alpha1 += L[1]
-            beta   += L[2]
-        alpha0 /= nbRealSEM
-        alpha1 /= nbRealSEM
-        beta   /= nbRealSEM
-        FS = LoiAPrioriSeries2ter(EPS=self.__EPS, discretization=0, alpha0=alpha0, alpha1=alpha1, beta=beta)
+            Tab_ParamFS[0][r] += L[0]
+            Tab_ParamFS[1][r] += L[1]
+            Tab_ParamFS[2][r] += L[2]
+        Means = np.mean(Tab_ParamFS, axis=1)
+        FS = LoiAPrioriSeries2ter(EPS=self.__EPS, discretization=0, alpha0=Means[0], alpha1=Means[1], beta=Means[2])
 
+            
         # Moyennes des M ######################################
         M       = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 1, 4))
         P       = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 1, 2))
@@ -308,7 +417,11 @@ class CGOFMSM_SemiSupervLearn:
 
         # sampling of the first from gamma
         np1=0
+        # print('np1=', np1)
+        # ProbaGamma_0.print()
         self.__Rsimul[np1] = ProbaGamma_0.getSample()
+        # print('  --> self.__Rsimul[np1]=', self.__Rsimul[np1])
+        # input('pause simul realization')
 
         # next ones according to conditional law
         for np1 in range(1, self.__N):
@@ -348,30 +461,21 @@ class CGOFMSM_SemiSupervLearn:
 
         return FS, M, Lambda2, P, Pi2, aMeanCovFuzzy
 
-
     def EstimParam2ter(self, FSprobaR2CondR1=None, ProbaJumpCond=None):
 
         # M = [A, B, C, D] ##################################################################################
         MNum      = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 1, 4))
-        MatNum    = np.zeros(shape=(1, 4))
         MDenom    = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 4, 4))
-        MatDenom  = np.zeros(shape=(4, 4))
         # P = [F, G] ##################################################################################
         PNum      = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 1, 2))
-        PMatNum   = np.zeros(shape=(1, 2))
         PDenom    = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 2, 2))
-        PMatDenom = np.zeros(shape=(2, 2))
 
         for n in range(self.__N-1):
-            qn    = self.__Rsimul[n]
-            qnpun = self.__Rsimul[n+1]
-            if   qn == 0:                 rn=0.
-            elif qn == self.__STEPS+1:    rn=1.
-            else:                         rn=self.__Rcentres[qn-1]
-            if   qnpun == 0:              rnpun=0.
-            elif qnpun == self.__STEPS+1: rnpun=1.
-            else:                         rnpun=self.__Rcentres[qnpun-1]
-            #print('qn=', qn, ', qn+1=', qnpun, ', rn=', rn, ', rnpun=', rnpun)
+            indrn    = self.__Rsimul[n]
+            indrnp1 = self.__Rsimul[n+1]
+            rn       = getrnFromindrn(self.__Rcentres, indrn)
+            rnp1    = getrnFromindrn(self.__Rcentres, indrnp1)
+            #print('indrn=', indrn, ', indrnp1=', indrnp1, ', rn=', rn, ', rnp1=', rnp1)
             # input('attente')
 
             zn    = self.__Ztrain[:, n].reshape((2, 1))
@@ -381,67 +485,43 @@ class CGOFMSM_SemiSupervLearn:
             xnpun = (self.__Ztrain[0:self.__n_x, n+1])         .item()
 
             if FSprobaR2CondR1 != None:
-                probacond = FSprobaR2CondR1(rn, rnpun)
+                probacond = FSprobaR2CondR1(rn, rnp1)
             else:
-                probacond = ProbaJumpCond[n][qn].get(rnpun)
+                probacond = ProbaJumpCond[n][indrn].get(rnp1)
 
             ################## M ########################
-            MatDenom[0:2, 0:2] = np.dot(zn, np.transpose(zn))
-            MatDenom[0:2, 2:3] = zn * ynpun
-            MatDenom[2:3, 0:2] = np.transpose(MatDenom[0:2, 2:3])
-            MatDenom[0:2, 3:4] = zn
-            MatDenom[3:4, 0:2] = np.transpose(MatDenom[0:2, 3:4])
-            MatDenom[2:3, 2:3] = ynpun*ynpun
-            MatDenom[2:3, 3:4] = ynpun
-            MatDenom[3:4, 2:3] = np.transpose(MatDenom[2:3, 3:4])
-            MatDenom[3:4, 3:4] = 1.
-            #print('MatDenom=', MatDenom)
-            MDenom[qn, qnpun, :, :] += probacond * MatDenom
-            MatNum[0, 0] = xn 
-            MatNum[0, 1] = yn 
-            MatNum[0, 2] = ynpun 
-            MatNum[0, 3] = 1. 
-            #print(np.shape(MatNum))
-            MNum[qn, qnpun, :, :] += probacond * xnpun * MatNum
-            #print('MNum=', MNum)
-            #input('Estim Param - Parametrization 2ter - M')
+            vect     = np.array([xn, yn, ynpun, 1]) 
+            MDenom[indrn, indrnp1,:,:] += probacond * np.outer(vect, vect)
+            MNum  [indrn, indrnp1, 0, :] += probacond * xnpun * vect
+            # print('MNum=', MNum)
+            # input('Estim Param - Parametrization 2ter - M')
 
             ################## P ########################
-            PMatDenom[0, 0] = yn*yn
-            PMatDenom[0, 1] = yn
-            PMatDenom[1, 0] = np.transpose(PMatDenom[0, 1])
-            PMatDenom[1, 1] = 1.
-            #print('PMatDenom=', PMatDenom)
-            PDenom[qn, qnpun, :, :] += probacond * PMatDenom
-
-            PMatNum[0, 0] = yn 
-            PMatNum[0, 1] = 1. 
-            PNum[qn, qnpun, :, :] += probacond * ynpun * PMatNum
-
+            vect     = np.array([yn, 1])
+            PDenom[indrn, indrnp1,:,:] += probacond * np.outer(vect, vect)
+            PNum  [indrn, indrnp1, 0, :] += probacond * ynpun * vect
             #print('PNum=', PNum)
             #input('Estim Param - Parametrization 2ter - P')
         
         M = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 1, 4))
         P = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 1, 2))
-        for q1 in range(self.__STEPS+2):
-            for q2 in range(self.__STEPS+2):
+        for indrn in range(self.__STEPS+2):
+            for indrnp1 in range(self.__STEPS+2):
                 try:
-                    numinverse = np.linalg.inv(MDenom[q1, q2, :, :])
-                    M[q1, q2, :, :] = np.dot(MNum[q1, q2, :, :], numinverse)
+                    M[indrn, indrnp1,:,:] = np.dot(MNum[indrn, indrnp1,:,:], np.linalg.inv(MDenom[indrn, indrnp1,:,:]))
                 except np.linalg.LinAlgError:
-                    M[q1, q2, :, :] = 0.
-                    # print('\nq1=', q1, 'q2=', q2)
-                    # print('MNum=', MNum[q1, q2, :, :])
-                    # print('MDenom', MDenom[q1, q2, :, :])
-                    # input('pause M ')
+                    M[indrn, indrnp1,:,:] = 0.
+                    #print('\nindrn=', indrn, 'indrnp1=', indrnp1)
+                    # print('MNum=', MNum[indrn, indrnp1,:,:])
+                    # print('MDenom', MDenom[indrn, indrnp1,:,:])
+                    #input('pause M ')
 
                 try:
-                    numinverse = np.linalg.inv(PDenom[q1, q2, :, :])
-                    P[q1, q2, :, :] = np.dot(PNum[q1, q2, :, :], numinverse)
+                    P[indrn, indrnp1,:,:] = np.dot(PNum[indrn, indrnp1,:,:], np.linalg.inv(PDenom[indrn, indrnp1,:,:]))
                 except np.linalg.LinAlgError:
-                    P[q1, q2, :, :] = 0.
-                    # print('\nq1=', q1, 'q2=', q2)
-                    # input('pause P ')
+                    P[indrn, indrnp1,:,:] = 0.
+                    #print('\nindrn=', indrn, 'indrnp1=', indrnp1)
+                    #input('pause P ')
 
 
         # Pi2 and Lambda2 ##################################################################################
@@ -449,15 +529,11 @@ class CGOFMSM_SemiSupervLearn:
         Lambda2 = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2))
         Denom   = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2))
         for n in range(self.__N-1):
-            qn    = self.__Rsimul[n]
-            qnpun = self.__Rsimul[n+1]
-            if   qn == 0:                 rn=0.
-            elif qn == self.__STEPS+1:    rn=1.
-            else:                         rn=self.__Rcentres[qn-1]
-            if   qnpun == 0:              rnpun=0.
-            elif qnpun == self.__STEPS+1: rnpun=1.
-            else:                         rnpun=self.__Rcentres[qnpun-1]
-            #print('qn=', qn, ', qn+1=', qnpun, ', rn=', rn, ', rnpun=', rnpun)
+            indrn    = self.__Rsimul[n]
+            indrnp1 = self.__Rsimul[n+1]
+            rn       = getrnFromindrn(self.__Rcentres, indrn)
+            rnp1    = getrnFromindrn(self.__Rcentres, indrnp1)
+            #print('indrn=', indrn, ', indrnp1=', indrnp1, ', rn=', rn, ', rnp1=', rnp1)
             # input('attente')
 
             yn    = (self.__Ztrain[self.__n_x:self.__n_z, n])  .item()
@@ -466,19 +542,20 @@ class CGOFMSM_SemiSupervLearn:
             xnpun = (self.__Ztrain[0:self.__n_x, n+1])         .item()
 
             if FSprobaR2CondR1 != None:
-                probacond = FSprobaR2CondR1(rn, rnpun)
+                probacond = FSprobaR2CondR1(rn, rnp1)
             else:
-                probacond = ProbaJumpCond[n][qn].get(rnpun)
-            Lambda2[qn, qnpun] += probacond * (xnpun - (xn * M[q1, q2, 0, 0] + yn * M[q1, q2, 0, 1] + ynpun * M[q1, q2, 0, 2] + M[q1, q2, 0, 3]))**2
-            Pi2[qn, qnpun]     += probacond * (ynpun - (yn * P[q1, q2, 0, 0] + P[q1, q2, 0, 1]))**2
-            Denom[qn, qnpun]   += probacond
+                probacond = ProbaJumpCond[n][indrn].get(rnp1)
+            
+            Lambda2[indrn, indrnp1] += probacond * (xnpun - (xn * M[indrn, indrnp1, 0, 0] + yn * M[indrn, indrnp1, 0, 1] + ynpun * M[indrn, indrnp1, 0, 2] + M[indrn, indrnp1, 0, 3]))**2
+            Pi2[indrn, indrnp1]     += probacond * (ynpun - (yn * P[indrn, indrnp1, 0, 0] + P[indrn, indrnp1, 0, 1]))**2
+            Denom[indrn, indrnp1]   += probacond
 
-        for q1 in range(self.__STEPS+2):
-            for q2 in range(self.__STEPS+2):
-                if Lambda2[q1, q2] != 0.:
-                    Lambda2[q1, q2] /= Denom[q1, q2]
-                if Pi2[q1, q2] != 0.:
-                    Pi2    [q1, q2] /= Denom[q1, q2]
+        for indrn in range(self.__STEPS+2):
+            for indrnp1 in range(self.__STEPS+2):
+                if Lambda2[indrn, indrnp1] != 0.:
+                    Lambda2[indrn, indrnp1] /= Denom[indrn, indrnp1]
+                if Pi2[indrn, indrnp1] != 0.:
+                    Pi2    [indrn, indrnp1] /= Denom[indrn, indrnp1]
         # print('Lambda2=', Lambda2)
         # print('Pi2=', Pi2)
         # input('pause')
@@ -494,10 +571,15 @@ class CGOFMSM_SemiSupervLearn:
 
         for np1 in range(1, self.__N):
             if self.__verbose >= 2:
-                print('\r         proba tnp1 con tn np1=', np1, ' sur N=', self.__N, end='   ', flush = True)
+                print('\r         proba tnp1 condit. to tn np1=', np1, ' sur N=', self.__N, end='   ', flush = True)
 
             tab_GaussXY.append(Loi2DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
             tab_GaussXY[np1].Calc_GaussXY(self.__M, self.__Lambda2, self.__P, self.__Pi2, self.__Ztrain[:, np1-1], self.__Ztrain[:, np1])
+
+            # if tab_GaussXY[np1].Integ()<1E-10:
+            #     print('np1 = ', np1)
+            #     tab_GaussXY[np1].print()
+            #     input('Tab Gauss')
 
         if self.__verbose >= 2:
             print(' ')
@@ -508,7 +590,7 @@ class CGOFMSM_SemiSupervLearn:
     def compute_fuzzyjumps_forward(self, Tab_GaussXY):
         
         ProbaForward = []
-        #tab_normalis = np.zeros(shape=(self.__N))
+        Tab_Normalis = np.zeros(shape=(self.__N))
 
         ######################
         # Initialisation
@@ -517,12 +599,12 @@ class CGOFMSM_SemiSupervLearn:
         ProbaForward.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
 
         ProbaForward[np1].CalcForw1(self.__FS, znp1, self.__aMeanCovFuzzy)
-        #tab_normalis[np1] = ProbaForward[np1].Integ()
+        Tab_Normalis[np1] = ProbaForward[np1].Integ()
+        # ProbaForward[np1].print()
         # normalisation (devijver)
-        ProbaForward[np1].normalisation(ProbaForward[np1].Integ())
-        #ProbaForward[np1].print()
+        ProbaForward[np1].normalisation(Tab_Normalis[np1])
         #ProbaForward[np1].plot('$p(r_n | y_1^n)$')
-        #input('attente forward n=' + str(np1))
+        # input('attente forward n=' + str(np1))
 
         ###############################
         # Boucle
@@ -531,14 +613,17 @@ class CGOFMSM_SemiSupervLearn:
                 print('\r         forward np1=', np1, ' sur N=', self.__N, end='', flush = True)
 
             ProbaForward.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
-            #print('self.__Rcentres=', self.__Rcentres)
+            # print('self.__Rcentres=', self.__Rcentres)
             ProbaForward[np1].CalcForB(calcF, ProbaForward[np1-1], self.__FS, Tab_GaussXY[np1])
-            #ProbaForward[np1].nextAfterZeros() # on evite des proba de zero
-            #ProbaForward[np1].print()
+            # ProbaForward[np1].nextAfterZeros() # on evite des proba de zero
+            # ProbaForward[np1].print()
+            # if ProbaForward[np1].get(0.) < ProbaForward[np1].get(1.):
+            #     ProbaForward[np1].print()
+            #     input('attente forward n=' + str(np1))
             # print('sum forw=', ProbaForward[np1].Integ())
-            # tab_normalis[np1] = ProbaForward[np1].Integ()
+            Tab_Normalis[np1] = ProbaForward[np1].Integ()
             # normalisation (devijver)
-            ProbaForward[np1].normalisation(ProbaForward[np1].Integ())
+            ProbaForward[np1].normalisation(Tab_Normalis[np1])
             # print('sum forw=', ProbaForward[np1].Integ())
             # ProbaForward[np1].print()
             # input('attente forward n=' + str(np1))
@@ -546,19 +631,23 @@ class CGOFMSM_SemiSupervLearn:
         if self.__verbose >= 2:
             print(' ')
 
-        return ProbaForward#, tab_normalis
+        return ProbaForward, Tab_Normalis
 
 
-    def compute_fuzzyjumps_backward(self, ProbaForwardNorm, Tab_GaussXY):
+    def compute_fuzzyjumps_backward(self, ProbaForwardNorm, Tab_GaussXY, Tab_Normalis):
 
         # Proba backward
         ProbaBackward = []
 
-        loinorm = Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres)
-
         # on créé la liste de tous les proba
         for n in range(self.__N):
             ProbaBackward.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
+
+        # REMARQUE ; la normalisation loi norm (thèse de Abassi), et la même que utiliser Tab_Normalis
+        # Donc j''utilise ci-dfessous Tab_Normalis
+        # loinorm = Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres)
+
+        loicorrective = Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres)
 
         ##############################
         # initialisation de beta
@@ -567,11 +656,16 @@ class CGOFMSM_SemiSupervLearn:
         # input('temp')
         ProbaBackward[n].setValCste(1.0)
         # normalisation (devijver)
-        loinorm.ProductFB(ProbaBackward[n], ProbaForwardNorm[n])
-        #loinorm.nextAfterZeros() # on evite des proba de zero
-        ProbaBackward[n].normalisation(loinorm.Integ())
+        # loinorm.ProductFB(ProbaBackward[n], ProbaForwardNorm[n])
+        # loinorm.nextAfterZeros() # on evite des proba de zero
+        # ProbaBackward[n].normalisation(loinorm.Integ())
+        # print('  -->loinorm.Integ()=', loinorm.Integ())
+        # ProbaBackward[n].plot('$p(r_{n+1} | y_1^{n+1})$')
         # ProbaBackward[n].print()
-        # input('backward')
+        if ProbaBackward[n].get(0.) < ProbaBackward[n].get(1.):
+            ProbaBackward[n].print()
+            print('  -->sum backw=', ProbaBackward[n].Integ())
+            input('attente backward n=' + str(n))
 
         ###############################
         # Boucle pour backward
@@ -579,32 +673,32 @@ class CGOFMSM_SemiSupervLearn:
             if self.__verbose >= 2:
                 print('\r         backward n=', n, ' sur N=', self.__N, end='             ', flush = True)
         
-            try:
-                ProbaBackward[n].CalcForB(calcB, ProbaBackward[n+1], self.__FS, Tab_GaussXY[n+1])
-            except:
-                print('ProbaBackward[n+1]=', ProbaBackward[n+1])
-                input('pb')
-
+            ProbaBackward[n].CalcForB(calcB, ProbaBackward[n+1], self.__FS, Tab_GaussXY[n+1])
+            
             # normalisation (devijver)
-            loinorm.ProductFB(ProbaForwardNorm[n], ProbaBackward[n])
-            #loinorm.nextAfterZeros() # on evite des proba de zero
-            if loinorm.Integ() == 0.:
-                print('loinorm.Integ()=', loinorm.Integ())
-                print('ProbaForwardNorm[n]=', ProbaForwardNorm[n])
-                print('ProbaBackward[n]=', ProbaBackward[n])
-                input('pb loinorm.Integ() == 0.')
-            ProbaBackward[n].normalisation(loinorm.Integ())
-            #ProbaBackward[n].print()
-            # print('sum back=', ProbaBackward[n].Integ())
-            #ProbaBackward[n].nextAfterZeros() # on evite des proba de zero
-            #print('\n  -->sum backw=', ProbaBackward[n].Integ())
-            #print('  -->tab_normalis[n+1]=', tab_normalis[n+1])
-            #ProbaBackward[n].normalisation(tab_normalis[n+1])
-            #print('  -->sum backw=', ProbaBackward[n].Integ())
-            #ProbaBackward[n].plot('$p(r_{n+1} | y_1^{n+1})$')
-            # ProbaBackward[n].print()
-            # input('backward')
+            ProbaBackward[n].normalisation(Tab_Normalis[n+1])
 
+            # loinorm.ProductFB(ProbaForwardNorm[n], ProbaBackward[n])
+            # loinorm.nextAfterZeros() # on evite des proba de zero
+            # if loinorm.Integ() == 0.:
+            #     print('loinorm.Integ()=', loinorm.Integ())
+            #     print('ProbaForwardNorm[n]=', ProbaForwardNorm[n])
+            #     print('ProbaBackward[n]=', ProbaBackward[n])
+            #     input('pb loinorm.Integ() == 0.')
+            # ProbaBackward[n].normalisation(loinorm.Integ())
+            # ProbaBackward[n].print()
+            # print('sum back=', ProbaBackward[n].Integ())
+            # ProbaBackward[n].nextAfterZeros() # on evite des proba de zero
+            # print('\n  -->sum backw=', ProbaBackward[n].Integ())
+            # print('  -->loinorm.Integ()=', loinorm.Integ())
+            # if abs(Tab_Normalis[n+1]-loinorm.Integ()) > 1E-14:
+            #     print('  -->Tab_Normalis[n+1]-oinorm.Integ()=', Tab_Normalis[n+1]-loinorm.Integ())
+            #     input('backward')
+
+            # Cette normalisation n'est implémentée que pour contre-carrer la dérive suite à l'intégration numérique
+            loicorrective.ProductFB(ProbaForwardNorm[n], ProbaBackward[n])
+            ProbaBackward[n].normalisation(loicorrective.Integ())
+            
         if self.__verbose >= 2:
             print(' ')
 
@@ -627,15 +721,24 @@ class CGOFMSM_SemiSupervLearn:
             tab_gamma.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
             tab_gamma[n].ProductFB(ProbaForward[n], ProbaBackward[n])
             #tab_gamma[n].nextAfterZeros() # on evite des proba de zero
-            # tab_gamma[n].print()
-            # input('pause')
+            #tab_gamma[n].print()
+            
+            # if n<10 or n>self.__N-10:
+            #     integ = tab_gamma[n].Integ()
+            #     print('\ntab_gamma[n].Integ()=', integ)
+            #     input('pause')
 
             # normalisation : uniquement due pour compenser des pb liés aux approximations numeriques de forward et de backward
             # Si F= 20, on voit que la normalisation n'est pas necessaire (deja la somme == 1.)
-            if abs(1.-tab_gamma[n].Integ()) > 1E-3:
-                print('tab_gamma[n].Integ()=', tab_gamma[n].Integ())
+            integ = tab_gamma[n].Integ()
+            if np.fabs(1.-integ) > 5.E-2: # we stop only if more than 5% error
+                print('\ntab_gamma[n].Integ()=', integ)
+                print(np.fabs(1.-integ))
+                print(np.fabs(1.-integ) > 5.E-2)
+                ProbaForward[n].print()
+                ProbaBackward[n].print()
                 input('PB PB PB Gamma')
-                tab_gamma[n].normalisation(tab_gamma[n].Integ())
+            tab_gamma[n].normalisation(integ)
 
             # calcul de psi (loi jointe a posteriori) ****************************************************************
             tab_psi.append(Loi2DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
@@ -644,34 +747,31 @@ class CGOFMSM_SemiSupervLearn:
             integ = tab_psi[n].Integ()
             if integ == 0.:
                 print("Tab Spi normalisation")
+                ptrin('tab_psi[n].Integ()=', integ)
                 tab_psi[n].print()
                 input('pause')
-            tab_psi[n].normalisation(tab_psi[n].Integ())
-            # print('tab_psi[n].Integ()=', tab_psi[n].Integ())
-            # input('STOP')
+            tab_psi[n].normalisation(integ)
 
             # calcul de p(rnp1 | rn, z_1^M)  ****************************************************************
             # on créé une liste, pour chaque valeur de rn, de lois 1D
             Liste = []
             for indrn in range(self.__STEPS+2):
-                
-                if   indrn == 0:              rn=0.
-                elif indrn == self.__STEPS+1: rn=1.
-                else:                         rn=self.__Rcentres[indrn-1]
+                rn = getrnFromindrn(self.__Rcentres, indrn)
                 
                 Liste.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
                 if tab_gamma[n].get(rn) != 0.:
-                    Liste[indrn].CalcCond(rn, tab_gamma[n].get(rn), tab_psi[n])
+                    Liste[indrn].CalcCond(rn, tab_gamma[n].get(rn), tab_psi[n], self.__verbose)
                 else:
                     if self.__verbose>1:
-                        print('PBPB tab_gamma[n].get(rn) == 0.')
-                        input('ATTENTE ERROR')
-                    else:
-                        # loi uniforme
-                        Liste[indrn].setValCste(1.)
-                        Liste[indrn].normalisation(Liste[indrn].Integ())
+                        print('\nPBPB tab_gamma[n].get(rn) == 0. when rn=', rn)
+                        #input('ATTENTE ERROR')
+
+                    # loi uniforme
+                    Liste[indrn].setValCste(1.)
+                    Liste[indrn].normalisation(Liste[indrn].Integ())
                 
             tab_cond.append(Liste)
+            #input('pause sdf')
 
         # for n in range(self.__N-1):
         #     print('n=', n)
@@ -686,6 +786,9 @@ class CGOFMSM_SemiSupervLearn:
         # n = self.__N-1
         # tab_gamma.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
         # tab_gamma[n].ProductFB(ProbaForward[n], ProbaBackward[n])
+        # integ = tab_gamma[n].Integ()
+        # print('\ntab_gamma[n].Integ()=', integ)
+        # input('pause')
         # #tab_gamma[n].nextAfterZeros() # on evite des proba de zero
         # if abs(1.-tab_gamma[n].Integ()) > 1E-3:
         #     print('tab_gamma[n].Integ()=', tab_gamma[n].Integ())
@@ -712,23 +815,25 @@ class MeanCovFuzzy:
         self.__Cov_Zf   = np.zeros(shape=(self.__STEPS+2, self.__n_z, self.__n_z))
         self.__cpt      = np.zeros(shape=(self.__STEPS+2), dtype=int)
 
+
     def update(self, Rlabels):
 
-        N   = np.shape(Rlabels)[0]
+        N = np.shape(Rlabels)[0]
         # print('N=', N)
 
         # Remise à 0.
         self.__Mean_Zf.fill(0.)
         self.__Cov_Zf.fill(0.)
         self.__cpt.fill(0)
+        # print('self.__Mean_Zf=', self.__Mean_Zf)
     
         # The means
         for n in range(N):
             self.__Mean_Zf[Rlabels[n], :] += self.__Ztrain[:, n]
             self.__cpt[Rlabels[n]] += 1
-        for q in range(self.__STEPS+2):
-            self.__Mean_Zf[q, :] /= self.__cpt[q]
-        # print('cpt=', self.__cpt, ', sum=', np.sum(self.__cpt))
+        for indrn in range(self.__STEPS+2):
+            self.__Mean_Zf[indrn, :] /= self.__cpt[indrn]
+        print('cpt=', self.__cpt, ', sum=', np.sum(self.__cpt))
         # print(self.__Mean_Zf)
         # input('hard mean')
         
@@ -736,22 +841,24 @@ class MeanCovFuzzy:
         VectZ = np.zeros(shape=(self.__n_z, 1))
         for n in range(N):
             VectZ = (np.transpose(self.__Ztrain[:, n]) - self.__Mean_Zf[Rlabels[n], :]).reshape(self.__n_z, 1)
-            self.__Cov_Zf[Rlabels[n], :, :] += np.dot(VectZ, np.transpose(VectZ))
-        for q in range(self.__STEPS+2):
-            self.__Cov_Zf[q, :, :] /= self.__cpt[q]
+            self.__Cov_Zf[Rlabels[n],:,:] += np.outer(VectZ, VectZ)
+        for indrn in range(self.__STEPS+2):
+            self.__Cov_Zf[indrn,:,:] /= self.__cpt[indrn]
             # check if cov matrix
-            if Check_CovMatrix( self.__Cov_Zf[q, :, :]) == False:
-                print(self.__Cov_Zf[q, :, :])
+            if Check_CovMatrix( self.__Cov_Zf[indrn,:,:]) == False:
+                print('cpt=', self.__cpt, ', sum=', np.sum(self.__cpt))
+                print(self.__Mean_Zf[indrn, :])
+                print(self.__Cov_Zf[indrn,:,:])
                 input('This is not a cov matrix!!')
 
         # print(self.__Cov_Zf)
         # input('hardcov')
 
-    def getMean(self, q):
-        return self.__Mean_Zf[q, :]
+    def getMean(self, indrn):
+        return self.__Mean_Zf[indrn, :]
 
-    def getCov(self, q):
-        return self.__Cov_Zf[q, :]
+    def getCov(self, indrn):
+        return self.__Cov_Zf[indrn, :]
 
     def getMeanAll(self):
         return self.__Mean_Zf
