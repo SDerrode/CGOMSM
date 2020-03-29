@@ -56,7 +56,7 @@ def Test_isCGOMSM_from_Cov(Cov, n_x, tol=1E-8, verbose=False):
     n_r = int(np.sqrt(n_r_2))
 
     Ok = True
-    for l in range(n_r**2):
+    for l in range(n_r_2):
         Djk     = Cov[l, 0:n_x, n_z+n_x:2*n_z]
         Bj      = Cov[l, 0:n_x,   n_x:n_z]
         GammaYY = Cov[l, n_x:n_z, n_x:n_z]
@@ -74,38 +74,36 @@ def Test_isCGOMSM_from_Cov(Cov, n_x, tol=1E-8, verbose=False):
                     break
     return Ok
 
-def From_Cov_to_FQ(Cov_Z1_Z2_dp_R1_R2):
+def From_Cov_to_FQ(Cov):
     """
     Convert a cov matrix of the second parametrization of CGPMSM into a couple (F,Q) of the first parametrization.
     """
-    n_r_2, n_z_2 = np.shape(Cov_Z1_Z2_dp_R1_R2)[0:2]
+    n_r_2, n_z_2 = np.shape(Cov)[0:2]
     n_z          = int(n_z_2/2)
 
     F = np.zeros(shape=(n_r_2, n_z, n_z))
     Q = np.zeros(shape=(n_r_2, n_z, n_z))
     for i in range(n_r_2):
-        F[i,:,:], Q[i,:,:] = From_Cov_to_FQ_bis(Cov_Z1_Z2_dp_R1_R2[i,:,:], n_z)
-        print('Q[i,:,:]=', Q[i,:,:])
+        F[i,:,:], Q[i,:,:] = From_Cov_to_FQ_bis(Cov[i,:,:], n_z)
         if is_pos_def(Q[i,:,:]) == False:
             print('i=', i, ' --> PROBLEM with Q matrix in From_Cov_to_FQ!!')
-            print(Q[i,:,:])
             input('pause in From_Cov_to_FQ')
 
     return F, Q
 
-def From_Cov_to_FQ_bis(Cov_Z1_Z2_dp_R1_R2, n_z):
+def From_Cov_to_FQ_bis(Cov, n_z):
     """
     Convert a cov matrix of the second parametrization of CGPMSM into a couple (F,Q) of the first parametrization.
     """
 
-    Ct_zn_zn     = Cov_Z1_Z2_dp_R1_R2[0:n_z,     0:n_z]
-    Ct_znp1_znp1 = Cov_Z1_Z2_dp_R1_R2[n_z:2*n_z, n_z:2*n_z]
-    Ct_zn_znp1   = Cov_Z1_Z2_dp_R1_R2[0:n_z,     n_z:2*n_z]
+    Gamma_j  = Cov[0:n_z,     0:n_z]
+    Gamma_k  = Cov[n_z:2*n_z, n_z:2*n_z]
+    Sigma_jk = Cov[0:n_z,     n_z:2*n_z]
 
-    F = np.dot(np.transpose(Ct_zn_znp1), np.linalg.inv(Ct_zn_zn))
-    Q = Ct_znp1_znp1 - np.dot(F, Ct_zn_znp1)
+    Fjk = np.dot(np.transpose(Sigma_jk), np.linalg.inv(Gamma_j))
+    Qjk = Gamma_k - np.dot(Fjk, Sigma_jk)
 
-    return F, Q
+    return Fjk, Qjk
 
 def From_FQ_to_Cov_Lyapunov(F, Q, n_x):
     n_r_2, n_z, n_z = np.shape(F)
@@ -116,59 +114,54 @@ def From_FQ_to_Cov_Lyapunov(F, Q, n_x):
     print('n_y=', n_y)
     print('n_x=', n_x)
 
-    Gamma = np.zeros(shape=(n_r, n_z, n_z))
+    ########## Matrices Gamma and Sigma ##############################################
+    Gamma  = np.zeros(shape=(n_r, n_z, n_z))
     SigmaT = np.zeros(shape=(n_r_2, n_z, n_z))
-    Cov_Z1_Z2_dp_R1_R2 = np.zeros(shape=(n_r_2, n_z*2,n_z*2))
-    
-    for i in range(n_r):
-        # temp = np.dot( np.linalg.inv(np.eye(n_z**2) - np.kron(F[i*n_r+i,:,:], F[i*n_r+i,:,:])), np.reshape(Q[i*n_r+i,:,:], (n_z**2, 1), order='F') )
-        # Gamma[i,:,:] = np.reshape(temp, (n_z, n_z), order='F')
-        # print('Fei: Gamma[i,:,:]=', Gamma[i,:,:])
+    for j in range(n_r):
+        indjj = j*n_r+j
+
+        # temp = np.dot( np.linalg.inv(np.eye(n_z**2) - np.kron(F[indjj,:,:], F[indjj,:,:])), np.reshape(Q[indjj,:,:], (n_z**2, 1), order='F') )
+        # Gamma[j,:,:] = np.reshape(temp, (n_z, n_z), order='F')
+        # print('Fei: Gamma[j,:,:]=', Gamma[j,:,:])
     
         # Identical to Fei algo (above), but maybe more efficient
-        Gamma[i,:,:] = sp.linalg.solve_discrete_lyapunov(F[i*n_r+i,:,:], Q[i*n_r+i,:,:], method=None)
-        print('scipy: Gamma[i,:,:]=', Gamma[i,:,:])
+        Gamma[j,:,:] = sp.linalg.solve_discrete_lyapunov(F[indjj,:,:], Q[indjj,:,:], method=None)
+        # print('Gamma[j,:,:]=', Gamma[j,:,:])
         
-        if is_pos_def(Gamma[i,:,:]) == False:
-            print('i=', i, ' --> PROBLEM with Gamma matrix in From_FQ_to_Cov_Lyapunov!!')
-            print(Gamma[i,:,:])
+        if is_pos_def(Gamma[j,:,:]) == False:
+            print('j=', j, ' --> PROBLEM with Gamma matrix in From_FQ_to_Cov_Lyapunov!!')
             input('pause in From_FQ_to_Cov_Lyapunov')
 
          # test si A X A ^t - X + Q == 0
-        TestLyapunov = np.dot(np.dot(F[i*n_r+i,:,:], Gamma[i,:,:]), np.transpose(F[i*n_r+i,:,:])) - Gamma[i,:,:] + Q[i*n_r+i,:,:]
+        TestLyapunov = np.dot(np.dot(F[indjj,:,:], Gamma[j,:,:]), np.transpose(F[indjj,:,:])) - Gamma[j,:,:] + Q[indjj,:,:]
         if np.all(TestLyapunov<1E-5) == False:
-            print('i=', i, 'TestLyapunov=', TestLyapunov)
-            input('temp TEST')
+            print('j=', j, 'TestLyapunov=', TestLyapunov)
+            input('temp TEST if Lyapunov')
 
-    input('attente')
+        for k in range(n_r):
+            indjk = j*n_r+k
+            SigmaT[indjk,:,:] = np.dot(F[indjk,:,:], Gamma[j,:,:])
+            # print('SigmaT[indjk,:,:]=', SigmaT[indjk,:,:])
 
-    for i in range(n_r_2):
-        j = i//n_r
-        # k = i%n_r
-        SigmaT[i,:,:] = np.dot(F[i,:,:], Gamma[j,:,:])
-        print('scipy: SigmaT[i,:,:]=', SigmaT[i,:,:])
-    input('attente')
-    
-    for i in range(n_r_2):
-        j = i//n_r
-        k = i%n_r
-        Cov_Z1_Z2_dp_R1_R2[i, 0:n_z, 0:n_z] = Gamma[j,:,:]
-        Cov_Z1_Z2_dp_R1_R2[i, n_z:,  n_z:]  = Gamma[k,:,:]
-        Cov_Z1_Z2_dp_R1_R2[i, 0:n_z, n_z:]  = np.transpose(SigmaT[i,:,:])
-        Cov_Z1_Z2_dp_R1_R2[i, n_z:,  0:n_z] = SigmaT[i,:,:]
+
+    ########## Matrices Cov ########################################################@
+    Cov = np.zeros(shape=(n_r_2, 2*n_z, 2*n_z))
+    for j in range(n_r):
+        for k in range(n_r):
+            indjk = j*n_r+k
+            Cov[indjk,   0:n_z,     0:n_z  ] = Gamma[j,:,:]
+            Cov[indjk, n_z:2*n_z, n_z:2*n_z] = Gamma[k,:,:]
+            Cov[indjk,   0:n_z,   n_z:2*n_z] = np.transpose(SigmaT[indjk,:,:])
+            Cov[indjk, n_z:2*n_z,   0:n_z  ] = SigmaT[indjk,:,:]
+
+            if is_pos_def(Cov[indjk,:,:]) == False:
+                print('indjk=', indjk, ', j=', j, ', k=', k, ' --> PROBLEM Cov matrix in From_FQ_to_Cov_Lyapunov is not pos def!!')
+                input('pause in From_FQ_to_Cov_Lyapunov')
         
-    if Test_isCGOMSM_from_Cov(Cov_Z1_Z2_dp_R1_R2, n_x) == False:
-        print('i=', i, ' --> PROBLEM with Cov_Z1_Z2_dp_R1_R2 matrix : not CGOMSM!!')
-        print(Cov_Z1_Z2_dp_R1_R2[i,:,:])
-        input('pause in From_FQ_to_Cov_Lyapunov')
+    if Test_isCGOMSM_from_Cov(Cov, n_x) == False:
+        input('Cov is not CGOMSM in From_FQ_to_Cov_Lyapunov')
 
-    for i in range(n_r_2):
-        if is_pos_def(Cov_Z1_Z2_dp_R1_R2[i,:,:]) == False:
-            print('i=', i, ' --> PROBLEM with Cov_Z1_Z2_dp_R1_R2 matrix in From_FQ_to_Cov_Lyapunov!!')
-            print(Cov_Z1_Z2_dp_R1_R2[i,:,:])
-            input('pause in From_FQ_to_Cov_Lyapunov')
-
-    return Cov_Z1_Z2_dp_R1_R2
+    return Cov
 
 def NearPD(A):
     ZERO = 1E-12
@@ -539,23 +532,25 @@ def Test_if_CGPMSM(Cov):
             #exit(1)
     return OK
 
-def is_pos_def(A):
-    if not np.any(A) == True:
+def is_pos_def(CovMatrice, verbose=True):
+    if not np.any(CovMatrice) == True:
         return True
-    if np.allclose(A, A.T, atol=1E-8):
+    if np.allclose(CovMatrice, np.transpose(CovMatrice), atol=1E-8):
         try:
-            np.linalg.cholesky(A)
+            np.linalg.cholesky(CovMatrice)
             return True
         except np.linalg.LinAlgError:
-            print('PB is_pos_def : ce n''est pas un matrice définie positive')
-            std_ = np.sqrt(np.diag(A))
-            corr = A / np.outer(std_, std_)
-            print('correlation matrix=', corr)
-            # input('pause')
+            if verbose == True:
+                print('PB is_pos_def : ce n''est pas un matrice définie positive')
+                std_ = np.sqrt(np.diag(CovMatrice))
+                corr = CovMatrice / np.outer(std_, std_)
+                print('CovMatrice=', CovMatrice)
+                print('CorrMatrice=', corr)
+                # input('pause')
             return False
     else:
-        print('PB is_pos_def : la mat n''est pas symétrique')
-        print(A)
+        print('PB is_pos_def : la matrice suivante n''est pas symétrique')
+        print(CovMatrice)
         input('pause')
         return False
 

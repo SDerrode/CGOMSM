@@ -178,17 +178,18 @@ class CGOFMSM_SemiSupervLearn:
         # print('MeanY=', MeanY)
         # input('pause')
 
-        A = np.zeros(((self.__STEPS+2)**2, self.__n_z, self.__n_z))
+        F = np.zeros(((self.__STEPS+2)**2, self.__n_z, self.__n_z))
         Q = np.zeros(((self.__STEPS+2)**2, self.__n_z, self.__n_z))
+        # B = np.zeros(((self.__STEPS+2)**2, self.__n_z, self.__n_z))
         for indrn in range(self.__STEPS+2):
             for indrnp1 in range(self.__STEPS+2):
                 ind = indrn*(self.__STEPS+2) + indrnp1
 
-                ### A 
-                A[ind, 0, 0] = self.__M[indrn, indrnp1, 0, 0]
-                A[ind, 1, 1] = self.__P[indrn, indrnp1, 0, 0]
-                A[ind, 1, 0] = 0.
-                A[ind, 0, 1] = self.__M[indrn, indrnp1, 0, 1] + self.__P[indrn, indrnp1, 0, 0] * self.__M[indrn, indrnp1, 0, 2]
+                ### F 
+                F[ind, 0, 0] = self.__M[indrn, indrnp1, 0, 0]
+                F[ind, 1, 1] = self.__P[indrn, indrnp1, 0, 0]
+                F[ind, 1, 0] = 0.
+                F[ind, 0, 1] = self.__M[indrn, indrnp1, 0, 1] + F[ind, 1, 1] * self.__M[indrn, indrnp1, 0, 2]
 
                 ### Q
                 Q[ind, 1, 1] = self.__Pi2[indrn, indrnp1]
@@ -199,33 +200,36 @@ class CGOFMSM_SemiSupervLearn:
                 # print('ind=', ind)
                 if is_pos_def(Q[ind,:,:]) == False:
                     print('ind=', ind, ' --> PROBLEM with Q matrix in parameter file!!')
-                    print(Q[ind,:,:])
                     input('pause Q')
                 
-                
-        # print('Q:', Q)
-        # print('A:', A)
+                # Non requis
+                # with warnings.catch_warnings():
+                #     warnings.simplefilter('error')
+                #     B[ind,:, :] = sp.linalg.sqrtm(Q[ind,:, :])
 
-        # B = np.zeros(((self.__STEPS+2)**2, self.__n_z, self.__n_z))
-        # for i in range((self.__STEPS+2)**2):
-        #     with warnings.catch_warnings():
-        #         warnings.simplefilter('error')
-        #         B[i,:, :] = sp.linalg.sqrtm(Q[i,:, :])
+        # print('F:', F)
+        # print('Q:', Q)
+        # print('B:', B)
+
 
         # Convert from Param 1 to Param 2 ########################################################################################@
-        print('########## CONVERSION VERS COV')
-        Cov = From_FQ_to_Cov_Lyapunov(A, Q, self.__n_x)
-        print('########## CONVERSION VERS INV')
+        print('########## CONVERSION VERS COV ##########')
+        Cov = From_FQ_to_Cov_Lyapunov(F, Q, self.__n_x)
+        print('########## CONVERSION VERS A,Q ##########')
         Fbis, Qbis = From_Cov_to_FQ(Cov)
-        print('########## VERIF')
-        print(A-Fbis)
-        print(Q-Qbis)
-        input('fin verif lyapunov')
+        print('########## VERIF VERIF VERIF ##########')
         for ind in range((self.__STEPS+2)**2):
-            if is_pos_def(Cov[ind,:,:]) == False:
-                print('ind=', ind, ' --> PROBLEM with Cov matrix in parameter file!!')
-                print(Cov[ind,:,:])
-                input('pause Cov')
+            print('ind=', ind)
+            print(np.around(F[ind, :,:] - Fbis[ind, :,:], decimals=2))
+            print(np.around(Q[ind, :,:] - Qbis[ind, :,:], decimals=2))
+            input('pause')
+        input('fin verif lyapunov')
+
+        # for ind in range((self.__STEPS+2)**2):
+        #     if is_pos_def(Cov[ind,:,:]) == False:
+        #         print('ind=', ind, ' --> PROBLEM with Cov matrix in parameter file!!')
+        #         print(Cov[ind,:,:])
+        #         input('pause Cov')
 
         # Test if the matrices form a CGPMSM
         if Test_if_CGPMSM(Cov) == False:
@@ -256,11 +260,8 @@ class CGOFMSM_SemiSupervLearn:
 
         f.close()
 
-        # Generate the command to run the predictor #
+        # Generate the command to run the predictor 
         #############################################################################@
-
-        #################################
-        # Commande d'appel au programme
         hard, filt, smooth, predic = 0, 1, 0, 1
         chWork = str(hard) + ',' + str(filt) + ',' + str(smooth) + ',' + str(predic)
         param = self.__FS.getParam()
@@ -436,9 +437,7 @@ class CGOFMSM_SemiSupervLearn:
             tab_GaussXY.append(Loi2DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
             tab_GaussXY[np1].Calc_GaussXY(self.__M, self.__Lambda2, self.__P, self.__Pi2, self.__Ztrain[:, np1-1], self.__Ztrain[:, np1])
 
-        if self.__verbose >= 2:
-            print(' ')
-
+        if self.__verbose >= 2: print(' ')
         return tab_GaussXY
 
 
@@ -470,9 +469,7 @@ class CGOFMSM_SemiSupervLearn:
             # normalisation (devijver)
             ProbaForward[np1].normalisation(Tab_Normalis[np1])
 
-        if self.__verbose >= 2:
-            print(' ')
-
+        if self.__verbose >= 2: print(' ')
         return ProbaForward, Tab_Normalis
 
 
@@ -506,13 +503,11 @@ class CGOFMSM_SemiSupervLearn:
             ProbaBackward[n].normalisation(Tab_Normalis[n+1])
 
             # Cette normalisation n'est implémentée que pour contre-carrer la dérive suite à l'intégration numérique
-            input('VERIFIER CETTE NORMALISATION')
+            # input('VERIFIER CETTE NORMALISATION')
             loicorrective.ProductFB(ProbaForwardNorm[n], ProbaBackward[n])
             ProbaBackward[n].normalisation(loicorrective.Integ())
             
-        if self.__verbose >= 2:
-            print(' ')
-
+        if self.__verbose >= 2: print(' ')
         return ProbaBackward
 
 
@@ -531,7 +526,7 @@ class CGOFMSM_SemiSupervLearn:
             # calcul de gamma = produit forward norm * backward norm ****************************************************************
             tab_gamma.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
             tab_gamma[n].ProductFB(ProbaForward[n], ProbaBackward[n])
-
+    
             # normalisation : uniquement due pour compenser des pb liés aux approximations numeriques de forward et de backward
             # Si F= 20, on voit que la normalisation n'est pas necessaire (deja la somme == 1.)
             integ = tab_gamma[n].Integ()
@@ -576,12 +571,9 @@ class CGOFMSM_SemiSupervLearn:
                 
             tab_cond.append(Liste)
         
-
         # le dernier gamma : on n'en n'a pas besoin
 
-        if self.__verbose >= 2:
-            print(' ')
-
+        if self.__verbose >= 2: print(' ')
         return tab_gamma, tab_psi, tab_cond
 
 
