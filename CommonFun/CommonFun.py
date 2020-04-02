@@ -51,28 +51,37 @@ def Test_isCGOMSM_from_F(F, n_x, tol=1E-8, verbose=False):
 
 def Test_isCGOMSM_from_Cov(Cov, n_x, tol=1E-8, verbose=False):
 
-    n_r_2, n_z_mp2, useless2 = np.shape(Cov)
-    n_z = n_z_mp2//2
-    n_r = int(np.sqrt(n_r_2))
+    n_r_2, useless1, useless2 = np.shape(Cov)
 
     Ok = True
     for l in range(n_r_2):
-        Djk     = Cov[l, 0:n_x, n_z+n_x:2*n_z]
-        Bj      = Cov[l, 0:n_x,   n_x:n_z]
-        GammaYY = Cov[l, n_x:n_z, n_x:n_z]
-        Cjk     = Cov[l, n_x:n_z, n_z+n_x:2*n_z]
-        SOL     = Djk - np.dot( np.dot( Bj, np.transpose(np.linalg.inv(GammaYY))), Cjk)
-
-        for z1 in range(np.shape(SOL)[0]):
-            for z2 in range(np.shape(SOL)[1]):
-                if SOL[z1, z2] > tol:
-                    if verbose==True:
-                        print('l=', l)
-                        print('Cov[l, :, :]=', Cov[l, :, :])
-                        print('SOL=', SOL)
-                    Ok = False
-                    break
+        Ok &= Test_isCGOMSM_from_Cov_bis(Cov[l, :, :], n_x, tol, verbose) 
     return Ok
+
+
+def Test_isCGOMSM_from_Cov_bis(Cov, n_x, tol=1E-8, verbose=False):
+
+    n_z_mp2, useless2 = np.shape(Cov)
+    n_z = n_z_mp2//2
+
+    Ok = True
+    
+    Djk     = Cov[0:n_x, n_z+n_x:2*n_z]
+    Bj      = Cov[0:n_x,   n_x:n_z]
+    GammaYY = Cov[n_x:n_z, n_x:n_z]
+    Cjk     = Cov[n_x:n_z, n_z+n_x:2*n_z]
+    SOL     = Djk - np.dot( np.dot( Bj, np.transpose(np.linalg.inv(GammaYY))), Cjk)
+
+    for z1 in range(np.shape(SOL)[0]):
+        for z2 in range(np.shape(SOL)[1]):
+            if SOL[z1, z2] > tol:
+                if verbose==True:
+                    print('Cov[:, :]=', Cov[:, :])
+                    print('SOL=', SOL)
+                Ok = False
+                break
+    return Ok
+
 
 def From_Cov_to_FQ(Cov):
     """
@@ -105,14 +114,15 @@ def From_Cov_to_FQ_bis(Cov, n_z):
 
     return Fjk, Qjk
 
+
 def From_FQ_to_Cov_Lyapunov(F, Q, n_x):
     n_r_2, n_z, n_z = np.shape(F)
     n_y = n_z - n_x
     n_r = int(np.sqrt(n_r_2))
-    print('n_r=', n_r)
-    print('n_z=', n_z)
-    print('n_y=', n_y)
-    print('n_x=', n_x)
+    # print('n_r=', n_r)
+    # print('n_z=', n_z)
+    # print('n_y=', n_y)
+    # print('n_x=', n_x)
 
     ########## Matrices Gamma and Sigma ##############################################
     Gamma  = np.zeros(shape=(n_r, n_z, n_z))
@@ -154,12 +164,20 @@ def From_FQ_to_Cov_Lyapunov(F, Q, n_x):
             Cov[indjk,   0:n_z,   n_z:2*n_z] = np.transpose(SigmaT[indjk,:,:])
             Cov[indjk, n_z:2*n_z,   0:n_z  ] = SigmaT[indjk,:,:]
 
+            if Test_isCGOMSM_from_Cov_bis(Cov[indjk, :, :], n_x) == False:
+                print('j=', j, ', k=', k, ', indjk=', indjj)
+                print('Cov is not CGOMSM in From_FQ_to_Cov_Lyapunov 111111')
+
             if is_pos_def(Cov[indjk,:,:]) == False:
                 print('indjk=', indjk, ', j=', j, ', k=', k, ' --> PROBLEM Cov matrix in From_FQ_to_Cov_Lyapunov is not pos def!!')
-                input('pause in From_FQ_to_Cov_Lyapunov')
-        
-    if Test_isCGOMSM_from_Cov(Cov, n_x) == False:
-        input('Cov is not CGOMSM in From_FQ_to_Cov_Lyapunov')
+                makeit_pos_def_and_still_CGOMSM(Cov[indjk,:,:], n_x)
+                if is_pos_def(Cov[indjk,:,:]) == False:
+                    input('IMPOSSIBLE TO STILL BE NOT POS DEF !!!!')
+                #input('Correction OK in From_FQ_to_Cov_Lyapunov')
+
+            if Test_isCGOMSM_from_Cov_bis(Cov[indjk, :, :], n_x) == False:
+                print('j=', j, ', k=', k, ', indjk=', indjj)
+                print('Cov is not CGOMSM in From_FQ_to_Cov_Lyapunov 22222')
 
     return Cov
 
@@ -531,6 +549,36 @@ def Test_if_CGPMSM(Cov):
             input('attente')
             #exit(1)
     return OK
+
+
+def makeit_pos_def_and_still_CGOMSM(Cov, n_x):
+    dim = np.shape(Cov)
+    assert dim[0]==dim[1], print('The matrix is not square!')
+    n_z = dim[0]
+
+    std_ = np.sqrt(np.diag(Cov))
+    corr = Cov / np.outer(std_, std_)
+
+    # print('before: Cov=\n', Cov)
+    # print('before Corr=\n', corr)
+    correlation = 0.5
+    for i in range(dim[0]):
+        for j in range(dim[1]):
+            if (corr[i,j] <- 1. or corr[i,j] > 1.) and i != j:
+                Cov[i,j] = np.sign(corr[i,j])*correlation*(std_[i]*std_[j])
+
+    # Make it CGOMSM
+    Bj      = Cov[0:n_x,   n_x:n_z]
+    GammaYY = Cov[n_x:n_z, n_x:n_z]
+    Cjk     = Cov[n_x:n_z, n_z+n_x:2*n_z]
+    Cov[0:n_x, n_z+n_x:2*n_z] = np.dot( np.dot( Bj, np.transpose(np.linalg.inv(GammaYY))), Cjk)
+
+    # std_ = np.sqrt(np.diag(Cov))
+    # corr = Cov / np.outer(std_, std_)
+    # print('after: Cov=\n', Cov)
+    # print('after Corr=\n', corr)
+    # input('ATTENTE makeit_pos_def')
+
 
 def is_pos_def(CovMatrice, verbose=True):
     if not np.any(CovMatrice) == True:

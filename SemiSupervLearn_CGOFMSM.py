@@ -74,7 +74,7 @@ def main():
 
     if graphics >= 1:
         plt.figure()
-        maxi=len_x # maxi=len_x, maxi=500
+        maxi=500 # maxi=len_x, maxi=500
         plt.plot(Ytrain[0,:maxi], color='r', label='Ytrain')
         plt.xlim(xmax=maxi, xmin=0)
         plt.legend()

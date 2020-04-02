@@ -363,14 +363,28 @@ class Loi1DDiscreteFuzzy_TMC():
     def CalcForw1(self, FS, z, MeanCovFuzzy):
         
         alpha, ind = 0., 0 # le premier
-        self.__p0 = FS.probaR(alpha) * multivariate_normal.pdf(z, mean=MeanCovFuzzy.getMean(ind), cov=MeanCovFuzzy.getCov(ind))
-        
-        for ind, alpha in enumerate(self.__Rcentres):
-            self.__p01[ind] = FS.probaR(alpha) * multivariate_normal.pdf(z, mean=MeanCovFuzzy.getMean(ind+1), cov=MeanCovFuzzy.getCov(ind+1))
-        
-        alpha, ind = 1., self.__STEPS+1 # le dernier
-        self.__p1   = FS.probaR(alpha) * multivariate_normal.pdf(z, mean=MeanCovFuzzy.getMean(ind), cov=MeanCovFuzzy.getCov(ind))
+        if not np.any(MeanCovFuzzy.getCov(ind)) == False:
+            self.__p0 = FS.probaR(alpha) * multivariate_normal.pdf(z, mean=MeanCovFuzzy.getMean(ind), cov=MeanCovFuzzy.getCov(ind))
+        else:
+            self.__p0   = 0.
+            # print(alpha, ind)
+            # input('je passe ici')
 
+        for ind, alpha in enumerate(self.__Rcentres):
+            if not np.any(MeanCovFuzzy.getCov(ind)) == False:
+                self.__p01[ind] = FS.probaR(alpha) * multivariate_normal.pdf(z, mean=MeanCovFuzzy.getMean(ind+1), cov=MeanCovFuzzy.getCov(ind+1))
+            else:
+                self.__p01[ind] = 0.
+                # print(alpha, ind)
+                # input('je passe ici')
+
+        alpha, ind = 1., self.__STEPS+1 # le dernier
+        if not np.any(MeanCovFuzzy.getCov(ind)) == False:
+            self.__p1   = FS.probaR(alpha) * multivariate_normal.pdf(z, mean=MeanCovFuzzy.getMean(ind), cov=MeanCovFuzzy.getCov(ind))
+        else:
+            self.__p1   = 0.
+            # print(alpha, ind)
+            # input('je passe ici')
 
     def setValCste(self, val):
         self.__p0 = val
@@ -425,6 +439,10 @@ class Loi1DDiscreteFuzzy_TMC():
         rnp1 = 1.
         self.__p1 = ProbaPsi_n.get(rn, rnp1) / ProbaGamma_n_rn
 
+        # print('rn=', rn)
+        # print('ProbaPsi_n.get(rn, 1.)=', ProbaPsi_n.get(rn, rnp1))
+        # self.print()
+
         # This integral is converging to 1 if F growth. In case F small (i.e<10) it is better to normalise
         integ = self.Integ()
 
@@ -439,6 +457,9 @@ class Loi1DDiscreteFuzzy_TMC():
             #     print('  Integ R2 condit. to R1 and Z: integ', integ)
             #     input('PB PB PB proba cond')
             self.normalisation(integ)
+
+        # self.print()
+        # input('Attente dans CalcCond')
 
 
     def TestIsAllZero(self):
