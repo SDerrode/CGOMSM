@@ -18,7 +18,7 @@ from CommonFun.CommonFun import From_Cov_to_FQ_bis
 
 def getGaussXY(M, Lambda2, P, Pi2, xn, yn, xnpun, ynpun, verb=False):
     
-    MeanX = M[0, 0] * xn + M[0, 1] * yn + M[0, 2] * ynpun + M[0, 3]
+    MeanX = M[0] * xn + M[1] * yn + M[2] * ynpun + M[3]
     if verb == True:
         print('\n  MeanX  =', MeanX)
         print('  M  =', M[0, :])
@@ -29,7 +29,7 @@ def getGaussXY(M, Lambda2, P, Pi2, xn, yn, xnpun, ynpun, verb=False):
     else:
         return 0.
 
-    MeanY = P[0, 0] * yn + P[0, 1]
+    MeanY = P[0] * yn + P[1]
     if verb == True:
         print('  MeanY  =', MeanY)
         print('  Pi2    =', Pi2)

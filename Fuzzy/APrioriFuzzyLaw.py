@@ -68,6 +68,9 @@ class LoiAPriori:
         self.__R1  = np.linspace(start=self.__EPS, stop=1.0 - self.__EPS, num=self.__discretization, endpoint=True)
         self.__pR1 = np.ndarray(shape=(self.__R1.shape[0]))
 
+    # def __del__(self):
+    #     print('\nFS deleted')
+
     def maxiFuzzyJump(self):
         """
         return the percent of fuzzy jump for the joint a priori law

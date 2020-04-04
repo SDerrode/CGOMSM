@@ -1,7 +1,8 @@
 import numpy as np
-import warnings
 import scipy as sp
+import copy
 import clipboard
+import warnings
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -10,19 +11,14 @@ from matplotlib import rc
 rc('text', usetex=True)
 
 from sklearn.cluster import KMeans
-# from sklearn.cluster import AgglomerativeClustering
 
 from OFAResto.LoiDiscreteFuzzy_TMC    import Loi1DDiscreteFuzzy_TMC, Loi2DDiscreteFuzzy_TMC, calcF, calcB
 from Fuzzy.APrioriFuzzyLaw_Series2ter import LoiAPrioriSeries2ter
-from CommonFun.CommonFun import From_FQ_to_Cov_Lyapunov, Test_if_CGPMSM, is_pos_def, From_Cov_to_FQ
+from CommonFun.CommonFun              import From_FQ_to_Cov_Lyapunov, Test_if_CGPMSM, is_pos_def, From_Cov_to_FQ
 
 
 def Check_CovMatrix(Mat):
     w, v = np.linalg.eig(Mat)
-    # print("eig value:", w)
-    # print(np.all(w>0.))
-    # print(np.all(np.logical_not(np.iscomplex(w))))
-    # input('pause')
     if np.all(np.logical_not(np.iscomplex(w))) == False or np.all(w>0.) == False:
         return False
     return True
@@ -64,53 +60,48 @@ class CGOFMSM_SemiSupervLearn:
         self.__Tab_Pi_00     = np.zeros(shape=(self.__nbIterSEM+1, 1)) 
 
         # Update of param for the simulated R (by kmeans here for init)
-        self.__FS, self.__M, self.__Lambda2, self.__P, self.__Pi2, self.__aMeanCovFuzzy = self.updateParamFromRsimul(numIterSEM=0, kmeans=True, Plot=False)
-
+        iter = 0
+        self.__FS, self.__M, self.__Lambda2, self.__P, self.__Pi2, self.__aMeanCovFuzzy = self.updateParamFromRsimul(numIterSEM=iter, kmeans=True, Plot=False)
                 
-        # for plottig the convergence of parameters
-        self.__Tab_ParamFS[0,:]   = self.__FS.getParam()
-        self.__Tab_M_00[0,:]      = self.__M[0,0,0,:]
-        self.__Tab_Lambda_00[0,0] = np.sqrt(self.__Lambda2[0,0])
-        self.__Tab_P_00[0, :]     = self.__P[0,0,0,:]
-        self.__Tab_Pi_00[0,0]     = np.sqrt(self.__Pi2[0,0])
+        # To plot the evolution of some parameters
+        self.__Tab_ParamFS  [iter,:] = copy.deepcopy(self.__FS.getParam())
+        self.__Tab_M_00     [iter,:] = copy.deepcopy(self.__M[0,0,:])
+        self.__Tab_Lambda_00[iter,0] = np.sqrt(self.__Lambda2[0,0])
+        self.__Tab_P_00     [iter,:] = copy.deepcopy(self.__P[0,0,:])
+        self.__Tab_Pi_00    [iter,0] = np.sqrt(self.__Pi2[0,0])
+
+        # Convert parametrization 3 to parametrization 2 (by param 1)
+        # filenameParam = './Result/Fuzzy/SimulatedR/parametrization2_F=' + str(self.__STEPS) + '_Iter_0.param'
+        # Cov, MeanX, MeanY = self.ConvertParameters()
+        # self.SaveParameters(filenameParam, Cov, MeanX, MeanY)
+        # input('saved')
 
         # Print des paramètres
         if self.__verbose >= 1: self.printParam()
 
+    def __del__(self):
+        if self.__verbose >= 2: 
+            print('\nCGOFMSM_SemiSupervLearn deleted')
 
-    def getParams(self):
-        return self.__alpha0, self.__alpha1, self.__beta, self.__FS.getEta()
+    def run_several(self):
 
-    def EmpiricalFuzzyJointMatrix(self, Rsimul):
-        
-        Nsimul = len(Rsimul)
+        Plot=False
+        for iter in range(1, self.__nbIterSEM+1):
+            print('ITERATION ', iter, ' over ', self.__nbIterSEM)
+            if iter==self.__nbIterSEM: Plot=True
+            self.run_one(iter, Plot)
 
-        alpha0, alpha1, beta = 0., 0., 0.
-        for n in range(1, Nsimul):
-            if Rsimul[n-1] == 0 and Rsimul[n] == 0:                           alpha0 += 1.
-            if Rsimul[n-1] == self.__STEPS+1 and Rsimul[n] == self.__STEPS+1: alpha1 += 1.
-            if (Rsimul[n-1] == 0 and Rsimul[n] == self.__STEPS+1):            beta   += 1.
-            if (Rsimul[n-1] == self.__STEPS+1 and Rsimul[n] == 0):            beta   += 1.
-        beta /= 2. # ca compte les transitions 0-1, 1-0, donc on divise par deux
+            # Convert parametrization 3 to parametrization 2 (by param 1) 
+            # filenameParam = './Result/Fuzzy/SimulatedR/parametrization2_F=' + str(self.__STEPS) + '_Iter_' +str(iter) + '.param'
+            # Cov, MeanX, MeanY = self.ConvertParameters()
+            # self.SaveParameters(filenameParam, Cov, MeanX, MeanY)
+            # input('saved')
 
-        alpha0 /= (Nsimul-1.)
-        alpha1 /= (Nsimul-1.)
-        beta   /= (Nsimul-1.)
-
-        return alpha0, alpha1, beta
-
-
-    def run_several(self, ):
-
-        for i in range(1, self.__nbIterSEM+1):
-            print('ITERATION ', i, ' over ', self.__nbIterSEM)
-            self.__Tab_ParamFS[i,:], self.__Tab_M_00[i,:], self.__Tab_Lambda_00[i,0], self.__Tab_P_00[i,:], self.__Tab_Pi_00[i,0] = self.run_one(i)
-
-        if self.__graphics >= 1 and self.__nbIterSEM>0:
+        if self.__graphics>=1 and self.__nbIterSEM>0:
             self.PlotConvSEM()
 
 
-    def run_one(self, numIterSEM):
+    def run_one(self, iter, Plot=False):
 
         # MAJ des proba sur la base des paramètres courants
         Tab_GaussXY                         = self.compute_tab_GaussXY()
@@ -120,31 +111,36 @@ class CGOFMSM_SemiSupervLearn:
 
         # Update of param from some simulated R
         if self.__verbose >= 2: print('         update parameters')
-        Plot=False
-        if numIterSEM == self.__nbIterSEM:  Plot=True
-        self.__FS, self.__M, self.__Lambda2, self.__P, self.__Pi2, self.__aMeanCovFuzzy = self.updateParamFromRsimul(numIterSEM=numIterSEM, kmeans=False, Plot=Plot, ProbaGamma_0=ProbaGamma[0], ProbaJumpCond=ProbaJumpCond)
+        
+        self.__FS, self.__M, self.__Lambda2, self.__P, self.__Pi2, self.__aMeanCovFuzzy = self.updateParamFromRsimul(numIterSEM=iter, kmeans=False, Plot=Plot, ProbaGamma_0=ProbaGamma[0], ProbaJumpCond=ProbaJumpCond)
+
+        # To plot the evolution of some parameters
+        self.__Tab_ParamFS  [iter,:] = copy.deepcopy(self.__FS.getParam())
+        self.__Tab_M_00     [iter,:] = copy.deepcopy(self.__M[0,0,:])
+        self.__Tab_Lambda_00[iter,0] = np.sqrt(self.__Lambda2[0,0])
+        self.__Tab_P_00     [iter,:] = copy.deepcopy(self.__P[0,0,:])
+        self.__Tab_Pi_00    [iter,0] = np.sqrt(self.__Pi2[0,0])
 
         # Print des paramètres
         if self.__verbose >= 1: self.printParam()
 
-        return self.__FS.getParam(), self.__M[0,0,0,:], np.sqrt(self.__Lambda2[0,0]), self.__P[0,0,0,:], np.sqrt(self.__Pi2[0,0])
 
-
-    def ConvertandSaveParameters(self, filenameParam):
+    def ConvertParameters(self):
 
         # Convert from Param 3 to Param 1 (using equations from Zied) ############################################################@
         MeanX = np.zeros(shape=(self.__STEPS+2, self.__n_x))
         MeanY = np.zeros(shape=(self.__STEPS+2, self.__n_y))
         for indrn in range(self.__STEPS+2):
-            MeanY[indrn] = self.__P[indrn, indrn, 0, 1] / (1.- self.__P[indrn, indrn, 0, 0])
-            MeanX[indrn] = (self.__M[indrn, indrn, 0, 3] + MeanY[indrn] * (self.__M[indrn, indrn, 0, 1]+self.__M[indrn, indrn, 0, 2])) / (1. - self.__M[indrn, indrn, 0, 0])
-            # print('indrn = ', indrn)
-            # print('self.__P[indrn, indrn] = ', self.__P[indrn, indrn, 0, :])
-            # print('self.__M[indrn, indrn] = ', self.__M[indrn, indrn, 0, :])
-
-        # print('MeanX=', MeanX)
-        # print('MeanY=', MeanY)
-        # input('pause')
+            MeanY[indrn] = self.__P[indrn, indrn, 1] / (1.- self.__P[indrn, indrn, 0])
+            MeanX[indrn] = (self.__M[indrn, indrn, 3] + MeanY[indrn] * (self.__M[indrn, indrn, 1]+self.__M[indrn, indrn, 2])) / (1. - self.__M[indrn, indrn, 0])
+            print('indrn = ', indrn)
+            print('self.__P[indrn, indrn] = ', self.__P[indrn, indrn, :])
+            print('self.__M[indrn, indrn] = ', self.__M[indrn, indrn, :])
+            print('MeanX[indrn]=', MeanX[indrn])
+            print('MeanY[indrn]=', MeanY[indrn])
+            print('MeanX[indrn] approche=', self.__aMeanCovFuzzy.getMean(indrn)[0])
+            print('MeanY[indrn] approche=', self.__aMeanCovFuzzy.getMean(indrn)[1])
+            input('pause')
 
         F = np.zeros(((self.__STEPS+2)**2, self.__n_z, self.__n_z))
         Q = np.zeros(((self.__STEPS+2)**2, self.__n_z, self.__n_z))
@@ -154,16 +150,16 @@ class CGOFMSM_SemiSupervLearn:
                 ind = indrn*(self.__STEPS+2) + indrnp1
 
                 ### F 
-                F[ind, 0, 0] = self.__M[indrn, indrnp1, 0, 0]
-                F[ind, 1, 1] = self.__P[indrn, indrnp1, 0, 0]
+                F[ind, 0, 0] = self.__M[indrn, indrnp1, 0]
+                F[ind, 1, 1] = self.__P[indrn, indrnp1, 0]
                 F[ind, 1, 0] = 0.
-                F[ind, 0, 1] = self.__M[indrn, indrnp1, 0, 1] + F[ind, 1, 1] * self.__M[indrn, indrnp1, 0, 2]
+                F[ind, 0, 1] = self.__M[indrn, indrnp1, 1] + F[ind, 1, 1] * self.__M[indrn, indrnp1, 2]
 
                 ### Q
                 Q[ind, 1, 1] = self.__Pi2[indrn, indrnp1]
-                Q[ind, 0, 1] = self.__M[indrn, indrnp1, 0, 2] * Q[ind, 1, 1]
+                Q[ind, 0, 1] = self.__M[indrn, indrnp1, 2] * Q[ind, 1, 1]
                 Q[ind, 1, 0] = Q[ind, 0, 1]
-                Q[ind, 0, 0] = self.__Lambda2[indrn, indrnp1] + self.__M[indrn, indrnp1, 0, 2] * Q[ind, 1, 0]
+                Q[ind, 0, 0] = self.__Lambda2[indrn, indrnp1] + self.__M[indrn, indrnp1, 2] * Q[ind, 1, 0]
                 
                 # print('ind=', ind)
                 if is_pos_def(Q[ind,:,:]) == False:
@@ -180,7 +176,7 @@ class CGOFMSM_SemiSupervLearn:
         # print('B:', B)
 
 
-        # Convert from Param 1 to Param 2 ########################################################################################@
+        # Convert from Param 1 to Param 2 (usig method from Fei) ##################################################@
         #print('########## CONVERSION VERS COV ##########')
         Cov = From_FQ_to_Cov_Lyapunov(F, Q, self.__n_x)
         #print('########## CONVERSION VERS A,Q ##########')
@@ -199,7 +195,9 @@ class CGOFMSM_SemiSupervLearn:
         #         print(Cov[ind,:,:])
         #         input('pause Cov')
 
+        return Cov, MeanX, MeanY
 
+    def SaveParameters(self, filenameParam, Cov, MeanX, MeanY):
 
         # Save the CGOFMSM file ##################################################################################################@
         
@@ -239,6 +237,22 @@ class CGOFMSM_SemiSupervLearn:
         print('\n', A, '\n')
 
 
+    def EmpiricalFuzzyJointMatrix(self, Rsimul):
+        
+        Nsimul = len(Rsimul)
+
+        alpha0, alpha1, beta = 0., 0., 0.
+        for n in range(1, Nsimul):
+            if Rsimul[n-1] == 0              and Rsimul[n] == 0:              alpha0 += 1.
+            if Rsimul[n-1] == self.__STEPS+1 and Rsimul[n] == self.__STEPS+1: alpha1 += 1.
+            if Rsimul[n-1] == 0              and Rsimul[n] == self.__STEPS+1: beta   += 1.
+            if Rsimul[n-1] == self.__STEPS+1 and Rsimul[n] == 0:              beta   += 1.
+        beta /= 2. # ca compte les transitions 0-1, 1-0, donc on divise par deux
+        alpha0 /= (Nsimul-1.)
+        alpha1 /= (Nsimul-1.)
+        beta   /= (Nsimul-1.)
+
+        return alpha0, alpha1, beta
     
 
     def simulRealization(self, Rsimul, ProbaGamma_0, ProbaJumpCond):
@@ -248,14 +262,10 @@ class CGOFMSM_SemiSupervLearn:
             # sampling of the first from gamma
             np1=0
             Rsimul[real*self.__N + np1] = ProbaGamma_0.getSample()
-            # ProbaGamma_0.print()
-            # input('ATTENTE')
             
             # next ones according to conditional law
             for np1 in range(1, self.__N):
-                # ProbaJumpCond[np1-1][Rsimul[real*self.__N + np1 - 1]].print()
                 Rsimul[real*self.__N + np1] = ProbaJumpCond[np1-1][Rsimul[real*self.__N + np1 - 1]].getSample()
-                # input('ATTENTE')
 
 
     def updateParamFromRsimul(self, numIterSEM, kmeans, Plot, ProbaGamma_0=None, ProbaJumpCond=None):
@@ -270,7 +280,7 @@ class CGOFMSM_SemiSupervLearn:
             self.simulRealization(Rsimul, ProbaGamma_0, ProbaJumpCond)
 
             # Parameters of parametrization 3 (M=[A, B, C, D], Lambda**2, and P=[F, G], Pi**2)
-            self.__M, self.__Lambda2, self.__P, self.__Pi2 = self.EstimParam2ter(ProbaJumpCond=ProbaJumpCond)
+            M, Lambda2, P, Pi2 = self.EstimParam2ter(ProbaJumpCond)
 
             if self.__graphics >= 2:
                 fname = './Result/Fuzzy/SimulatedR/Rsimul_Iter_' + str(numIterSEM) + '_cl' + str(self.__STEPS+2)
@@ -291,8 +301,7 @@ class CGOFMSM_SemiSupervLearn:
                     Rsimul[real*self.__N + n] = np.where(sortedlabel == kmeans.labels_[n])[0][0]
 
                 # Parameters of parametrization 3 (M=[A, B, C, D], Lambda**2, and P=[F, G], Pi**2)
-                self.__M, self.__Lambda2, self.__P, self.__Pi2 = self.EstimParam2terInit(Rsimul)
-
+                M, Lambda2, P, Pi2 = self.EstimParam2terInit(Rsimul)
 
             if self.__graphics >= 1:
                 fname = './Result/Fuzzy/SimulatedR/Rsimul_Kmeans_cl' + str(self.__STEPS+2)
@@ -300,31 +309,30 @@ class CGOFMSM_SemiSupervLearn:
                 self.plotRsimul(Rsimul, fname=fname, title=title)
 
 
-
         # Parameter for fuzzy Markov model called APrioriFuzzyLaw_serie2ter.py
         alpha0, alpha1, beta = self.EmpiricalFuzzyJointMatrix(Rsimul)
-        FS = LoiAPrioriSeries2ter(EPS=self.__EPS, discretization=0, alpha0=alpha0, alpha1=alpha1, beta=beta)
-        
+        FS = LoiAPrioriSeries2ter(self.__EPS, 0, alpha0, alpha1, beta)
+       
         # Parameters for the first p(r_1 | z_1) - Nécessaire pour le forward n=1
         aMeanCovFuzzy = MeanCovFuzzy(self.__Ztrain, self.__n_z, self.__STEPS, self.__verbose)
         aMeanCovFuzzy.update(Rsimul)
 
-         # Plot de la dernière réalisation
+        # Plot de la dernière réalisation
         if Plot == True and ((self.__graphics==0) or (self.__graphics==1)): 
             fname = './Result/Fuzzy/SimulatedR/Rsimul_Iter_' + str(self.__nbIterSEM) + '_cl' + str(self.__STEPS+2)
             title = 'Simulated R - Iter ' + str(self.__nbIterSEM)
             self.plotRsimul(Rsimul, fname=fname, title=title)
 
-        return FS, self.__M, self.__Lambda2, self.__P, self.__Pi2, aMeanCovFuzzy
+        return FS, M, Lambda2, P, Pi2, aMeanCovFuzzy
 
 
     def EstimParam2ter(self, ProbaJumpCond):
 
         # M = [A, B, C, D] ##################################################################################
-        MNum      = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 1, 4))
+        MNum      = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 4))
         MDenom    = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 4, 4))
         # P = [F, G] ##################################################################################
-        PNum      = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 1, 2))
+        PNum      = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 2))
         PDenom    = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 2, 2))
 
         for n in range(self.__N-1):
@@ -349,29 +357,29 @@ class CGOFMSM_SemiSupervLearn:
 
                     ###################### M ########################
                     MDenom[indrn, indrnp1, :, :] += probacond * vect1vect1
-                    MNum  [indrn, indrnp1, 0, :] += probacond * vect1
+                    MNum  [indrn, indrnp1, :]    += probacond * vect1
 
                     ###################### P ########################
                     PDenom[indrn, indrnp1, :, :] += probacond * vect2vect2
-                    PNum  [indrn, indrnp1, 0, :] += probacond * vect2
+                    PNum  [indrn, indrnp1, :]    += probacond * vect2
 
-        M = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 1, 4))
-        P = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 1, 2))
+        M = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 4))
+        P = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 2))
         for indrn in range(self.__STEPS+2):
             for indrnp1 in range(self.__STEPS+2):
                 try:
-                    # print(MNum[indrn, indrnp1,0,:])
+                    # print(MNum[indrn, indrnp1,:])
                     # print(np.linalg.inv(MDenom[indrn, indrnp1,:,:]))
-                    # print(np.dot(MNum[indrn, indrnp1,0,:], np.linalg.inv(MDenom[indrn, indrnp1,:,:])))
-                    M[indrn, indrnp1,0,:] = np.dot(MNum[indrn, indrnp1,0,:], np.linalg.inv(MDenom[indrn, indrnp1,:,:]))
-                    # print('M[indrn, indrnp1,0,:]=', M[indrn, indrnp1,0,:])
+                    # print(np.dot(MNum[indrn, indrnp1,:], np.linalg.inv(MDenom[indrn, indrnp1,:,:])))
+                    M[indrn, indrnp1,:] = np.dot(MNum[indrn, indrnp1,:], np.linalg.inv(MDenom[indrn, indrnp1,:,:]))
+                    # print('M[indrn, indrnp1,:]=', M[indrn, indrnp1,:])
                     # input('xvxv;dk')
                 except np.linalg.LinAlgError:
-                    M[indrn, indrnp1,0,:] = 0.
+                    M[indrn, indrnp1,:] = 0.
                 try:
-                    P[indrn, indrnp1,0,:] = np.dot(PNum[indrn, indrnp1,0,:], np.linalg.inv(PDenom[indrn, indrnp1,:,:]))
+                    P[indrn, indrnp1,:] = np.dot(PNum[indrn, indrnp1,:], np.linalg.inv(PDenom[indrn, indrnp1,:,:]))
                 except np.linalg.LinAlgError:
-                    P[indrn, indrnp1,0,:] = 0.
+                    P[indrn, indrnp1,:] = 0.
 
         # Pi2 and Lambda2 ##################################################################################
         Pi2     = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2))
@@ -391,8 +399,8 @@ class CGOFMSM_SemiSupervLearn:
 
                     probacond = ProbaJumpCond[n][indrn].get(rnp1)
 
-                    Lambda2[indrn, indrnp1] += probacond * (xnpun - (xn * M[indrn, indrnp1, 0, 0] + yn * M[indrn, indrnp1, 0, 1] + ynpun * M[indrn, indrnp1, 0, 2] + M[indrn, indrnp1, 0, 3]))**2
-                    Pi2    [indrn, indrnp1] += probacond * (ynpun - (yn * P[indrn, indrnp1, 0, 0] + P[indrn, indrnp1, 0, 1]))**2
+                    Lambda2[indrn, indrnp1] += probacond * (xnpun - (xn * M[indrn, indrnp1, 0] + yn * M[indrn, indrnp1, 1] + ynpun * M[indrn, indrnp1, 2] + M[indrn, indrnp1, 3]))**2
+                    Pi2    [indrn, indrnp1] += probacond * (ynpun - (yn * P[indrn, indrnp1, 0] + P[indrn, indrnp1, 1]))**2
                     Denom  [indrn, indrnp1] += probacond
 
         for indrn in range(self.__STEPS+2):
@@ -411,10 +419,10 @@ class CGOFMSM_SemiSupervLearn:
     def EstimParam2terInit(self, Rsimul):
 
         # M = [A, B, C, D] ##################################################################################
-        MNum      = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 1, 4))
+        MNum      = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 4))
         MDenom    = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 4, 4))
         # P = [F, G] ##################################################################################
-        PNum      = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 1, 2))
+        PNum      = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 2))
         PDenom    = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 2, 2))
 
         for real in range(self.__nbRealSEM):
@@ -437,29 +445,29 @@ class CGOFMSM_SemiSupervLearn:
 
                 ###################### M ########################
                 MDenom[indrn, indrnp1, :, :] += vect1vect1
-                MNum  [indrn, indrnp1, 0, :] += xnpun * vect1
+                MNum  [indrn, indrnp1, :]    += xnpun * vect1
 
                 ###################### P ########################
                 PDenom[indrn, indrnp1, :, :] += vect2vect2
-                PNum  [indrn, indrnp1, 0, :] += ynpun * vect2
+                PNum  [indrn, indrnp1, :]    += ynpun * vect2
 
-        M = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 1, 4))
-        P = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 1, 2))
+        M = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 4))
+        P = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 2))
         for indrn in range(self.__STEPS+2):
             for indrnp1 in range(self.__STEPS+2):
                 try:
-                    # print(MNum[indrn, indrnp1,0,:])
+                    # print(MNum[indrn, indrnp1,:])
                     # print(np.linalg.inv(MDenom[indrn, indrnp1,:,:]))
-                    # print(np.dot(MNum[indrn, indrnp1,0,:], np.linalg.inv(MDenom[indrn, indrnp1,:,:])))
-                    M[indrn, indrnp1,0,:] = np.dot(MNum[indrn, indrnp1,0,:], np.linalg.inv(MDenom[indrn, indrnp1,:,:]))
-                    # print('M[indrn, indrnp1,0,:]=', M[indrn, indrnp1,0,:])
+                    # print(np.dot(MNum[indrn, indrnp1,:], np.linalg.inv(MDenom[indrn, indrnp1,:,:])))
+                    M[indrn, indrnp1,:] = np.dot(MNum[indrn, indrnp1,:], np.linalg.inv(MDenom[indrn, indrnp1,:,:]))
+                    # print('M[indrn, indrnp1,:]=', M[indrn, indrnp1,:])
                     # input('xvxv;dk')
                 except np.linalg.LinAlgError:
-                    M[indrn, indrnp1,0,:] = 0.
+                    M[indrn, indrnp1,:] = 0.
                 try:
-                    P[indrn, indrnp1,0,:] = np.dot(PNum[indrn, indrnp1,0,:], np.linalg.inv(PDenom[indrn, indrnp1,:,:]))
+                    P[indrn, indrnp1,:] = np.dot(PNum[indrn, indrnp1,:], np.linalg.inv(PDenom[indrn, indrnp1,:,:]))
                 except np.linalg.LinAlgError:
-                    P[indrn, indrnp1,0,:] = 0.
+                    P[indrn, indrnp1,:] = 0.
 
         # Pi2 and Lambda2 ##################################################################################
         Pi2     = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2))
@@ -485,8 +493,8 @@ class CGOFMSM_SemiSupervLearn:
                 rn      = getrnFromindrn(self.__Rcentres, indrn)
                 rnp1    = getrnFromindrn(self.__Rcentres, indrnp1)
 
-                Lambda2[indrn, indrnp1] += (xnpun - (xn * M[indrn, indrnp1, 0, 0] + yn * M[indrn, indrnp1, 0, 1] + ynpun * M[indrn, indrnp1, 0, 2] + M[indrn, indrnp1, 0, 3]))**2
-                Pi2    [indrn, indrnp1] += (ynpun - (yn * P[indrn, indrnp1, 0, 0] + P[indrn, indrnp1, 0, 1]))**2
+                Lambda2[indrn, indrnp1] += (xnpun - (xn * M[indrn, indrnp1, 0] + yn * M[indrn, indrnp1, 1] + ynpun * M[indrn, indrnp1, 2] + M[indrn, indrnp1, 3]))**2
+                Pi2    [indrn, indrnp1] += (ynpun - (yn * P[indrn, indrnp1, 0] + P[indrn, indrnp1, 1]))**2
                 Denom  [indrn, indrnp1] += 1.
 
         for indrn in range(self.__STEPS+2):
@@ -511,7 +519,7 @@ class CGOFMSM_SemiSupervLearn:
         # Les suivantes
         for np1 in range(1, self.__N):
             if self.__verbose >= 2:
-                print('\r         proba tnp1 condit. to tn np1=', np1, ' sur N=', self.__N, end='   ', flush = True)
+                print('\r         proba tnp1 condit. to tn, np1=', np1, ' sur N=', self.__N, end='   ', flush = True)
 
             tab_GaussXY.append(Loi2DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
             tab_GaussXY[np1].Calc_GaussXY(self.__M, self.__Lambda2, self.__P, self.__Pi2, self.__Ztrain[:, np1-1], self.__Ztrain[:, np1])
@@ -765,6 +773,9 @@ class MeanCovFuzzy:
         self.__Cov_Zf   = np.zeros(shape=(self.__STEPS+2, self.__n_z, self.__n_z))
         self.__cpt      = np.zeros(shape=(self.__STEPS+2), dtype=int)
 
+    # def __del__(self):
+    #     if self.__verbose >= 2: 
+    #         print('\nMeanCovFuzzy deleted')
 
     def update(self, Rlabels):
 
@@ -775,15 +786,14 @@ class MeanCovFuzzy:
         self.__Mean_Zf.fill(0.)
         self.__Cov_Zf.fill(0.)
         self.__cpt.fill(0)
-        # print('self.__Mean_Zf=', self.__Mean_Zf)
-    
+        
         # The means
         for real in range(nbreal):
             for n in range(self.__N):
                 label = Rlabels[real*self.__N+n]
                 self.__Mean_Zf[label,:] += self.__Ztrain[:, n]
                 self.__cpt[label] += 1
-        #print('cpt=', self.__cpt, ', sum=', np.sum(self.__cpt))
+        
         for indrn in range(self.__STEPS+2):
             if self.__cpt[indrn] != 0:
                 self.__Mean_Zf[indrn, :] /= self.__cpt[indrn]
@@ -815,16 +825,3 @@ class MeanCovFuzzy:
 
     def getCov(self, indrn):
         return self.__Cov_Zf[indrn, :]
-
-    # def getMeanAll(self):
-    #     return self.__Mean_Zf
-
-    # def getCovAll(self):
-    #     return self.__Cov_Zf
-
-    # def setMeanAll(self, Mean_Zf):
-    #     self.__Mean_Zf = Mean_Zf.copy()
-
-    # def setCovAll(self, Cov_Zf):
-    #     self.__Cov_Zf = Cov_Zf.copy()
-

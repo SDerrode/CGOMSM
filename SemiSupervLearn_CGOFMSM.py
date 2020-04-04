@@ -97,7 +97,8 @@ def main():
 
     # Convert parametrization 3 to parametrization 1 
     filenameParam = './Parameters/Fuzzy/' + pathlib.Path(fileTrainX).stem + '_' + pathlib.Path(fileTrainY).stem + '_F=' + str(STEPS) + '.param'
-    aCGOFMSM_learn.ConvertandSaveParameters(filenameParam)
+    Cov, MeanX, MeanY = aCGOFMSM_learn.ConvertParameters()
+    aCGOFMSM_learn.SaveParameters(filenameParam, Cov, MeanX, MeanY)
 
 
 if __name__ == '__main__':
