@@ -36,8 +36,8 @@ def main():
 
     print('*********************SERIES 4 Extended')
     series = 'Serie4bis'
-    #P, case = LoiAPrioriSeries4bis(EPS, discretization, alpha=0.10, gamma = 0.65, delta_d=0.15, delta_u=0.05, lamb=0.5), 1
-    P, case = LoiAPrioriSeries4bis(EPS, discretization, alpha=0.10, gamma = 0.65, delta_d=0.15, delta_u=0., lamb=0.8), 1
+    #P, case = LoiAPrioriSeries4bis(alpha=0.10, gamma = 0.65, delta_d=0.15, delta_u=0.05, lamb=0.5, EPS=EPS, discretization=discretization), 1
+    P, case = LoiAPrioriSeries4bis(alpha=0.10, gamma = 0.65, delta_d=0.15, delta_u=0., lamb=0.8, EPS=EPS, discretization=discretization), 1
 
     print(P)
     ALPHA, BETA, DELTA_D, DELTA_U, GAMMA, LAMB = P.getParam()
@@ -154,10 +154,10 @@ class LoiAPrioriSeries4bis(LoiAPriori):
     Implementation of the fourth law described in the report Calcul_Simu_CGOFMSM.pdf
     """
 
-    def __init__(self, EPS, discretization, alpha, gamma, delta_d, delta_u, lamb):
+    def __init__(self, alpha, gamma, delta_d, delta_u, lamb, EPS=1E-8, discretization=100):
         """Constructeur to set the parameters of the density."""
 
-        LoiAPriori.__init__(self, EPS, discretization)
+        LoiAPriori.__init__(self, EPS=EPS, discretization=discretization)
 
         self.__alpha = alpha
 

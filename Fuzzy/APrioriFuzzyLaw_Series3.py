@@ -36,10 +36,10 @@ def main():
     # SERIES 3
     print('*********************SERIES 3')
     series = 'Serie3'
-    #P, case = LoiAPrioriSeries3(EPS, discretization, alpha=0.05, delta=0.05), 1
-    P,case = LoiAPrioriSeries3(EPS, discretization, alpha=0.5, delta=0.1), 2
-    #P,case = LoiAPrioriSeries3(EPS, discretization, alpha=0.1, delta=0.5), 3
-    #P,case = LoiAPrioriSeries3(EPS, discretization, alpha=0.05, delta=0.0), 10
+    #P, case = LoiAPrioriSeries3(alpha=0.05, delta=0.05, EPS=EPS, discretization=discretization), 1
+    P,case = LoiAPrioriSeries3(alpha=0.5, delta=0.1, EPS=EPS, discretization=discretization), 2
+    #P,case = LoiAPrioriSeries3(alpha=0.1, delta=0.5, EPS=EPS, discretization=discretization), 3
+    #P,case = LoiAPrioriSeries3(alpha=0.05, delta=0.0, EPS=EPS, discretization=discretization), 10
 
     print(P)
     ALPHA, DELTA, GAMMA = P.getParam()
@@ -132,10 +132,10 @@ class LoiAPrioriSeries3(LoiAPriori):
         Implementation of the third law described in the report Calcul_Simu_CGOFMSM.pdf
     """
 
-    def __init__(self, EPS, discretization, alpha, delta):
+    def __init__(self, alpha, delta, EPS=1E-8, discretization=100):
         """Constructeur to set the parameters of the density."""
 
-        LoiAPriori.__init__(self, EPS, discretization)
+        LoiAPriori.__init__(self, EPS=EPS, discretization=discretization)
 
         self.__alpha = alpha
 

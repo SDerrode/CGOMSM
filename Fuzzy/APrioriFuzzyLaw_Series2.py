@@ -37,33 +37,33 @@ def main():
     print('*********************SERIES 2')
     series = 'Serie2'
 
-    #P,case = LoiAPrioriSeries2(EPS, discretization, alpha = 0.10, eta = 0.12, delta=0.08), 1
-    #P, case = LoiAPrioriSeries2(EPS, discretization, alpha=0.02, eta=0.12, delta=0.001), 2
+    #P,case = LoiAPrioriSeries2(alpha = 0.10, eta = 0.12, delta=0.08, EPS=EPS, discretization=discretization), 1
+    #P, case = LoiAPrioriSeries2(alpha=0.02, eta=0.12, delta=0.001, EPS=EPS, discretization=discretization), 2
     # si delta = (3-8 eta)/7, alors alpha = beta = 0.
-    #P,case = LoiAPrioriSeries2(EPS, discretization, alpha = 0, eta = 0.1, delta=0.3142), 3
+    #P,case = LoiAPrioriSeries2(alpha = 0, eta = 0.1, delta=0.3142, EPS=EPS, discretization=discretization), 3
 
-    #P, case = LoiAPrioriSeries2(EPS, discretization, alpha=0.07, eta=0.275, delta=0.05), 10 #--> 48%
-    #P, case = LoiAPrioriSeries2(EPS, discretization, alpha=0.07, eta=0.21, delta=0.05), 11 #--> 58%
-    #P, case = LoiAPrioriSeries2(EPS, discretization, alpha=0.07, eta=0.16, delta=0.05), 12 #--> 67%
-    #P, case = LoiAPrioriSeries2(EPS, discretization, alpha=0.07, eta=0.108, delta=0.05), 13 #--> 75%
-    #P, case = LoiAPrioriSeries2(EPS, discretization, alpha=0.07, eta=0.005, delta=0.05), 14 #--> 93%
+    #P, case = LoiAPrioriSeries2(alpha=0.07, eta=0.275, delta=0.05, EPS=EPS, discretization=discretization), 10 #--> 48%
+    #P, case = LoiAPrioriSeries2(alpha=0.07, eta=0.21, delta=0.05, EPS=EPS, discretization=discretization), 11 #--> 58%
+    #P, case = LoiAPrioriSeries2(alpha=0.07, eta=0.16, delta=0.05, EPS=EPS, discretization=discretization), 12 #--> 67%
+    #P, case = LoiAPrioriSeries2(alpha=0.07, eta=0.108, delta=0.05, EPS=EPS, discretization=discretization), 13 #--> 75%
+    #P, case = LoiAPrioriSeries2(alpha=0.07, eta=0.005, delta=0.05, EPS=EPS, discretization=discretization), 14 #--> 93%
 
     # alpha1 = 0.
     # delta1 = 0.2
     # eta1 = -1./8.*(6.*alpha1-3.+7*delta1)
     # print('eta1=', eta1)
-    # P, case = LoiAPrioriSeries2(EPS, discretization, alpha=alpha1, eta=eta1, delta=delta1), 100
+    # P, case = LoiAPrioriSeries2(alpha=alpha1, eta=eta1, delta=delta1, EPS=EPS, discretization=discretization), 100
 
     # alpha1 = 0.15
     # delta1 = 0.
     # eta1 = -1./8.*(6.*alpha1-3.+7*delta1)
     # print('eta1=', eta1)
-    # P, case = LoiAPrioriSeries2(EPS, discretization, alpha=alpha1, eta=eta1, delta=delta1), 101
+    # P, case = LoiAPrioriSeries2(alpha=alpha1, eta=eta1, delta=delta1, EPS=EPS, discretization=discretization), 101
 
-    #P, case = LoiAPrioriSeries2(EPS, discretization, alpha=0.14, eta=0.25, delta=0.02), 20
-    #P, case = LoiAPrioriSeries2(EPS, discretization, alpha=0.10, eta=0.10, delta=0.10), 20
-    P, case = LoiAPrioriSeries2(EPS, discretization, alpha=0.10, eta=0.21, delta=0.076), 200
-    # P, case = LoiAPrioriSeries2(EPS, discretization, alpha=0.1, eta=0.23723214285714284, delta=0.0), 1200
+    #P, case = LoiAPrioriSeries2(alpha=0.14, eta=0.25, delta=0.02, EPS=EPS, discretization=discretization), 20
+    #P, case = LoiAPrioriSeries2(alpha=0.10, eta=0.10, delta=0.10, EPS=EPS, discretization=discretization), 20
+    P, case = LoiAPrioriSeries2(alpha=0.10, eta=0.21, delta=0.076, EPS=EPS, discretization=discretization), 200
+    # P, case = LoiAPrioriSeries2(alpha=0.1, eta=0.23723214285714284, delta=0.0, EPS=EPS, discretization=discretization), 1200
     print(P)
     ALPHA, BETA, ETA, DELTA = P.getParam()
     print('2:'+str(ALPHA)+':'+str(ETA)+':'+str(DELTA)+' #pH='+str(P.maxiHardJump()))
@@ -191,10 +191,10 @@ class LoiAPrioriSeries2(LoiAPriori):
     Implementation of the second law described in the report Calcul_Simu_CGOFMSM.pdf
     """
 
-    def __init__(self, EPS, discretization, alpha, eta, delta):
+    def __init__(self, alpha, eta, delta, EPS=1E-8, discretization=100):
         """Constructeur to set the parameters of the density."""
 
-        LoiAPriori.__init__(self, EPS, discretization)
+        LoiAPriori.__init__(self, EPS=EPS, discretization=discretization)
         
         #print('(3.-7.*eta-8.*delta)/6.0=', (3.-7.*eta-8.*delta)/6.0)
         #assert  alpha <= (3.-7.*eta-8.*delta)/6.0, print('PB, you should set alpha to a maximum value of ', (3.-7.*eta-8.*delta)/6.0, ' which corresponds to beta = 0')

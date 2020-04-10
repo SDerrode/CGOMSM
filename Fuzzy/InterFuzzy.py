@@ -40,6 +40,8 @@ def simulateFuzzy(filenameParam, FSParameters, N):
         FS = LoiAPrioriSeries2(alpha=float(FSParameters[1]), eta=float(FSParameters[2]), delta=float(FSParameters[3]))
     elif FSParameters[0] == '2bis':
         FS = LoiAPrioriSeries2bis(alpha=float(FSParameters[1]), eta=float(FSParameters[2]), delta=float(FSParameters[3]), lamb=float(FSParameters[4]))
+    elif FSParameters[0] == '2ter':
+        FS = LoiAPrioriSeries2ter(alpha0=float(FSParameters[1]), alpha1=float(FSParameters[2]), beta=float(FSParameters[3]))
     elif FSParameters[0] == '3':
         FS = LoiAPrioriSeries3(alpha=float(FSParameters[1]), delta=float(FSParameters[2]))
     elif FSParameters[0] == '4':

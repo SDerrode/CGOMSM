@@ -37,23 +37,23 @@ def main():
     # SERIES 2 bis
     print('*********************SERIES 2 bis')
     series = 'Serie2bis'
-    #P, case = LoiAPrioriSeries2bis(EPS, discretization, alpha=0.07, eta=0.21, delta=0.05, lamb=0.), 3
-    #P, case = LoiAPrioriSeries2bis(EPS, discretization, alpha=0.07, eta=0.21, delta=0.05, lamb=1.), 2
-    P, case = LoiAPrioriSeries2bis(EPS, discretization, alpha=0.07, eta=0.21, delta=0.10, lamb=0.3), 1
-    #P, case = LoiAPrioriSeries2bis(EPS, discretization, alpha=0.12, eta=0., delta=0., lamb=0.3), 5
-    #P, case = LoiAPrioriSeries2bis(EPS, discretization, alpha=0.1, eta=0.3, delta=0.3, lamb=0.5), 6
+    #P, case = LoiAPrioriSeries2bis(alpha=0.07, eta=0.21, delta=0.05, lamb=0., EPS=EPS, discretization=discretization), 3
+    #P, case = LoiAPrioriSeries2bis(alpha=0.07, eta=0.21, delta=0.05, lamb=1., EPS=EPS, discretization=discretization), 2
+    P, case = LoiAPrioriSeries2bis(alpha=0.07, eta=0.21, delta=0.10, lamb=0.3, EPS=EPS, discretization=discretization), 1
+    #P, case = LoiAPrioriSeries2bis(alpha=0.12, eta=0., delta=0., lamb=0.3, EPS=EPS, discretization=discretization), 5
+    #P, case = LoiAPrioriSeries2bis(alpha=0.1, eta=0.3, delta=0.3, lamb=0.5, EPS=EPS, discretization=discretization), 6
 
     # Le cas suivant assure que alpha=beta=0
     # eta = 0.21
     # lamb= 0.6
     # delta = 6.*(0.5 - eta*(lamb+1./3.))
-    # P, case = LoiAPrioriSeries2bis(EPS, discretization, alpha=0, eta=eta, delta=delta, lamb=lamb), 4
+    # P, case = LoiAPrioriSeries2bis(alpha=0, eta=eta, delta=delta, lamb=lamb, EPS=EPS, discretization=discretization), 4
 
     print(P)
     ALPHA, BETA, ETA, DELTA, LAMBDA = P.getParam()
     print('2bis:'+str(ALPHA)+':'+str(ETA)+':'+str(DELTA)+':'+str(LAMBDA)+' - Beta='+ str(BETA) +', #pH='+str(P.maxiHardJump()))
 
-# Test de sommes à 1
+    # Test de sommes à 1
     sum_R1R2 = P.sumR1R2()
     sum_R1   = P.sumR1()
     sum_R2CondR1_0   = P.sumR2CondR1(0.)
@@ -175,10 +175,10 @@ class LoiAPrioriSeries2bis(LoiAPriori):
     Implementation of the second law described in the report Calcul_Simu_CGOFMSM.pdf
     """
 
-    def __init__(self, EPS, discretization, alpha, eta, delta, lamb):
+    def __init__(self, alpha, eta, delta, lamb, EPS=1E-8, discretization=100):
         """Constructeur to set the parameters of the density."""
 
-        LoiAPriori.__init__(self, EPS, discretization)
+        LoiAPriori.__init__(self, EPS=EPS, discretization=discretization)
 
         self.__alpha = alpha
         self.__eta = eta

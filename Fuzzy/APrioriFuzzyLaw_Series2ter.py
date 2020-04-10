@@ -37,9 +37,9 @@ def main():
     print('*********************SERIES 2 ter')
     series = 'Serie2ter'
 
-    #P, case = LoiAPrioriSeries2ter(EPS, discretization, alpha0 = 0.10, alpha1 = 0.20, beta=0.06), 1
-    #P, case = LoiAPrioriSeries2ter(EPS, discretization, alpha0 = 0.05, alpha1 = 0.02, beta=0.01), 2
-    P, case = LoiAPrioriSeries2ter(EPS, discretization, alpha0 = 0.144, alpha1 = 0.050, beta=0.000), 4
+    #P, case = LoiAPrioriSeries2ter(alpha0 = 0.10, alpha1 = 0.20, beta=0.06, EPS=EPS, discretization=discretization), 1
+    #P, case = LoiAPrioriSeries2ter(alpha0 = 0.05, alpha1 = 0.02, beta=0.01, EPS=EPS, discretization=discretization), 2
+    P, case = LoiAPrioriSeries2ter(alpha0 = 0.144, alpha1 = 0.050, beta=0.000, EPS=EPS, discretization=discretization), 4
 
 
     print(P)
@@ -134,10 +134,10 @@ class LoiAPrioriSeries2ter(LoiAPriori):
     Implementation of the second law described in the paper about traffic flows (Zied)
     """
 
-    def __init__(self, EPS, discretization, alpha0, alpha1, beta):
+    def __init__(self, alpha0, alpha1, beta, EPS=1E-8, discretization=100):
         """Constructeur to set the parameters of the density."""
 
-        LoiAPriori.__init__(self, EPS, discretization)
+        LoiAPriori.__init__(self, EPS=EPS, discretization=discretization)
 
         self.__alpha0 = alpha0
         self.__alpha1 = alpha1

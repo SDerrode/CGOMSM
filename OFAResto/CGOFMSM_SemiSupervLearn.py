@@ -6,9 +6,17 @@ import warnings
 
 import matplotlib
 import matplotlib.pyplot as plt
+import matplotlib.dates as md
 from matplotlib.ticker import MaxNLocator
-from matplotlib import rc
-rc('text', usetex=True)
+
+years    = md.YearLocator()   # every year
+months   = md.MonthLocator()  # every month
+days     = md.DayLocator()    # every day
+yearsFmt = md.DateFormatter('%Y      ')
+monthFmt = md.DateFormatter('%B %Y')
+dayFmt   = md.DateFormatter('%d')
+
+fontS = 13     # font size
 
 from sklearn.cluster import KMeans
 
@@ -30,22 +38,34 @@ def getrnFromindrn(Rcentres, indrn):
 
 ###################################################################################################
 class CGOFMSM_SemiSupervLearn:
-    def __init__(self, STEPS, nbIterSEM, nbRealSEM, Ztrain, n_x, n_y, verbose, graphics):
+    def __init__(self, STEPS, nbIterSEM, nbRealSEM, Datatrain, filestem, verbose, graphics):
 
         self.__n_r       = 2
         self.__nbIterSEM = nbIterSEM
         self.__nbRealSEM = nbRealSEM
-        self.__N         = np.shape(Ztrain)[1]
-        self.__Ztrain    = Ztrain
         self.__verbose   = verbose
         self.__graphics  = graphics
         self.__STEPS     = STEPS
         self.__EPS       = 1E-8
+        self.__filestem  = filestem
+        self.__Datatrain = Datatrain
+
+        self.__Datatrain.set_index(list(self.__Datatrain)[0], inplace=True)
+        self.__listeHeader = list(self.__Datatrain)
         
-        # dimensions
-        self.__n_x       = n_x
-        self.__n_y       = n_y
-        self.__n_z       = self.__n_x + self.__n_y
+        # dimensions des données
+        self.__n_y, self.__n_x = 1, 1
+        self.__n_z   = self.__n_x + self.__n_y
+        len_y, len_x = self.__Datatrain[self.__listeHeader[0]].count(), self.__Datatrain[self.__listeHeader[1]].count()
+        if len_x != len_y:
+            print('The number of values in X and Y are differents!!!\n')
+            exit(1)
+        self.__N = len_y
+
+        # les données 
+        self.__Ztrain = np.zeros(shape=(self.__n_x+self.__n_y, self.__N))
+        self.__Ztrain[0:self.__n_x,          :] = self.__Datatrain[self.__listeHeader[1]].values
+        self.__Ztrain[self.__n_x:self.__n_z, :] = self.__Datatrain[self.__listeHeader[0]].values
 
         if self.__STEPS != 0:
             self.__Rcentres = np.linspace(start=1./(2.*self.__STEPS), stop=1.0-1./(2.*self.__STEPS), num=self.__STEPS, endpoint=True)
@@ -57,21 +77,75 @@ class CGOFMSM_SemiSupervLearn:
         self.__Tab_M_00      = np.zeros(shape=(self.__nbIterSEM+1, 4)) 
         self.__Tab_Lambda_00 = np.zeros(shape=(self.__nbIterSEM+1, 1)) 
         self.__Tab_P_00      = np.zeros(shape=(self.__nbIterSEM+1, 2)) 
-        self.__Tab_Pi_00     = np.zeros(shape=(self.__nbIterSEM+1, 1)) 
+        self.__Tab_Pi_00     = np.zeros(shape=(self.__nbIterSEM+1, 1))
+        
+        # plage graphique pour les plots
+        self.__graph_mini = 0
+        self.__graph_maxi = min(500, self.__N) # maxi=self.__N, maxi=min(500, self.__N)
+        self.__graphRep   = './Result/Fuzzy/SimulatedR/'
 
-        # Update of param for the simulated R (by kmeans here for init)
+        # Detect the weekend days
+        self.__weekend_indices = []
+        for i in range(len(self.__Datatrain.index[self.__graph_mini:self.__graph_maxi])):
+            if self.__Datatrain.index[i].weekday() >= 5:
+                self.__weekend_indices.append(i)
+
+        if self.__graphics >= 1:
+
+            # Plot of the original data
+            fig, ax1 = plt.subplots()
+
+            color = 'tab:red'
+            ax1.set_ylabel(self.__listeHeader[0], color=color, fontsize=fontS)
+            ax1.plot(self.__Datatrain.index[self.__graph_mini:self.__graph_maxi], self.__Datatrain[self.__listeHeader[0]].iloc[self.__graph_mini:self.__graph_maxi], color=color)
+            ax1.tick_params(axis='y', labelcolor=color, labelsize=fontS-2)
+            ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+            color = 'tab:blue'
+            ax2.set_ylabel(self.__listeHeader[1], color=color, fontsize=fontS)
+            ax2.plot(self.__Datatrain.index[self.__graph_mini:self.__graph_maxi], self.__Datatrain[self.__listeHeader[1]].iloc[self.__graph_mini:self.__graph_maxi], color=color)
+            ax2.tick_params(axis='y', labelcolor=color, labelsize=fontS-2)
+
+            i = 0
+            while i < len(self.__weekend_indices)-1:
+                ax1.axvspan(self.__Datatrain.index[self.__weekend_indices[i]], self.__Datatrain.index[self.__weekend_indices[i] + 1], facecolor='gray', edgecolor='none', alpha=.25, zorder=-100)
+                i += 1
+
+            # format the ticks
+            ax1.xaxis.set_major_locator(months)
+            ax1.xaxis.set_major_formatter(monthFmt)
+            ax1.xaxis.set_minor_locator(days)
+            ax1.xaxis.set_minor_formatter(dayFmt)
+            #ax1.format_xdata = md.DateFormatter('%m-%d')
+            ax1.grid(True, which='major', axis='both')
+            ax1.set_title('Sensor: ' + self.__filestem, fontsize=fontS+2)
+            ax1.tick_params(axis='x', which='both', labelsize=fontS-2)
+            ax1.set_xlim(xmin=self.__Datatrain.index[self.__graph_mini], xmax=self.__Datatrain.index[self.__graph_maxi])
+
+            fig.autofmt_xdate()
+            plt.xticks(rotation=35)
+            fig.tight_layout()  # otherwise the right y-label is slightly clipped
+            plt.savefig(self.__graphRep+self.__filestem+'_origData.png', bbox_inches='tight', dpi=150)    
+            plt.close()
+
+    # def __del__(self):
+    #     if self.__verbose >= 2: 
+    #         print('\nCGOFMSM_SemiSupervLearn deleted')
+
+    def run_several(self):
+
+        ########## initialisation by kmeans 
         iter = 0
         self.__FS, self.__M, self.__Lambda2, self.__P, self.__Pi2, self.__aMeanCovFuzzy = self.updateParamFromRsimul(numIterSEM=iter, kmeans=True, Plot=False)
                 
         # To plot the evolution of some parameters
-        self.__Tab_ParamFS  [iter,:] = copy.deepcopy(self.__FS.getParam())
-        self.__Tab_M_00     [iter,:] = copy.deepcopy(self.__M[0,0,:])
+        self.__Tab_ParamFS  [iter,:] = self.__FS.getParam()
+        self.__Tab_M_00     [iter,:] = self.__M[0,0,:]
         self.__Tab_Lambda_00[iter,0] = np.sqrt(self.__Lambda2[0,0])
-        self.__Tab_P_00     [iter,:] = copy.deepcopy(self.__P[0,0,:])
+        self.__Tab_P_00     [iter,:] = self.__P[0,0,:]
         self.__Tab_Pi_00    [iter,0] = np.sqrt(self.__Pi2[0,0])
 
         # Convert parametrization 3 to parametrization 2 (by param 1)
-        # filenameParam = './Result/Fuzzy/SimulatedR/parametrization2_F=' + str(self.__STEPS) + '_Iter_0.param'
+        # filenameParam = self.__graphRep+'parametrization2_F=' + str(self.__STEPS) + '_Iter_0.param'
         # Cov, MeanX, MeanY = self.ConvertParameters()
         # self.SaveParameters(filenameParam, Cov, MeanX, MeanY)
         # input('saved')
@@ -79,12 +153,8 @@ class CGOFMSM_SemiSupervLearn:
         # Print des paramètres
         if self.__verbose >= 1: self.printParam()
 
-    def __del__(self):
-        if self.__verbose >= 2: 
-            print('\nCGOFMSM_SemiSupervLearn deleted')
 
-    def run_several(self):
-
+        ########## the SEM loop
         Plot=False
         for iter in range(1, self.__nbIterSEM+1):
             print('ITERATION ', iter, ' over ', self.__nbIterSEM)
@@ -92,11 +162,12 @@ class CGOFMSM_SemiSupervLearn:
             self.run_one(iter, Plot)
 
             # Convert parametrization 3 to parametrization 2 (by param 1) 
-            # filenameParam = './Result/Fuzzy/SimulatedR/parametrization2_F=' + str(self.__STEPS) + '_Iter_' +str(iter) + '.param'
+            # filenameParam = self.__graphRep+'parametrization2_F=' + str(self.__STEPS) + '_Iter_' +str(iter) + '.param'
             # Cov, MeanX, MeanY = self.ConvertParameters()
             # self.SaveParameters(filenameParam, Cov, MeanX, MeanY)
             # input('saved')
 
+        # on dessine la dernire simulation
         if self.__graphics>=1 and self.__nbIterSEM>0:
             self.PlotConvSEM()
 
@@ -113,12 +184,13 @@ class CGOFMSM_SemiSupervLearn:
         if self.__verbose >= 2: print('         update parameters')
         
         self.__FS, self.__M, self.__Lambda2, self.__P, self.__Pi2, self.__aMeanCovFuzzy = self.updateParamFromRsimul(numIterSEM=iter, kmeans=False, Plot=Plot, ProbaGamma_0=ProbaGamma[0], ProbaJumpCond=ProbaJumpCond)
+         
 
         # To plot the evolution of some parameters
-        self.__Tab_ParamFS  [iter,:] = copy.deepcopy(self.__FS.getParam())
-        self.__Tab_M_00     [iter,:] = copy.deepcopy(self.__M[0,0,:])
+        self.__Tab_ParamFS  [iter,:] = self.__FS.getParam()
+        self.__Tab_M_00     [iter,:] = self.__M[0,0,:]
         self.__Tab_Lambda_00[iter,0] = np.sqrt(self.__Lambda2[0,0])
-        self.__Tab_P_00     [iter,:] = copy.deepcopy(self.__P[0,0,:])
+        self.__Tab_P_00     [iter,:] = self.__P[0,0,:]
         self.__Tab_Pi_00    [iter,0] = np.sqrt(self.__Pi2[0,0])
 
         # Print des paramètres
@@ -140,7 +212,7 @@ class CGOFMSM_SemiSupervLearn:
             print('MeanY[indrn]=', MeanY[indrn])
             print('MeanX[indrn] approche=', self.__aMeanCovFuzzy.getMean(indrn)[0])
             print('MeanY[indrn] approche=', self.__aMeanCovFuzzy.getMean(indrn)[1])
-            input('pause')
+            #input('pause')
 
         F = np.zeros(((self.__STEPS+2)**2, self.__n_z, self.__n_z))
         Q = np.zeros(((self.__STEPS+2)**2, self.__n_z, self.__n_z))
@@ -171,10 +243,10 @@ class CGOFMSM_SemiSupervLearn:
                 #     warnings.simplefilter('error')
                 #     B[ind,:, :] = sp.linalg.sqrtm(Q[ind,:, :])
 
-        # print('F:', F)
-        # print('Q:', Q)
+        print('F:', F)
+        print('Q:', Q)
         # print('B:', B)
-
+        # input('attente')
 
         # Convert from Param 1 to Param 2 (usig method from Fei) ##################################################@
         #print('########## CONVERSION VERS COV ##########')
@@ -228,12 +300,61 @@ class CGOFMSM_SemiSupervLearn:
         hard, filt, smooth, predic = 0, 1, 0, 1
         chWork = str(hard) + ',' + str(filt) + ',' + str(smooth) + ',' + str(predic)
         param = self.__FS.getParam()
-        nameY = './Data/Traffic/TMU5509/generated/TMU5509_train.csv'
+        nameY = './Data/Traffic/TMUSite5509-2/TMUSite5509-2_train.csv'
         A  = 'python3 Test_CGOFMSM_Signals.py ' + filenameParam + ' 2ter:' + str('%.4f'%param[0]) + ':' + str('%.4f'%param[1]) + ':' + str('%.4f'%param[2]) + ' '
-        A += chWork + ' ' + nameY + ' -1 2 0'
+        A += chWork + ' ' + nameY + ' -1 2 1'
 
         clipboard.copy(A.strip()) # mise en mémoire de la commande à exécuter
         print('pour restaurer le signal:')
+        print('\n', A, '\n')
+
+
+
+    def SaveParametersInterpolation(self, filenameParam, Cov, MeanX, MeanY):
+
+        # Save the CGOFMSM file ##################################################################################################@
+        
+        # L'entete
+        f = open(filenameParam, 'w')
+        f.write('#=====================================#\n# parameters for CGOFMSM with F discrete classes # \n#=====================================# \n# \n# \n# matrix Cov_XY \n# ===============================================#\n# \n')
+        f.close()
+
+        f = open(filenameParam, 'ab')
+
+        # Les covariances
+        j, k = 0, 0
+        ind = j*(self.__STEPS+2) + k
+        np.savetxt(f, Cov[ind,:,:], delimiter=" ", header='Cov_xy'+str(0)+str(0)+'\n----------------------------', footer='\n', fmt='%.4f')
+        j, k = 0, self.__STEPS+1
+        ind = j*(self.__STEPS+2) + k
+        np.savetxt(f, Cov[ind,:,:], delimiter=" ", header='Cov_xy'+str(0)+str(1)+'\n----------------------------', footer='\n', fmt='%.4f')
+        j, k = self.__STEPS+1, 0
+        ind = j*(self.__STEPS+2) + k
+        np.savetxt(f, Cov[ind,:,:], delimiter=" ", header='Cov_xy'+str(1)+str(0)+'\n----------------------------', footer='\n', fmt='%.4f')
+        j, k = self.__STEPS+1, self.__STEPS+1
+        ind = j*(self.__STEPS+2) + k
+        np.savetxt(f, Cov[ind,:,:], delimiter=" ", header='Cov_xy'+str(1)+str(1)+'\n----------------------------', footer='\n', fmt='%.4f')
+        
+        # Les moyennes
+        np.savetxt(f, MeanX[0], delimiter=" ", header='mean of X'+'\n================================', fmt='%.4f')
+        np.savetxt(f, MeanX[self.__STEPS+1], delimiter=" ", footer='\n', fmt='%.4f')
+        np.savetxt(f, MeanY[0], delimiter=" ", header='mean of Y'+'\n================================', fmt='%.4f')
+        np.savetxt(f, MeanY[self.__STEPS+1], delimiter=" ", footer='\n', fmt='%.4f')
+
+        f.close()
+
+        # Generate the command to run the predictor 
+        #############################################################################@
+        hard, filt, smooth, predic = 0, 1, 0, 1
+        chWork = str(hard) + ',' + str(filt) + ',' + str(smooth) + ',' + str(predic)
+        param  = self.__FS.getParam()
+        Fsteps = 1
+        nameY  = './Data/Traffic/TMUSite5509-2/TMUSite5509-2_train.csv'
+        A  = 'python3 Test_CGOFMSM_Signals.py ' + filenameParam + ' 2ter:' + str('%.4f'%param[0]) + ':' + str('%.4f'%param[1]) + ':' + str('%.4f'%param[2]) + ' '
+        A += chWork + ' ' + nameY + ' ' + str(Fsteps) + ' 2 1'
+
+        clipboard.copy(A.strip()) # mise en mémoire de la commande à exécuter
+        print('pour restaurer le signal (avec interpolation):')
         print('\n', A, '\n')
 
 
@@ -283,7 +404,7 @@ class CGOFMSM_SemiSupervLearn:
             M, Lambda2, P, Pi2 = self.EstimParam2ter(ProbaJumpCond)
 
             if self.__graphics >= 2:
-                fname = './Result/Fuzzy/SimulatedR/Rsimul_Iter_' + str(numIterSEM) + '_cl' + str(self.__STEPS+2)
+                fname = self.__graphRep+self.__filestem +'Rsimul_Iter_' + str(numIterSEM) + '_cl' + str(self.__STEPS+2)
                 title = 'Simulated R - Iter ' + str(numIterSEM)
                 self.plotRsimul(Rsimul, fname=fname, title=title)
         else:
@@ -304,14 +425,20 @@ class CGOFMSM_SemiSupervLearn:
                 M, Lambda2, P, Pi2 = self.EstimParam2terInit(Rsimul)
 
             if self.__graphics >= 1:
-                fname = './Result/Fuzzy/SimulatedR/Rsimul_Kmeans_cl' + str(self.__STEPS+2)
-                title = 'Simulated R - Kmeans - Iter ' + str(numIterSEM)
+                fname = self.__graphRep+self.__filestem + 'Rsimul_Kmeans_cl' + str(self.__STEPS+2)
+                title = 'Simulated R - Iter ' + str(numIterSEM)
                 self.plotRsimul(Rsimul, fname=fname, title=title)
 
 
         # Parameter for fuzzy Markov model called APrioriFuzzyLaw_serie2ter.py
         alpha0, alpha1, beta = self.EmpiricalFuzzyJointMatrix(Rsimul)
-        FS = LoiAPrioriSeries2ter(self.__EPS, 0, alpha0, alpha1, beta)
+        FS = LoiAPrioriSeries2ter(alpha0, alpha1, beta, self.__EPS, 100)
+
+        if self.__graphics>=2:
+            fig = plt.figure()
+            ax = fig.add_subplot(1, 1, 1, projection='3d')
+            FS.plotR1R2(self.__graphRep+self.__filestem + 'FS_2D_iter' + str(numIterSEM) + '.png', ax, dpi=150)
+            FS.plotR1  (self.__graphRep+self.__filestem + 'FS_1D_iter' + str(numIterSEM) + '.png', dpi=150)
        
         # Parameters for the first p(r_1 | z_1) - Nécessaire pour le forward n=1
         aMeanCovFuzzy = MeanCovFuzzy(self.__Ztrain, self.__n_z, self.__STEPS, self.__verbose)
@@ -319,7 +446,7 @@ class CGOFMSM_SemiSupervLearn:
 
         # Plot de la dernière réalisation
         if Plot == True and ((self.__graphics==0) or (self.__graphics==1)): 
-            fname = './Result/Fuzzy/SimulatedR/Rsimul_Iter_' + str(self.__nbIterSEM) + '_cl' + str(self.__STEPS+2)
+            fname = self.__graphRep+self.__filestem + 'Rsimul_Iter_' + str(self.__nbIterSEM) + '_cl' + str(self.__STEPS+2)
             title = 'Simulated R - Iter ' + str(self.__nbIterSEM)
             self.plotRsimul(Rsimul, fname=fname, title=title)
 
@@ -631,7 +758,7 @@ class CGOFMSM_SemiSupervLearn:
             integ = tab_psi[n].Integ()
             if integ == 0.:
                 print("Tab Spi normalisation")
-                ptrin('tab_psi[n].Integ()=', integ)
+                print('tab_psi[n].Integ()=', integ)
                 tab_psi[n].print()
                 input('pause')
             tab_psi[n].normalisation(integ)
@@ -675,8 +802,7 @@ class CGOFMSM_SemiSupervLearn:
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         plt.legend()
         plt.title('Evolution of FS param - Fuzzy steps (F)=' + str(self.__STEPS)+ ', mean of ' + str(self.__nbRealSEM) + ' realizations')
-        fname = './Result/Fuzzy/SimulatedR/'
-        plt.savefig(fname + 'ParamFS_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
+        plt.savefig(self.__graphRep+self.__filestem + 'ParamFS_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
         plt.close()
 
         ax = plt.figure().gca()
@@ -689,8 +815,7 @@ class CGOFMSM_SemiSupervLearn:
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         plt.legend()
         plt.title(r'Evolution of $\mathcal{M}_{0}^{0}$ param - Fuzzy steps (F)=' + str(self.__STEPS)+ ', mean of ' + str(self.__nbRealSEM) + ' realizations')
-        fname = './Result/Fuzzy/SimulatedR/'
-        plt.savefig(fname + 'MOO_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
+        plt.savefig(self.__graphRep+self.__filestem + 'MOO_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
         plt.close()
 
         ax = plt.figure().gca()
@@ -701,8 +826,7 @@ class CGOFMSM_SemiSupervLearn:
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         plt.legend()
         plt.title(r'Evolution of $\mathcal{P}_{0}^{0}$ param - Fuzzy steps (F)=' + str(self.__STEPS)+ ', mean of ' + str(self.__nbRealSEM) + ' realizations')
-        fname = './Result/Fuzzy/SimulatedR/'
-        plt.savefig(fname + 'POO_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
+        plt.savefig(self.__graphRep+self.__filestem + 'POO_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
         plt.close()
 
         ax = plt.figure().gca()
@@ -712,8 +836,7 @@ class CGOFMSM_SemiSupervLearn:
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         plt.legend()
         plt.title(r'Evolution of $\lambda_{0}^{0}$ param - Fuzzy steps (F)=' + str(self.__STEPS)+ ', mean of ' + str(self.__nbRealSEM) + ' realizations')
-        fname = './Result/Fuzzy/SimulatedR/'
-        plt.savefig(fname + 'Lambda_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
+        plt.savefig(self.__graphRep+self.__filestem + 'Lambda_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
         plt.close()
 
         ax = plt.figure().gca()
@@ -723,8 +846,7 @@ class CGOFMSM_SemiSupervLearn:
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         plt.legend()
         plt.title(r'Evolution of $\pi_{0}^{0}$ param - Fuzzy steps (F)=' + str(self.__STEPS)+ ', mean of ' + str(self.__nbRealSEM) + ' realizations')
-        fname = './Result/Fuzzy/SimulatedR/'
-        plt.savefig(fname + 'Pi_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
+        plt.savefig(self.__graphRep+self.__filestem + 'Pi_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
         plt.close()
 
 
@@ -745,16 +867,48 @@ class CGOFMSM_SemiSupervLearn:
             for n in range(self.__N):
                 RsimulFuzzy[n] = getrnFromindrn(self.__Rcentres, Rsimul[real*self.__N + n])
 
-            fnamereal = fname + '_Real_'  + str(real) + '.png'
-            titlereal = title + ', Real ' + str(real)
+            fig, ax1 = plt.subplots()
 
-            maxi=500 # maxi=self.__N-1, maxi=500
-            plt.figure()
-            plt.plot(RsimulFuzzy, color='g')
-            plt.ylim(ymax = 1.05, ymin = -0.05)
-            plt.xlim(xmax = maxi, xmin = 0)
-            plt.title(titlereal)
-            plt.savefig(fnamereal, bbox_inches='tight', dpi=150)    
+            Centres = np.zeros(shape=(self.__STEPS+2))
+            Centres[0] = 0.
+            Centres[self.__STEPS+1] = 1.
+            Centres[1:self.__STEPS+1] = self.__Rcentres
+            
+            color = 'tab:green'
+            ax1.set_ylabel('Discrete fuzzy jumps', color=color, fontsize=fontS)
+            ax1.plot(self.__Datatrain.index[self.__graph_mini:self.__graph_maxi], RsimulFuzzy[self.__graph_mini:self.__graph_maxi], color=color)
+            ax1.tick_params(axis='y', labelcolor=color, labelsize=fontS-2)
+            ax1.tick_params(axis='x', which='both', labelsize=fontS-2)
+            
+            ax1.set_ylim(ymax = 1.05, ymin = -0.05)
+            ax1.set_xlim(xmax = self.__Datatrain.index[self.__graph_maxi], xmin = self.__Datatrain.index[self.__graph_mini])
+
+            ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+            color = 'tab:olive'
+            ax2.hlines (Centres, xmin=self.__Datatrain.index[self.__graph_mini], xmax=self.__Datatrain.index[self.__graph_maxi], color=color, linestyle='dashed')
+            ax2.tick_params(axis='y', labelcolor=color, labelsize=fontS-2)
+            ax2.set_yticks(ticks=Centres)
+
+            # format the ticks
+            ax2.xaxis.set_major_locator(months)
+            ax2.xaxis.set_major_formatter(monthFmt)
+            ax2.xaxis.set_minor_locator(days)
+            ax2.xaxis.set_minor_formatter(dayFmt)
+            # ax1.format_xdata = md.DateFormatter('%m%Y-%d')
+
+            plt.setp(ax1.xaxis.get_minorticklabels(), rotation=90)
+            plt.setp(ax1.xaxis.get_majorticklabels(), rotation=35)
+            #ax1.grid(True, which='major', axis='both')
+            ax1.set_title('Sensor: ' + self.__filestem + title + ', Realization ' + str(real), fontsize=fontS-4)
+            
+            i = 0
+            while i < len(self.__weekend_indices)-1:
+                ax1.axvspan(self.__Datatrain.index[self.__weekend_indices[i]], self.__Datatrain.index[self.__weekend_indices[i] + 1], facecolor='gray', edgecolor='none', alpha=.25, zorder=-100)
+                i += 1
+
+            fig.autofmt_xdate()
+            #fig.tight_layout()  # otherwise the right y-label is slightly clipped
+            plt.savefig(fname + '_Real_'  + str(real)+'.png', bbox_inches='tight', dpi=150)    
             plt.close()
 
 

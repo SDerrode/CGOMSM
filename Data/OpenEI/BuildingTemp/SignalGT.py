@@ -25,6 +25,7 @@ if __name__ == '__main__':
         listeHeader = list(DOE_df)
         pd.to_datetime(DOE_df[listeHeader[0]])
         DOE_df.sort_values(by=[listeHeader[0]])
+        DOE_df[listeHeader[1]].astype(float)
 
         datemin=DOE_df[listeHeader[0]].iloc[0]
         datemax=DOE_df[listeHeader[0]].iloc[-1]
@@ -61,9 +62,8 @@ if __name__ == '__main__':
         #PS.plot2(None, DOE_df.index, DOE_df[listeHeader[0]], DOE_df[listeHeader[2]], 'Outdoor Air Temperature (F)', 'Fuzzy jumps ground-truth', sf=False)
 
         # Renommage des colums
-        # DOE_df.columns = ['X', 'Y', 'R_GT']
-        DOE_df.columns = ['Y', 'X', 'R_GT']
-        DOE_df.Y.astype(float)
-        DOE_df.X.astype(float)
+        # DOE_df.columns = ['Y', 'X', 'R_GT']
+        # DOE_df[listeHeader[0]].astype(float)
+        # DOE_df[listeHeader[1]].astype(float)
         DOE_df.to_csv(Prefix + 'input/' + name + '_GT.csv', columns=DOE_df.columns, header=True, index=True)
         

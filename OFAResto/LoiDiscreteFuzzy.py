@@ -13,12 +13,17 @@ from scipy.stats import norm
 from Fuzzy.InterFuzzy import InterBiLineaire_Matrix, InterLineaire_Vector
 from CommonFun.CommonFun import From_Cov_to_FQ_bis
 
+def getindrnFromrn(STEPS, rn):
+    if rn == 0:  return 0
+    if rn == 1.: return STEPS+1
+    return int(math.floor(rn*STEPS))
 
 class Loi2DDiscreteFuzzy():
 
-    def __init__(self, EPS, STEPS, Rcentres, Mean_X, Mean_Y, Cov, dim1):
+    def __init__(self, EPS, interpolation, STEPS, Rcentres, Mean_X, Mean_Y, Cov, dim1):
         self.__EPS      = EPS
         self.__STEPS    = STEPS
+        self.__interpolation = interpolation
         self.__Rcentres = Rcentres
         self.__Cov      = Cov
         self.__Mean_X   = Mean_X
@@ -43,16 +48,100 @@ class Loi2DDiscreteFuzzy():
         dim3 = (STEPS, STEPS) + dim1
         self.__p = np.zeros(shape=dim3)
 
-    def CovAQ(self, r1, r2):
-        return From_Cov_to_FQ_bis(InterBiLineaire_Matrix(self.__Cov, r1, r2), self.__n_z)
+    def CovAQ(self, rn, rnp1):
 
-    def Mean_Z(self, r):
-        Mean_X_r = InterLineaire_Vector(self.__Mean_X, r)
-        Mean_Y_r = InterLineaire_Vector(self.__Mean_Y, r)
+        if self.__interpolation == True:
+            Cov_rn_rnp1 = InterBiLineaire_Matrix(self.__Cov, rn, rnp1)
+        else:
+            indrn   = getindrnFromrn(self.__STEPS, rn)
+            indrnp1 = getindrnFromrn(self.__STEPS, rnp1)
+            Cov_rn_rnp1 = self.__Cov[indrn*self.__STEPS+indrnp1]
+
+        return From_Cov_to_FQ_bis(Cov_rn_rnp1, self.__n_z)
+
+    def Integ2D(self):
+
+        if self.__STEPS == 0:
+            return self.__p00 + self.__p10 + self.__p01 + self.__p11
+
+        #### pour r1==0.
+        integ = np.mean(self.__p00_01) + self.__p00 + self.__p01
+
+        #### pour r1==1.
+        integ += np.mean(self.__p11_10) + self.__p10 + self.__p11
+
+        #### La surface à l'intérieur
+        pR = np.ndarray(shape=(self.__STEPS))
+        for j in range(self.__STEPS):
+            pR[j] = np.mean(self.__p[j, :]) + self.__p01_11[j] + self.__p10_00[j]
+        integ += np.mean(pR)
+
+        return integ
+
+
+    def fuzzyMPM_2D(self):
+
+        loi = Loi1DDiscreteFuzzy(self.__EPS, self.__interpolation, self.__STEPS, self.__Rcentres)
+
+        # pour r == 0.
+        loi.set(0., np.mean(self.__p00_01) + self.__p00 + self.__p01)
+
+        # pour r == 1.
+        loi.set(1., np.mean(self.__p11_10) + self.__p10 + self.__p11)
+
+        # pour l'intérieur
+        for i, r in enumerate(self.__Rcentres):
+            loi.set(r, np.mean(self.__p[i, :]) + self.__p01_11[i] + self.__p10_00[i])
+
+        return loi.fuzzyMPM_1D()
+
+
+    def fuzzyMPM2_2D(self):
+
+        loi = Loi1DDiscreteFuzzy(self.__EPS, self.__interpolation, self.__STEPS, self.__Rcentres)
+
+        # pour r == 0.
+        loi.set(0., np.mean(self.__p00_01) + self.__p00 + self.__p01)
+
+        # pour r == 1.
+        loi.set(1., np.mean(self.__p11_10) + self.__p10 + self.__p11)
+
+        # pour l'intérieur
+        for i, r in enumerate(self.__Rcentres):
+            loi.set(r, np.mean(self.__p[i, :]) + self.__p01_11[i] + self.__p10_00[i])
+
+        return loi.fuzzyMPM2_1D()
+
+    def normalisation(self, norm):
+
+        if norm != 0.:
+            self.__p00    /= norm
+            self.__p10    /= norm
+            self.__p01    /= norm
+            self.__p11    /= norm    
+            
+            self.__p00_01 /= norm
+            self.__p01_11 /= norm
+            self.__p11_10 /= norm
+            self.__p10_00 /= norm 
+            
+            self.__p      /= norm
+        else:
+            input('pb if norm == 0.')
+
+    def Mean_Z(self, rn):
+
+        if self.__interpolation == True:
+            Mean_X_rn = InterLineaire_Vector(self.__Mean_X, rn)
+            Mean_Y_rn = InterLineaire_Vector(self.__Mean_Y, rn)
+        else:
+            indrn     = getindrnFromrn(self.__STEPS, rn)
+            Mean_X_rn = self.__Mean_X[indrn]
+            Mean_Y_rn = self.__Mean_Y[indrn]
  
         MeanZ_inter=np.zeros(shape=(self.__n_z, 1))
-        MeanZ_inter[0:self.__n_x,   0] = Mean_X_r
-        MeanZ_inter[self.__n_x:self.__n_z, 0] = Mean_Y_r
+        MeanZ_inter[0:self.__n_x         , 0] = Mean_X_rn
+        MeanZ_inter[self.__n_x:self.__n_z, 0] = Mean_Y_rn
         return MeanZ_inter
 
     def get(self, r1, r2):
@@ -143,26 +232,43 @@ class Loi2DDiscreteFuzzy():
 
         for i, r1 in enumerate(self.__Rcentres):
             for j, r2 in enumerate(self.__Rcentres):
-                if self.get(r1, r2)[0,0] <0. or self.get(r1, r2)[1,1] <0.: 
+                if self.get(r1, r2)[0,0]<0. or self.get(r1, r2)[1,1]<0.: 
                     print('Ab(r1, r2)=', self.get(r1, r2)); OK = False
         
         return OK
 
-    def set1b_2D(self, ProbaForward_np1, ProbaForward_np, loijointeAP1, probaR2CondR1, yn, ynp1, np1):
-        self.__p00 = loijointeAP1(0., 0., ProbaForward_np, probaR2CondR1, self.__Cov, yn, ynp1, self.__Mean_Y, np1) / ProbaForward_np1.get(0.)
-        self.__p10 = loijointeAP1(1., 0., ProbaForward_np, probaR2CondR1, self.__Cov, yn, ynp1, self.__Mean_Y, np1) / ProbaForward_np1.get(0.)
-        self.__p01 = loijointeAP1(0., 1., ProbaForward_np, probaR2CondR1, self.__Cov, yn, ynp1, self.__Mean_Y, np1) / ProbaForward_np1.get(1.)
-        self.__p11 = loijointeAP1(1., 1., ProbaForward_np, probaR2CondR1, self.__Cov, yn, ynp1, self.__Mean_Y, np1) / ProbaForward_np1.get(1.)
+    def set1c_2D(self, probaR2CondR1, ProbaForward_n):
+        self.__p00 = probaR2CondR1(0., 0.) * ProbaForward_n.get(0.)
+        self.__p10 = probaR2CondR1(1., 0.) * ProbaForward_n.get(1.)
+        self.__p01 = probaR2CondR1(0., 1.) * ProbaForward_n.get(0.)
+        self.__p11 = probaR2CondR1(1., 1.) * ProbaForward_n.get(1.)
 
         for j, r in enumerate(self.__Rcentres):
-            self.__p00_01[j, :] = loijointeAP1(0., r, ProbaForward_np, probaR2CondR1, self.__Cov, yn, ynp1, self.__Mean_Y, np1) / ProbaForward_np1.get(r)
-            self.__p01_11[j, :] = loijointeAP1(r, 1., ProbaForward_np, probaR2CondR1, self.__Cov, yn, ynp1, self.__Mean_Y, np1) / ProbaForward_np1.get(1.)
-            self.__p11_10[j, :] = loijointeAP1(1., r, ProbaForward_np, probaR2CondR1, self.__Cov, yn, ynp1, self.__Mean_Y, np1) / ProbaForward_np1.get(r)
-            self.__p10_00[j, :] = loijointeAP1(r, 0., ProbaForward_np, probaR2CondR1, self.__Cov, yn, ynp1, self.__Mean_Y, np1) / ProbaForward_np1.get(0.)
+            self.__p00_01[j, :] = probaR2CondR1(0., r) * ProbaForward_n.get(0.)
+            self.__p01_11[j, :] = probaR2CondR1(r, 1.) * ProbaForward_n.get(r)
+            self.__p11_10[j, :] = probaR2CondR1(1., r) * ProbaForward_n.get(1.)
+            self.__p10_00[j, :] = probaR2CondR1(r, 0.) * ProbaForward_n.get(r)
 
         for i, r1 in enumerate(self.__Rcentres):
             for j, r2 in enumerate(self.__Rcentres):
-                self.__p[i, j, :, :] = loijointeAP1(r1, r2, ProbaForward_np, probaR2CondR1, self.__Cov, yn, ynp1, self.__Mean_Y, np1) / ProbaForward_np1.get(r2)
+                self.__p[i, j, :, :] = probaR2CondR1(r1, r2) * ProbaForward_n.get(r1)
+
+
+    def set1b_2D(self, ProbaForward_np1, ProbaForward_np, loijointeAP1, probaR2CondR1, yn, ynp1, np1):
+        self.__p00 = loijointeAP1(0., 0., ProbaForward_np, probaR2CondR1, self.__Cov, yn, ynp1, self.__Mean_Y, np1, self.__interpolation, self.__STEPS) / ProbaForward_np1.get(0.)
+        self.__p10 = loijointeAP1(1., 0., ProbaForward_np, probaR2CondR1, self.__Cov, yn, ynp1, self.__Mean_Y, np1, self.__interpolation, self.__STEPS) / ProbaForward_np1.get(0.)
+        self.__p01 = loijointeAP1(0., 1., ProbaForward_np, probaR2CondR1, self.__Cov, yn, ynp1, self.__Mean_Y, np1, self.__interpolation, self.__STEPS) / ProbaForward_np1.get(1.)
+        self.__p11 = loijointeAP1(1., 1., ProbaForward_np, probaR2CondR1, self.__Cov, yn, ynp1, self.__Mean_Y, np1, self.__interpolation, self.__STEPS) / ProbaForward_np1.get(1.)
+
+        for j, r in enumerate(self.__Rcentres):
+            self.__p00_01[j, :] = loijointeAP1(0., r, ProbaForward_np, probaR2CondR1, self.__Cov, yn, ynp1, self.__Mean_Y, np1, self.__interpolation, self.__STEPS) / ProbaForward_np1.get(r)
+            self.__p01_11[j, :] = loijointeAP1(r, 1., ProbaForward_np, probaR2CondR1, self.__Cov, yn, ynp1, self.__Mean_Y, np1, self.__interpolation, self.__STEPS) / ProbaForward_np1.get(1.)
+            self.__p11_10[j, :] = loijointeAP1(1., r, ProbaForward_np, probaR2CondR1, self.__Cov, yn, ynp1, self.__Mean_Y, np1, self.__interpolation, self.__STEPS) / ProbaForward_np1.get(r)
+            self.__p10_00[j, :] = loijointeAP1(r, 0., ProbaForward_np, probaR2CondR1, self.__Cov, yn, ynp1, self.__Mean_Y, np1, self.__interpolation, self.__STEPS) / ProbaForward_np1.get(0.)
+
+        for i, r1 in enumerate(self.__Rcentres):
+            for j, r2 in enumerate(self.__Rcentres):
+                self.__p[i, j, :, :] = loijointeAP1(r1, r2, ProbaForward_np, probaR2CondR1, self.__Cov, yn, ynp1, self.__Mean_Y, np1, self.__interpolation, self.__STEPS) / ProbaForward_np1.get(r2)
 
     def set1_a_2D(self, r1, r2, yn, Expect):
         # print('r1=', r1)
@@ -201,7 +307,7 @@ class Loi2DDiscreteFuzzy():
     def set33_a_2D(self, r1, r2, yn, Expect, Expect2):
         A_r1_r2, Q_r1_r2        = self.CovAQ(r1, r2)
         E_Zn_dp_rnnp1_yun_yn    = np.array([[Expect], [yn]])
-        E_ZnZnT_dp_rnnp1_yun_yn = np.array([[ Expect2, np.dot(Expect, np.transpose(yn)) ], [ np.dot(yn, np.transpose(Expect)), np.dot(yn, np.transpose(yn))]])
+        E_ZnZnT_dp_rnnp1_yun_yn = np.array([[Expect2, np.dot(Expect, np.transpose(yn)) ], [np.dot(yn, np.transpose(Expect)), np.dot(yn, np.transpose(yn))]])
         Var_Zn_dp_rnnp1_yun_yn  = E_ZnZnT_dp_rnnp1_yun_yn - np.dot(E_Zn_dp_rnnp1_yun_yn, np.transpose(E_Zn_dp_rnnp1_yun_yn))
         return np.dot(np.dot(A_r1_r2, Var_Zn_dp_rnnp1_yun_yn), np.transpose(A_r1_r2)) + Q_r1_r2
 
@@ -270,17 +376,21 @@ class Loi2DDiscreteFuzzy():
 
 class Loi1DDiscreteFuzzy():
 
-    def __init__(self, EPS, STEPS, Rcentres):
-        self.__EPS = EPS
-        self.__STEPS = STEPS
+    def __init__(self, EPS, interpolation, STEPS, Rcentres):
+
+        self.__EPS      = EPS
+        self.__STEPS    = STEPS
+        self.__interpolation = interpolation
+        self.__Rcentres = Rcentres
+        if len(Rcentres) != self.__STEPS:
+            input('PB constructeur Loi1DDiscreteFuzzy_TMC')
+
         self.__p0 = 0.
-        self.__p1 = 0.
-        
         if self.__STEPS != 0:
-            self.__p01 = np.zeros(shape=(STEPS))
+            self.__p01 = np.zeros(shape=(self.__STEPS))
         else:
             self.__p01 = np.empty(shape=(0,))
-        self.__Rcentres = Rcentres
+        self.__p1 = 0.
 
     def getRcentre(self):
         return self.__Rcentres
@@ -342,34 +452,48 @@ class Loi1DDiscreteFuzzy():
 
     def set1_1D(self, probaR, Cov, y, Mean_Y):
         
-        alpha = 0.
-        Mean_Y_alpha    = InterLineaire_Vector(Mean_Y, alpha)
-        Cov_alpha_alpha = InterBiLineaire_Matrix(Cov, alpha, 0.)
-        self.__p0       = probaR(alpha) * norm.pdf(y, loc=Mean_Y_alpha, scale=np.sqrt(Cov_alpha_alpha[1, 1]))
+        rnp1, indrnp1 = 0., 0
 
-        alpha = 1.
-        Mean_Y_alpha    = InterLineaire_Vector(Mean_Y, alpha)
-        Cov_alpha_alpha = InterBiLineaire_Matrix(Cov, alpha, 0.)
-        self.__p1       = probaR(alpha) * norm.pdf(y, loc=Mean_Y_alpha, scale=np.sqrt(Cov_alpha_alpha[1, 1]))
+        rn, indrn = 0., 0
+        if self.__interpolation==True:
+            Mean_Y_rn = InterLineaire_Vector(Mean_Y, rn)
+            Cov_rn_0  = InterBiLineaire_Matrix(Cov, rn, rnp1)
+        else:
+            Mean_Y_rn = Mean_Y[indrn]
+            Cov_rn_0  = Cov[indrn*self.__STEPS+indrnp1]
+        self.__p0 = probaR(rn) * norm.pdf(y, loc=Mean_Y_rn, scale=np.sqrt(Cov_rn_0[1, 1])).item()
 
-        for i, alpha in enumerate(self.__Rcentres):
-            Mean_Y_alpha    = InterLineaire_Vector(Mean_Y, alpha)
-            Cov_alpha_alpha = InterBiLineaire_Matrix(Cov, alpha, 0.)
-            self.__p01[i]   = probaR(alpha) * norm.pdf(y, loc=Mean_Y_alpha, scale=np.sqrt(Cov_alpha_alpha[1, 1]))
+        rn, indrn = 1., self.__STEPS+1
+        if self.__interpolation==True:
+            Mean_Y_rn = InterLineaire_Vector(Mean_Y, rn)
+            Cov_rn_0  = InterBiLineaire_Matrix(Cov, rn, rnp1)
+        else:
+            Mean_Y_rn = Mean_Y[indrn]
+            Cov_rn_0  = Cov[indrn*self.__STEPS+indrnp1]
+        self.__p1 = probaR(rn) * norm.pdf(y, loc=Mean_Y_rn, scale=np.sqrt(Cov_rn_0[1, 1])).item()
+
+        for indrn, rn in enumerate(self.__Rcentres):
+            if self.__interpolation==True:
+                Mean_Y_rn = InterLineaire_Vector(Mean_Y, rn)
+                Cov_rn_0  = InterBiLineaire_Matrix(Cov, rn, rnp1)
+            else:
+                Mean_Y_rn = Mean_Y[indrn+1]
+                Cov_rn_0  = Cov[(indrn+1)*self.__STEPS+(indrnp1+1)]
+            self.__p01[indrn] = probaR(rn) * norm.pdf(y, loc=Mean_Y_rn, scale=np.sqrt(Cov_rn_0[1, 1])).item()
         
-        self.normalisation(self.sum())
+        self.normalisation(self.Integ1D())
 
     def setone_1D(self):
         for i, rnp1 in enumerate(self.__Rcentres):
             self.__p01[i] = 1.
         self.__p0 = 1.
         self.__p1 = 1.
-
+                      
     def set2_1D(self, fonction, loijointeAP, proba, probaR2CondR1, Cov, yn, ynp1, Mean_Y, np1):
-        self.__p0 = fonction(0., self.__EPS, self.__STEPS, loijointeAP, proba, probaR2CondR1, Cov, yn, ynp1, Mean_Y, np1)
+        self.__p0 = fonction(0., self.__interpolation, self.__EPS, self.__STEPS, loijointeAP, proba, probaR2CondR1, Cov, yn, ynp1, Mean_Y, np1)
         for i, r in enumerate(self.__Rcentres):
-            self.__p01[i] = fonction(r, self.__EPS, self.__STEPS, loijointeAP, proba, probaR2CondR1, Cov, yn, ynp1, Mean_Y, np1)
-        self.__p1 = fonction(1., self.__EPS, self.__STEPS, loijointeAP, proba, probaR2CondR1, Cov, yn, ynp1, Mean_Y, np1)
+            self.__p01[i] = fonction(r, self.__interpolation, self.__EPS, self.__STEPS, loijointeAP, proba, probaR2CondR1, Cov, yn, ynp1, Mean_Y, np1)
+        self.__p1 = fonction(1., self.__interpolation, self.__EPS, self.__STEPS, loijointeAP, proba, probaR2CondR1, Cov, yn, ynp1, Mean_Y, np1)
 
     def nextAfterZeros(self):
         if self.__p0 < 1e-300:
@@ -390,52 +514,82 @@ class Loi1DDiscreteFuzzy():
 
     def set3a_1D(self, Mean_X, Mean_Y, Cov, ynp1):
 
-        alpha = 0.
-        Mean_X_alpha    = InterLineaire_Vector(Mean_X, alpha)
-        Mean_Y_alpha    = InterLineaire_Vector(Mean_Y, alpha)
-        Cov_alpha_alpha = InterBiLineaire_Matrix(Cov, alpha, 0.)
-        # print('alpha=\n', alpha)
-        # print('Cov=\n', Cov)
-        # print('Cov_alpha_alpha=\n', Cov_alpha_alpha)
-        # if is_pos_def(A) == False
-        #     input('PB PB PB PB ')
-        self.__p0       = Mean_X_alpha + Cov_alpha_alpha[0, 1] / Cov_alpha_alpha[1, 1] * (ynp1 - Mean_Y_alpha)
+        rnp1, indrnp1 = 0., 0
 
-        alpha = 1.
-        Mean_X_alpha    = InterLineaire_Vector(Mean_X, alpha)
-        Mean_Y_alpha    = InterLineaire_Vector(Mean_Y, alpha)
-        Cov_alpha_alpha = InterBiLineaire_Matrix(Cov, alpha, 0.)
-        self.__p1       = Mean_X_alpha + Cov_alpha_alpha[0, 1] / Cov_alpha_alpha[1, 1] * (ynp1 - Mean_Y_alpha)
+        rn, indrn = 0., 0
+        if self.__interpolation==True:
+            Mean_X_rn = InterLineaire_Vector(Mean_X, rn)
+            Mean_Y_rn = InterLineaire_Vector(Mean_Y, rn)
+            Cov_rn_0  = InterBiLineaire_Matrix(Cov, rn, rnp1)
+        else:
+            Mean_Y_rn = Mean_Y[indrn]
+            Mean_X_rn = Mean_X[indrn]
+            Cov_rn_0  = Cov[indrn*self.__STEPS+indrnp1]
+        self.__p0 = Mean_X_rn + Cov_rn_0[0, 1] / Cov_rn_0[1, 1] * (ynp1 - Mean_Y_rn)
 
-        for i, alpha in enumerate(self.__Rcentres):
-            Mean_X_alpha    = InterLineaire_Vector(Mean_X, alpha)
-            Mean_Y_alpha    = InterLineaire_Vector(Mean_Y, alpha)
-            Cov_alpha_alpha = InterBiLineaire_Matrix(Cov, alpha, 0.)
-            self.__p01[i]   = Mean_X_alpha + Cov_alpha_alpha[0, 1] / Cov_alpha_alpha[1, 1] * (ynp1 - Mean_Y_alpha)
+
+        rn, indrn = 1., self.__STEPS+1
+        if self.__interpolation==True:
+            Mean_X_rn = InterLineaire_Vector(Mean_X, rn)
+            Mean_Y_rn = InterLineaire_Vector(Mean_Y, rn)
+            Cov_rn_0  = InterBiLineaire_Matrix(Cov, rn, rnp1)
+        else:
+            Mean_Y_rn = Mean_Y[indrn]
+            Mean_X_rn = Mean_X[indrn]
+            Cov_rn_0  = Cov[indrn*self.__STEPS+indrnp1]
+        self.__p1 = Mean_X_rn + Cov_rn_0[0, 1] / Cov_rn_0[1, 1] * (ynp1 - Mean_Y_rn)
+
+        for indrn, rn in enumerate(self.__Rcentres):
+            if self.__interpolation==True:
+                Mean_X_rn = InterLineaire_Vector(Mean_X, rn)
+                Mean_Y_rn = InterLineaire_Vector(Mean_Y, rn)
+                Cov_rn_0  = InterBiLineaire_Matrix(Cov, rn, rnp1)
+            else:
+                Mean_Y_rn = Mean_Y[indrn]
+                Mean_X_rn = Mean_X[indrn]
+                Cov_rn_0  = Cov[indrn*self.__STEPS+indrnp1]
+            self.__p01[indrn] = Mean_X_rn + Cov_rn_0[0, 1] / Cov_rn_0[1, 1] * (ynp1 - Mean_Y_rn)
 
 
     def set3b_1D(self, Mean_X, Mean_Y, Cov, ynp1, tab_E_Xnp1_dp1):
 
-        alpha = 0.
-        Mean_X_alpha    = InterLineaire_Vector(Mean_X, alpha)
-        Mean_Y_alpha    = InterLineaire_Vector(Mean_Y, alpha)
-        Cov_alpha_alpha = InterBiLineaire_Matrix(Cov, alpha, 0.)
-        Var_n_n_alpha   = Cov_alpha_alpha[0, 0] - Cov_alpha_alpha[0, 1]*Cov_alpha_alpha[0, 1] / Cov_alpha_alpha[1, 1]
-        self.__p0       = Var_n_n_alpha + tab_E_Xnp1_dp1.get(alpha)*tab_E_Xnp1_dp1.get(alpha)
+        rnp1, indrnp1 = 0., 0
 
-        alpha = 1.
-        Mean_X_alpha    = InterLineaire_Vector(Mean_X, alpha)
-        Mean_Y_alpha    = InterLineaire_Vector(Mean_Y, alpha)
-        Cov_alpha_alpha = InterBiLineaire_Matrix(Cov, alpha, 0.)
-        Var_n_n_alpha   = Cov_alpha_alpha[0, 0] - Cov_alpha_alpha[0, 1]*Cov_alpha_alpha[0, 1] / Cov_alpha_alpha[1, 1]
-        self.__p1       = Var_n_n_alpha + tab_E_Xnp1_dp1.get(alpha)*tab_E_Xnp1_dp1.get(alpha)
+        rn, indrn = 0., 0
+        if self.__interpolation==True:
+            Mean_X_rn = InterLineaire_Vector(Mean_X, rn)
+            Mean_Y_rn = InterLineaire_Vector(Mean_Y, rn)
+            Cov_rn_0  = InterBiLineaire_Matrix(Cov, rn, 0.)
+        else:
+            Mean_Y_rn = Mean_Y[indrn]
+            Mean_X_rn = Mean_X[indrn]
+            Cov_rn_0  = Cov[indrn*self.__STEPS+indrnp1]
+        Var_n_n_rn = Cov_rn_0[0, 0] - Cov_rn_0[0, 1]*Cov_rn_0[0, 1] / Cov_rn_0[1, 1]
+        self.__p0  = Var_n_n_rn + tab_E_Xnp1_dp1.get(rn)*tab_E_Xnp1_dp1.get(rn)
 
-        for i, alpha in enumerate(self.__Rcentres):
-            Mean_X_alpha    = InterLineaire_Vector(Mean_X, alpha)
-            Mean_Y_alpha    = InterLineaire_Vector(Mean_Y, alpha)
-            Cov_alpha_alpha = InterBiLineaire_Matrix(Cov, alpha, 0.)
-            Var_n_n_alpha   = Cov_alpha_alpha[0, 0] - Cov_alpha_alpha[0, 1]*Cov_alpha_alpha[0, 1] / Cov_alpha_alpha[1, 1]
-            self.__p01[i]   = Var_n_n_alpha + tab_E_Xnp1_dp1.get(alpha)*tab_E_Xnp1_dp1.get(alpha)
+        rn, indrn = 1., self.__STEPS+1
+        if self.__interpolation==True:
+            Mean_X_rn = InterLineaire_Vector(Mean_X, rn)
+            Mean_Y_rn = InterLineaire_Vector(Mean_Y, rn)
+            Cov_rn_0  = InterBiLineaire_Matrix(Cov, rn, 0.)
+        else:
+            Mean_Y_rn = Mean_Y[indrn]
+            Mean_X_rn = Mean_X[indrn]
+            Cov_rn_0  = Cov[indrn*self.__STEPS+indrnp1]
+        Var_n_n_rn = Cov_rn_0[0, 0] - Cov_rn_0[0, 1]*Cov_rn_0[0, 1] / Cov_rn_0[1, 1]
+        self.__p1  = Var_n_n_rn + tab_E_Xnp1_dp1.get(rn)*tab_E_Xnp1_dp1.get(rn)
+
+        for indrn, rn in enumerate(self.__Rcentres):
+            if self.__interpolation==True:
+                Mean_X_rn = InterLineaire_Vector(Mean_X, rn)
+                Mean_Y_rn = InterLineaire_Vector(Mean_Y, rn)
+                Cov_rn_0  = InterBiLineaire_Matrix(Cov, rn, 0.)
+            else:
+                Mean_Y_rn = Mean_Y[indrn]
+                Mean_X_rn = Mean_X[indrn]
+                Cov_rn_0  = Cov[indrn*self.__STEPS+indrnp1]
+            Var_n_n_rn        = Cov_rn_0[0, 0] - Cov_rn_0[0, 1]*Cov_rn_0[0, 1] / Cov_rn_0[1, 1]
+            self.__p01[indrn] = Var_n_n_rn + tab_E_Xnp1_dp1.get(rn)*tab_E_Xnp1_dp1.get(rn)
 
 
     def set4_1D (self, Integ_CalcE_X_np1_dp_rnpun, p_rn_d_rnpun_yun_ynpun, tab_E, np1):
@@ -462,7 +616,7 @@ class Loi1DDiscreteFuzzy():
         self.__p1 = probaforw.__p1 * probabackw.__p1
 
 
-    def fuzzyMPM(self):
+    def fuzzyMPM_1D(self):
 
         # select if hard or fuzzy
         hard = False
@@ -487,13 +641,10 @@ class Loi1DDiscreteFuzzy():
         return flevel_max, proba_max
 
 
-    def fuzzyMPM2(self):
+    def fuzzyMPM2_1D(self):
 
         array = np.array([self.__p0, self.__p1, 1. - self.__p0 - self.__p1])
         amax = np.argmax(array)
-        # print('Array array = ', array)
-        # print(amax)
-        # input('pause')
 
         if amax == 0:
             proba_max  = self.__p0
@@ -505,14 +656,16 @@ class Loi1DDiscreteFuzzy():
             proba_max  = self.__p01.max()
             flevel_max = self.__Rcentres[self.__p01.argmax()]
 
+        # print('Array array = ', array)
+        # print(amax, flevel_max, proba_max)
+        # input('pause')
         return flevel_max, proba_max
 
-
-    def sum(self):
+    def Integ1D(self):
         if self.__STEPS == 0:
             return self.__p0 + self.__p1
         else:
-            return self.__p0 + self.__p1 + sum(self.__p01)/self.__STEPS
+            return self.__p0 + self.__p1 + np.mean(self.__p01)
 
     def plot(self, title):
 

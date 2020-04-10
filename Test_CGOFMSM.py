@@ -33,7 +33,7 @@ from CGPMSMs.CGPMSMs        import GetParamNearestCGO_cov
 
 i_min = 6      # index min for plot
 i_max = 60     # index max for plot
-dpi   = 300
+dpi   = 150
 fontS = 16     # font size
 matplotlib.rc('xtick', labelsize=fontS)
 matplotlib.rc('ytick', labelsize=fontS)
@@ -150,20 +150,18 @@ class CGOFMSM:
         return X, R, Y, pHNum
 
 
-    def restore_signal(self, Data, ch, STEPS=[7], hard=True, filt=True, smooth=True, Plot=False):
+    def restore_signal(self, Data, ch, STEPS=[7], hard=True, filt=True, smooth=True,  predic=True, Plot=False):
 
         elapsed_time = 0
         start_time = time.time()
 
         # Create main objects
         Resto = RestorationOFAFuzzy(self.__filenameParamCov, STEPS[0], self.__FSParameters, self.__interpolation, self.__verbose)
-        # print(Resto.getFS().getParam())
+        self.__n_r, n_x, n_y, n_z, STEPS, F, B, Q, Cov, Mean_X, Mean_Y = Resto.getParams()
+        # print(self.__n_r, n_x, n_y, n_z)
         # input('pause')
-
-        self.__n_r, F, useless, Q, Cov, Mean_X, Mean_Y = Readin_CovMeansProba(self.__filenameParamCov)
         assert self.__n_r == 2, print('number of jumps must be 2!')
-        n_x = np.shape(Mean_X)[1]
-        n_y = np.shape(Mean_Y)[1]
+        
         Ok = Test_isCGOMSM_from_Cov(Cov, n_x)
         if Ok == False:
             print('ATTENTION : le modele nest pas un CGO! --> TRANSFORMATION EN CGO')
@@ -171,7 +169,6 @@ class CGOFMSM:
             F, Q = From_Cov_to_FQ(Cov)
 
         listeHeader=list(Data)
-
         Y = np.zeros((1, self.__N))
         Y[0, :]=Data['Y'].values
 
@@ -200,7 +197,7 @@ class CGOFMSM:
                     chaine = Resto.getFSText() + '_' + ch + '_SMOO_HARD'
                     self.PlotTrajectoriesSignal(chaine, 'Hard smoother (CGOMSM)', Data, E_X_OSA_HARD, E_R_OSA_HARD)
 
-        if filt==True or smooth==True:
+        if filt==True or smooth==True or predic==True:
 
             # Loop in discrete jumps F
             for i, steps in enumerate(STEPS):
@@ -210,17 +207,27 @@ class CGOFMSM:
                 Resto.resetSTEPS(STEPS[i])
 
                 # FUZZY: filter (and smooth) with unknown jumps
-                E_X_OFA, E_R_OFA, E_R_OFA2, E_X_OSA, E_R_OSA, E_R_OSA2 = Resto.restore_Fuzzy1D(Y, filt=filt, smooth=smooth)
+                E_X_OFA, E_R_OFA, E_R_OFA2, E_X_OSA, E_R_OSA, E_R_OSA2, E_Z_OPA, E_R_OPA, E_R_OPA2 = Resto.restore_Fuzzy1D(Y, filt=filt, smooth=smooth, predic=predic)
                 end_time = time.time()
                 elapsed_time += end_time - start_time
+                print(E_R_OFA[0:299])
+                print(E_R_OFA2[0:299])
+                print(E_R_OPA[0:299])
+                print(E_R_OPA2[0:299])
+                input('retretr')
 
                 if Plot is True:
                     if filt:
+                        input('FILT')
                         chaine = Resto.getFSText() + '_' + ch + '_FILT_FUZZY_STEP_' + str(steps)
                         self.PlotTrajectoriesSignal(chaine, 'Fuzzy filter (CGOMSM)', Data, E_X_OFA, E_R_OFA)
                     if smooth:
                         chaine = Resto.getFSText() + '_' + ch + '_SMOO_FUZZY_STEP_' + str(steps)
                         self.PlotTrajectoriesSignal(chaine, 'Fuzzy smoother (CGOMSM)', Data, E_X_OSA, E_R_OSA)
+                    if predic:
+                        input('PRED')
+                        chaine = Resto.getFSText() + '_' + ch + '_PRED_FUZZY_STEP_' + str(steps)
+                        self.PlotTrajectoriesSignal(chaine, 'Fuzzy predictor (CGOMSM)', Data, E_Z_OPA[0:n_x, :], E_R_OPA)
 
         return elapsed_time
 
@@ -584,7 +591,7 @@ class CGOFMSM:
         Data2 = Data1.assign(f=E_R)
         Data2.rename(columns={'e' : 'X_E'}, inplace=True)
         Data2.rename(columns={'f' : 'R_E'}, inplace=True)
-        # listeHeader = list(Data2)
+        listeHeader = list(Data2)
         # print(listeHeader)
         # print(Data2.head(35))
         # print(E_X[0,0:10])
@@ -594,7 +601,6 @@ class CGOFMSM:
         ax.plot(Data2.index, Data2.X,   label='True states', color='r', dashes=[2,2,2,2])
         ax.plot(Data2.index, Data2.X_E, label='Estimated states', color='r')
         
-        # format the ticks
         # format the ticks
         # ax.xaxis.set_major_locator(years)
         # ax.xaxis.set_major_formatter(yearsFmt)
@@ -625,9 +631,9 @@ class CGOFMSM:
         np.savetxt('./Result/Fuzzy/Result_csv/' + ch + '_XY_CGOFMSM_restored.csv', Data2.X_E, delimiter=',')
 
 
-
         fig, ax = plt.subplots(figsize=(10,4))
-        ax.plot(Data2.index, Data2.R_GT, label='True jumps', color='g', dashes=[2,2,2,2])
+        if 'R_GT' in Data2.columns:
+            ax.plot(Data2.index, Data2.R_GT, label='True jumps', color='g', dashes=[2,2,2,2])
         ax.plot(Data2.index, Data2.R_E, label='Estimated jumps', color='g')
 
         # format the ticks

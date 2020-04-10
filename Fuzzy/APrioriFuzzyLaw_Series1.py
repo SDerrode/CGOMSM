@@ -36,9 +36,9 @@ def main():
     # SERIES 1
     print('*********************SERIES 1')
     series = 'Serie1'
-    #P, case, = LoiAPrioriSeries1(EPS, discretization, alpha=0.2, gamma=0.1), 1
-    #P,case = LoiAPrioriSeries1(EPS, discretization, alpha=0.3, gamma=0.0), 2
-    P,case = LoiAPrioriSeries1(EPS, discretization, alpha=0.0, gamma=0.2), 3
+    #P, case, = LoiAPrioriSeries1(alpha=0.2, gamma=0.1, EPS=EPS, discretization=discretization), 1
+    #P,case = LoiAPrioriSeries1(alpha=0.3, gamma=0.0, EPS=EPS, discretization=discretization), 2
+    P,case = LoiAPrioriSeries1(alpha=0.0, gamma=0.2, EPS=EPS, discretization=discretization), 3
     print(P)
     ALPHA, BETA, GAMMA = P.getParam()
     print('1:'+str(ALPHA)+':'+str(GAMMA)+' #pH='+str(P.maxiHardJump()))
@@ -129,10 +129,10 @@ class LoiAPrioriSeries1(LoiAPriori):
     Implementation of the first law described in the report Calcul_Simu_CGOFMSM.pdf.
     """
 
-    def __init__(self, EPS, discretization, alpha, gamma):
+    def __init__(self, alpha, gamma, EPS=1E-8, discretization=100):
         """Constructeur to set the parameters of the density."""
 
-        LoiAPriori.__init__(self, EPS, discretization)
+        LoiAPriori.__init__(self, EPS=EPS, discretization=discretization)
 
         assert alpha <= (1. - 3. * gamma) / 2., \
                     print('PB, you should set alpha to a maximum value of ', \

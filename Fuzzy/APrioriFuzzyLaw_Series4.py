@@ -36,35 +36,35 @@ def main():
 
     print('*********************SERIES 4')
     series = 'Serie4'
-    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.05, gamma = 0.0, delta_d=0.05, delta_u=0.05), 1
-    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.05, gamma = 0.15, delta_d=0.3, delta_u=0.), 2
-    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.15, gamma = 0.15, delta_d=0.0, delta_u=0.1), 3
+    #P, case = LoiAPrioriSeries4(alpha=0.05, gamma = 0.0, delta_d=0.05, delta_u=0.05, EPS=EPS, discretization=discretization), 1
+    #P, case = LoiAPrioriSeries4(alpha=0.05, gamma = 0.15, delta_d=0.3, delta_u=0., EPS=EPS, discretization=discretization), 2
+    #P, case = LoiAPrioriSeries4(alpha=0.15, gamma = 0.15, delta_d=0.0, delta_u=0.1, EPS=EPS, discretization=discretization), 3
     
     # CAS PROBELMATIQUE
     #M = 3.*(0.2+0.1) - 0.5*(0.2*0.2+0.1*0.1)
-    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.2, gamma = (1.-4.*0.25)/M, delta_d=0.1, delta_u=0.2), 100
-    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.2, gamma = 0.3, delta_d=0.05, delta_u=0.20), 11
+    #P, case = LoiAPrioriSeries4(alpha=0.2, gamma = (1.-4.*0.25)/M, delta_d=0.1, delta_u=0.2, EPS=EPS, discretization=discretization), 100
+    #P, case = LoiAPrioriSeries4(alpha=0.2, gamma = 0.3, delta_d=0.05, delta_u=0.20, EPS=EPS, discretization=discretization), 11
     
-    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.10, gamma = 0.55, delta_d=0.30, delta_u=0.30), 12  #--> 48%
-    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.15, gamma = 0.65, delta_d=0.15, delta_u=0.15), 12 #--> 62%
-    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.15, gamma = 0.65, delta_d=0.10, delta_u=0.10), 12 #--> 75%
-    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.15, gamma = 0.55, delta_d=0.06, delta_u=0.06), 12 #--> 87%
-    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.15, gamma = 0.65, delta_d=0.00, delta_u=0.00), 12 #--> 100%
+    #P, case = LoiAPrioriSeries4(alpha=0.10, gamma = 0.55, delta_d=0.30, delta_u=0.30, EPS=EPS, discretization=discretization), 12  #--> 48%
+    #P, case = LoiAPrioriSeries4(alpha=0.15, gamma = 0.65, delta_d=0.15, delta_u=0.15, EPS=EPS, discretization=discretization), 12 #--> 62%
+    #P, case = LoiAPrioriSeries4(alpha=0.15, gamma = 0.65, delta_d=0.10, delta_u=0.10, EPS=EPS, discretization=discretization), 12 #--> 75%
+    #P, case = LoiAPrioriSeries4(alpha=0.15, gamma = 0.55, delta_d=0.06, delta_u=0.06, EPS=EPS, discretization=discretization), 12 #--> 87%
+    #P, case = LoiAPrioriSeries4(alpha=0.15, gamma = 0.65, delta_d=0.00, delta_u=0.00, EPS=EPS, discretization=discretization), 12 #--> 100%
 
-    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.10, gamma = 0.55, delta_d=0.0, delta_u=0.1), 200
-    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.15, gamma = 0.34, delta_d=0.2, delta_u=0.2), 200
+    #P, case = LoiAPrioriSeries4(alpha=0.10, gamma = 0.55, delta_d=0.0, delta_u=0.1, EPS=EPS, discretization=discretization), 200
+    #P, case = LoiAPrioriSeries4(alpha=0.15, gamma = 0.34, delta_d=0.2, delta_u=0.2, EPS=EPS, discretization=discretization), 200
 
-    #P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.10, gamma = 0.65, delta_d=0.15, delta_u=0.15), 1
+    #P, case = LoiAPrioriSeries4(alpha=0.10, gamma = 0.65, delta_d=0.15, delta_u=0.15, EPS=EPS, discretization=discretization), 1
 
     # alpha = 0.15
     # delta_d=0.15
     # delta_u=0.15
     # M = 3.*(delta_u + delta_d) - 0.5*(delta_d*delta_d+delta_u*delta_u)
     # gamma = (1. - 2. * alpha)/M
-    # P, case = LoiAPrioriSeries4(EPS, discretization, alpha=alpha, gamma = gamma, delta_d=delta_d, delta_u=delta_u), 57
+    # P, case = LoiAPrioriSeries4(alpha=alpha, gamma = gamma, delta_d=delta_d, delta_u=delta_u, EPS=EPS, discretization=discretization), 57
 
-    # P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.15, gamma = 0.65, delta_d=0., delta_u=0.), 58
-    P, case = LoiAPrioriSeries4(EPS, discretization, alpha=0.15, gamma = 0.60, delta_d=0.20, delta_u=0.20), 57
+    # P, case = LoiAPrioriSeries4(alpha=0.15, gamma = 0.65, delta_d=0., delta_u=0., EPS=EPS, discretization=discretization), 58
+    P, case = LoiAPrioriSeries4(alpha=0.15, gamma = 0.60, delta_d=0.20, delta_u=0.20, EPS=EPS, discretization=discretization), 57
 
     print(P)
     ALPHA, BETA, DELTA_D, DELTA_U, GAMMA = P.getParam()
@@ -166,10 +166,10 @@ class LoiAPrioriSeries4(LoiAPriori):
     Implementation of the fourth law described in the report Calcul_Simu_CGOFMSM.pdf
     """
 
-    def __init__(self, EPS, discretization, alpha, gamma, delta_d, delta_u):
+    def __init__(self, alpha, gamma, delta_d, delta_u, EPS=1E-8, discretization=100):
         """Constructeur to set the parameters of the density."""
 
-        LoiAPriori.__init__(self, EPS, discretization)
+        LoiAPriori.__init__(self, EPS=EPS, discretization=discretization)
 
         if delta_d != delta_u:
             input('ATTENTION: LES CALCULS NE SONT PAS BONS LORSQUE DELTA_D >< DELTA_U !!!!!')

@@ -27,7 +27,7 @@ if __name__ == '__main__':
         >> python3 Test_CGOFMSM_Signals.py Parameters/Signal.param 2:0.07:0.24:0.09 1,1,0 ./Data/Kaggle/input/JoseRizalBridgeNorth_ATemp.csv 3 2 1
         >> python3 Test_CGOFMSM_Signals.py Parameters/Signal.param 2:0.07:0.24:0.09 1,1,0 ./Data/Kaggle/input/JoseRizalBridgeNorth_ATemp.csv 1,2,3,5,7,10 10 0 1
         >> nohup python3 Test_CGOFMSM_Signals.py Parameters/Signal.param 4:0.15:0.15:0.:0.1 1,1,0 ./Data/Kaggle/input/JoseRizalBridgeNorth_ATemp.csv 1,2,3,5,7,10 10 0 1 > serie2.out &
-        >> python3 Test_CGOFMSM_Signals.py ./Parameters/Fuzzy/TMU6048TrainX_extract_TMU6048TrainY_extract_F=3.param 2ter:0.3:0.3:0.05 1,1,0,1 ./Data/Traffic/Zied1/TMU6048TrainY.txt -1 2 0
+        >> python3 Test_CGOFMSM_Signals.py ./Parameters/Fuzzy/TMU6048TrainX_extract_TMU6048TrainY_extract_F=1.param 2ter:0.4204:0.2328:0.0000 0,1,0,1 ./Data/Traffic/TMU5509/generated/TMU5509_train.csv -1 2 1
 
         argv[1] : Name of the file of parameters (cov and means)
         argv[2] : Fuzzy joint law model and parameters; e.g. 2ter:0.3:0.3:0.05
@@ -66,7 +66,7 @@ if __name__ == '__main__':
         Plot = False
 
     interpolation = True
-    if STEPS == -1:
+    if STEPS[0] == -1:
         interpolation = False
 
     print(' . filenameParamCov =', filenameParamCov)
@@ -78,31 +78,34 @@ if __name__ == '__main__':
     print(' . Plot             =', Plot)
     print('\n')
 
-    hard   = True
-    filt   = True
-    smooth = True
+    hard, filt, smooth, predic = True, True, True, True
     if work[0] == 0: hard   = False
     if work[1] == 0: filt   = False
     if work[2] == 0: smooth = False
-    if hard==False and filt==False and smooth==False:
+    if work[3] == 0: predic = False
+    if predic==True: filt=True
+    if hard==False and filt==False and smooth==False and predic==False:
         print('work=', work, ' --> Not allowed !')
         exit(1)
 
     # Lecture des données
     df = pd.read_csv(filename, parse_dates=[0])
-    pd.to_datetime(df['Timestamp'])
-    df.sort_values(by=['Timestamp'])
-
-    datemin = df['Timestamp'].iloc[0]
-    datemax = df['Timestamp'].iloc[-1]
+    listeHeader = list(df)
+    pd.to_datetime(df[listeHeader[0]])
+    df.sort_values(by=[listeHeader[0]])
+    datemin = df[listeHeader[0]].iloc[0]
+    datemax = df[listeHeader[0]].iloc[-1]
     print('  -->Date départ série temporelle = ', datemin)
     print('  -->Date fin    série temporelle = ', datemax)
-    df.set_index('Timestamp', inplace=True)
-    listeHeader = list(df)
+    # df.set_index('Timestamp', inplace=True)
+    # listeHeader = list(df)
     print('Entête des columns : ', listeHeader)
 
+    excerpt = df[(df[listeHeader[0]] >= datemin) & (df[listeHeader[0]] <= '2018-01-04 02:59:00')]
+
+
     # filtrage
-    N = df['Y'].count()
+    N = excerpt['Y'].count()
     aCGOFMSM     = CGOFMSM(N, filenameParamCov, verbose, FSParametersStr, interpolation)
-    elapsed_time = aCGOFMSM.restore_signal(Data=df, ch='Temper', STEPS=STEPS, hard=hard, filt=filt, smooth=smooth, Plot=Plot)
+    elapsed_time = aCGOFMSM.restore_signal(Data=excerpt, ch='flow', STEPS=STEPS, hard=hard, filt=filt, smooth=smooth, predic=predic, Plot=Plot)
     

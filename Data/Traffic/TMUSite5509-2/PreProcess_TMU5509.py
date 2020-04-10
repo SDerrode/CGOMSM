@@ -20,10 +20,8 @@ if __name__ == '__main__':
 
     # Données à partir de : http://tris.highwaysengland.co.uk/detail/trafficflowdata
 
-    #filename = './Data/Traffic/TMU5509/DailyStandard_Report_1_7524_01_01_2018_31_01_2018.csv'
-    #filename = './DailyStandard_Report_1_7524_01_01_2018_31_01_2018.csv'
-    filename = 'TMUSite5509-2_DailyReport.csv' # Lien de téléchargement : http://tris.highwaysengland.co.uk/download/cb768ab7-ecad-457a-8d9c-4ab9fd5147ec
-    prefix   = './generated/TMU5509'
+    sensor  = 'TMUSite5509-2'
+    filename = sensor+'_DailyReport.csv' # Lien de téléchargement : http://tris.highwaysengland.co.uk/download/cb768ab7-ecad-457a-8d9c-4ab9fd5147ec
     Plot     = True
 
     # print(' . filename =', filename)
@@ -45,9 +43,9 @@ if __name__ == '__main__':
     #df1 = df1.set_index(pd.DatetimeIndex(df1['Timestamp']), inplace=True)
     
     # La vitesse (représente Y)
-    df1['Y'] = df['Speed Value'].copy()
+    df1[sensor + ' - Speed Value'] = df['Speed Value'].copy()
     # Le traffic flow (représente X))
-    df1['Xtrue'] = df['Total Carriageway Flow'].copy()
+    df1[sensor + ' - Total Carriageway Flow'] = df['Total Carriageway Flow'].copy()
 
     print(df1.head())
     print(df1.index.name)
@@ -58,35 +56,35 @@ if __name__ == '__main__':
 
     # saves on disk #################################################
     # ALL the data
-    name=prefix+'_all.csv'
+    name=sensor+'_all.csv'
     df1.to_csv(name, header=True, index=False)
     
     # train
-    name=prefix+'_train.csv'
+    name=sensor+'_train.csv'
     Train = df1[(df1['Timestamp'] >= '2018-01-01') & (df1['Timestamp'] < '2018-01-30')]
     Train.to_csv(name, header=True, index=False)
-    name=prefix+'_trainY.txt'
-    Train['Y'].to_csv(name, header=False, index=False)
-    name=prefix+'_trainX.txt'
-    Train['Xtrue'].to_csv(name, header=False, index=False)
+    name=sensor+'_trainY.txt'
+    Train[sensor + ' - Speed Value'].to_csv(name, header=False, index=False)
+    name=sensor+'_trainX.txt'
+    Train[sensor + ' - Total Carriageway Flow'].to_csv(name, header=False, index=False)
 
-    name=prefix+'_train_300.csv'
+    name=sensor+'_train_300.csv'
     Train300 = df1[(df1['Timestamp'] >= '2018-01-01') & (df1['Timestamp'] <= '2018-01-04 02:59:00')]
     Train300.to_csv(name, header=True, index=False)
-    name=prefix+'_trainY_300.txt'
-    Train300['Y'].to_csv(name, header=False, index=False)
-    name=prefix+'_trainX_300.txt'
-    Train300['Xtrue'].to_csv(name, header=False, index=False)
+    name=sensor+'_trainY_300.txt'
+    Train300[sensor + ' - Speed Value'].to_csv(name, header=False, index=False)
+    name=sensor+'_trainX_300.txt'
+    Train300[sensor + ' - Total Carriageway Flow'].to_csv(name, header=False, index=False)
 
 
     # test
-    name=prefix+'_test.csv'
+    name=sensor+'_test.csv'
     Test = df1[(df1['Timestamp'] >= '2018-01-30')]
     Test.to_csv(name, header=True, index=False)
-    name=prefix+'_testY.txt'
-    Train['Y'].to_csv(name, header=False, index=False)
-    name=prefix+'_testX.txt'
-    Train['Xtrue'].to_csv(name, header=False, index=False)
+    name=sensor+'_testY.txt'
+    Train[sensor + ' - Speed Value'].to_csv(name, header=False, index=False)
+    name=sensor+'_testX.txt'
+    Train[sensor + ' - Total Carriageway Flow'].to_csv(name, header=False, index=False)
     # test
     
     listeHeader = list(df1)
