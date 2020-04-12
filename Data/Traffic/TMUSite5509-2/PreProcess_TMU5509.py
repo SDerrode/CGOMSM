@@ -42,9 +42,9 @@ if __name__ == '__main__':
     df1['Timestamp'] = df['Timestamp'].copy()
     #df1 = df1.set_index(pd.DatetimeIndex(df1['Timestamp']), inplace=True)
     
-    # La vitesse (représente Y)
+    # La vitesse 
     df1[sensor + ' - Speed Value'] = df['Speed Value'].copy()
-    # Le traffic flow (représente X))
+    # Le traffic flow
     df1[sensor + ' - Total Carriageway Flow'] = df['Total Carriageway Flow'].copy()
 
     print(df1.head())

@@ -52,6 +52,7 @@ def plotSample(rv, nbsample, filename, dpi=150):
     ax.set_xlim(0, 1)
     # plt.show()
     plt.savefig(filename, bbox_inches='tight', dpi=dpi)
+    plt.close()
 
     return np.mean(sample), np.var(sample)
 
@@ -291,12 +292,10 @@ class LoiAPriori:
         fig = plt.figure()
         ax = fig.gca()
         ax.plot(self.__R1, self.__pR1, alpha=0.6, color='g')
-
         ax.set_xlabel('$r$', fontsize=fontS)
         #ax.set_xlim(0, 1)
         #ax.set_ylabel('$p(r)$', fontsize=fontS)
         #ax.set_ylim(0., max(pR)*1.05)
-
         # plt.show()
         plt.savefig(filename, bbox_inches='tight', dpi=dpi)
-
+        plt.close()

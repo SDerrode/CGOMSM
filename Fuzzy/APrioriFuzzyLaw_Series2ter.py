@@ -111,11 +111,13 @@ def main():
     print('Nbre saut 1 :', cpt1/N, ', Theorique :', P.probaR(1.))
     print('Nbre saut durs (0+1) :', (cpt0+cpt1)/N, ', Theorique :', P.maxiHardJump())
 
+    #### PLOTs
     mini = 100
     maxi = 150
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1, projection='3d')
     P.plotR1R2('./figures/LoiCouple_' + series + '_' + str(case) + '.png', ax, dpi=dpi)
+    plt.close()
     P.plotR1('./figures/LoiMarg_' + series + '_' + str(case) + '.png', dpi=dpi)
     FIG = plt.figure()
     AX = FIG.gca()
@@ -125,7 +127,7 @@ def main():
     AX.set_xlabel('$n$', fontsize=fontS)
     AX.set_ylim(0., 1.05)
     plt.savefig('./figures/Traj_' + series + '_' + str(case) + '.png', bbox_inches='tight', dpi=dpi)
-
+    plt.close()
 
 ########### SERIE 2 ter ##############
 ######################################
@@ -145,6 +147,11 @@ class LoiAPrioriSeries2ter(LoiAPriori):
         self.__eta = 3./8.*(1. - self.__alpha0 - self.__alpha1 - 2.*self.__beta)
         if self.__eta<0.: self.__eta=0. # erreur d'arrondi
         #print('self.__eta=', self.__eta)
+
+        self.update()
+
+
+    def update(self):
 
         self.__D0 = self.__alpha0 + self.__beta + self.__eta / 2.
         self.__D1 = self.__alpha1 + self.__beta + self.__eta / 2.
@@ -166,6 +173,8 @@ class LoiAPrioriSeries2ter(LoiAPriori):
 
     def getEta(self):
         """ Return the eta param of the law model."""
+        self.__eta = 3./8.*(1. - self.__alpha0 - self.__alpha1 - 2.*self.__beta)
+        if self.__eta<0.: self.__eta=0. # erreur d'arrondi
         return self.__eta
         
     def __str__(self):
@@ -196,6 +205,28 @@ class LoiAPrioriSeries2ter(LoiAPriori):
         MProba, TProba = self.getMTProbaFormJProba(JProba, n_r)
 
         return MProba, TProba, JProba
+
+
+    def setParametersFromSimul(self, Rsimul, nbcl):
+        
+        Nsimul = len(Rsimul)
+
+        alpha0, alpha1, beta = 0., 0., 0.
+        for n in range(1, Nsimul):
+            if Rsimul[n-1] == 0      and Rsimul[n] == 0:      alpha0 += 1.
+            if Rsimul[n-1] == nbcl-1 and Rsimul[n] == nbcl-1: alpha1 += 1.
+            if Rsimul[n-1] == 0      and Rsimul[n] == nbcl-1: beta   += 1.
+            if Rsimul[n-1] == nbcl-1 and Rsimul[n] == 0:      beta   += 1.
+        beta /= 2. # ca compte les transitions 0-1, 1-0, donc on divise par deux
+        
+        self.__alpha0 = alpha0 / (Nsimul-1.)
+        self.__alpha1 = alpha1 / (Nsimul-1.)
+        self.__beta = beta   / (Nsimul-1.)
+        self.__eta = 3./8.*(1. - self.__alpha0 - self.__alpha1 - 2.*self.__beta)
+        if self.__eta<0.: self.__eta=0. # erreur d'arrondi
+
+        self.update()
+
 
     def probaR1R2(self, r1, r2):
         """ Return the joint proba at r1, r2."""

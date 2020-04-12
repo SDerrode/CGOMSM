@@ -108,11 +108,13 @@ def main():
     print('Nbre saut 1 :', cpt1/N, ', Theorique :', P.probaR(1.))
     print('Nbre saut durs (0+1) :', (cpt0+cpt1)/N, ', Theorique :', P.maxiHardJump())
 
+    #### PLOTs
     mini = 100
     maxi = 150
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1, projection='3d')
     P.plotR1R2('./figures/LoiCouple_' + series + '_' + str(case) + '.png', ax, dpi=dpi)
+    plt.close()
     P.plotR1('./figures/LoiMarg_' + series + '_' + str(case) + '.png', dpi=dpi)
     FIG = plt.figure()
     AX = FIG.gca()
@@ -122,6 +124,7 @@ def main():
     AX.set_xlabel('$n$', fontsize=fontS)
     AX.set_ylim(0., 1.05)
     plt.savefig('./figures/Traj_' + series + '_' + str(case) + '.png', bbox_inches='tight', dpi=dpi)
+    plt.close()
 
 
 
