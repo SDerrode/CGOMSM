@@ -41,10 +41,10 @@ def main():
     #P, case = LoiAPrioriSeries2ter(alpha0 = 0.05, alpha1 = 0.02, beta=0.01, EPS=EPS, discretization=discretization), 2
     P, case = LoiAPrioriSeries2ter(alpha0 = 0.144, alpha1 = 0.050, beta=0.000, EPS=EPS, discretization=discretization), 4
 
-
     print(P)
-    ALPHA0, ALPHA1, BETA, ETA = P.getParam()
-    print('2ter:'+str(ALPHA0)+':'+str(ALPHA1)+':'+str(BETA)+' #pH='+str(P.maxiHardJump()))
+    # ALPHA0, ALPHA1, BETA, ETA = P.getParam()
+    # print('2ter:'+str(ALPHA0)+':'+str(ALPHA1)+':'+str(BETA)+' #pH='+str(P.maxiHardJump()))
+    print('model string', P.stringName())
 
     # Test de sommes à 1
     sum_R1R2 = P.sumR1R2()
@@ -150,7 +150,6 @@ class LoiAPrioriSeries2ter(LoiAPriori):
 
         self.update()
 
-
     def update(self):
 
         self.__D0 = self.__alpha0 + self.__beta + self.__eta / 2.
@@ -181,7 +180,7 @@ class LoiAPrioriSeries2ter(LoiAPriori):
         return "alpha0=" + str('%.3f'%(self.__alpha0)) +  ", alpha1=" + str('%.3f'%(self.__alpha1)) + ", beta=" + str('%.3f'%(self.__beta)) + ", eta=" + str('%.3f'%(self.__eta))
 
     def stringName(self):
-        return '2ter:'+str(self.__alpha0)+':'+str(self.__alpha1)+':'+str(self.__beta)
+        return '2ter:'+str('%.4f'%self.__alpha0)+':'+str('%.4f'%self.__alpha1)+':'+str('%.4f'%self.__beta)
 
     def getTheoriticalHardTransition(self, n_r):
 

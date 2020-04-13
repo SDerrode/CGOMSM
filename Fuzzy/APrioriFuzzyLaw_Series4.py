@@ -13,26 +13,28 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 
-fontS = 16 # fontSize
+fontS = 13 # fontSize
 mpl.rc('xtick', labelsize=fontS)
 mpl.rc('ytick', labelsize=fontS)
-dpi = 300
+dpi = 150
 
 if __name__ == '__main__':
-    from APrioriFuzzyLaw import LoiAPriori, plotSample
+    from APrioriFuzzyLaw import LoiAPriori, plotSample, echelle
 else:
-    from Fuzzy.APrioriFuzzyLaw import LoiAPriori, plotSample
+    from Fuzzy.APrioriFuzzyLaw import LoiAPriori, plotSample, echelle
 
 def main():
-    
-    discretization = 200
-    EPS            = 1E-10
 
-    seed = random.randrange(sys.maxsize)
-    seed = 5039309497922655937
-    rng = random.Random(seed)
-    print("Seed was:", seed)
-   
+    discretization = 1000
+    EPS            = 1E-8
+    epsilon        = 1E-2
+    verbose        = True
+    graphics       = True
+
+    # seed = random.randrange(sys.maxsize)
+    # seed = 5039309497922655937
+    # rng = random.Random(seed)
+    # print("Seed was:", seed)
 
     print('*********************SERIES 4')
     series = 'Serie4'
@@ -67,89 +69,22 @@ def main():
     P, case = LoiAPrioriSeries4(alpha=0.15, gamma = 0.60, delta_d=0.20, delta_u=0.20, EPS=EPS, discretization=discretization), 57
 
     print(P)
-    ALPHA, BETA, DELTA_D, DELTA_U, GAMMA = P.getParam()
-    print('4:'+str(ALPHA)+':'+str(GAMMA)+':'+str(DELTA_D)+':'+str(DELTA_U)+', beta='+str(BETA)+', #pH='+str(P.maxiHardJump()))
+    print('model string', P.stringName())
 
-    # Test de sommes à 1
-    sum_R1R2 = P.sumR1R2()
-    sum_R1   = P.sumR1()
-    sum_R2CondR1_0   = P.sumR2CondR1(0.)
-    sum_R2CondR1_20  = P.sumR2CondR1(0.10)
-    sum_R2CondR1_50  = P.sumR2CondR1(0.50)
-    sum_R2CondR1_90  = P.sumR2CondR1(0.90)
-    sum_R2CondR1_100 = P.sumR2CondR1(1.)
-    print("sum_R1R2 = ", sum_R1R2)
-    print("sum_R1 = ", sum_R1)
-    print("sum_R2CondR1_0   = ", sum_R2CondR1_0)
-    print("sum_R2CondR1_20  = ", sum_R2CondR1_20)
-    print("sum_R2CondR1_50  = ", sum_R2CondR1_50)
-    print("sum_R2CondR1_90  = ", sum_R2CondR1_90)
-    print("sum_R2CondR1_100 = ", sum_R2CondR1_100)
-    print('maxiHardJump = ', P.maxiHardJump())
-    
-    # Calcul théorique et empirique de la proportion de suats durs
-    MProbaTh, TProbaTh, JProbaTh = P.getTheoriticalHardTransition(2)
-    print('JProba Hard Theorique=\n', JProbaTh)
-    print('sum=', sum(sum(JProbaTh)))
-
-    MProbaNum, TProbaNum, JProbaNum = P.getNumericalHardTransition(2)
-    print('Jproba Hard Numerique, J=\n', JProbaNum)
-    print('sum=', sum(sum(JProbaNum)))
+    # Test le modele
+    OKtestModel = P.testModel(verbose=verbose, epsilon=epsilon)
 
     # Simulation d'un chaine de markov flou suivant ce modèle
-    N = 10000
-    chain = np.zeros(shape=(N))
-    # Le premier
-    chain[0] = P.tirageR1()
-    # les suivantes...
-    for i in range(1, N):
-        chain[i] = P.tirageRnp1CondRn(chain[i-1])
+    N = 30000
+    chain = P.testSimulMC(N, verbose=verbose, epsilon=epsilon)
 
-    # Comptage des quarts
-    JProbaEch = np.zeros(shape=(2,2))
-    for i in range(N-1):
-        if chain[i]<0.5:
-            if chain[i+1]<0.5:
-                JProbaEch[0,0] += 1.
-            else:
-                JProbaEch[0,1] += 1.
-        else:
-            if chain[i+1]<0.5:
-                JProbaEch[1,0] += 1.
-            else:
-                JProbaEch[1,1] += 1.
-    JProbaEch /= (N-1.)
-    print('Jproba Hard Echantillon, J=\n', JProbaEch)
-    print('sum=', sum(sum(JProbaEch)))
+    if graphics == True:
+        P.plotR1R2   ('./figures/LoiCouple_' + series + '_' + str(case) + '.png', dpi=dpi)
+        P.plotR1     ('./figures/LoiMarg_'   + series + '_' + str(case) + '.png', dpi=dpi)
+        # Dessins
+        mini, maxi = 100, 150
+        P.PlotMCchain('./figures/Traj_'      + series + '_' + str(case) + '.png', chain, mini=mini, maxi=maxi, dpi=dpi)
 
-    cpt0 = 0
-    cpt1 = 0
-    for i in range(N):
-        if chain[i] == 0.:
-            cpt0 += 1
-        elif chain[i] == 1.0:
-            cpt1 += 1
-    print('Nbre saut 0 :', cpt0/N, ', Theorique :', P.probaR(0.))
-    print('Nbre saut 1 :', cpt1/N, ', Theorique :', P.probaR(1.))
-    print('Nbre saut durs (0+1) :', (cpt0+cpt1)/N, ', Theorique :', P.maxiHardJump())
-
-    #### PLOTs
-    mini = 100
-    maxi = 150
-    fig = plt.figure()
-    ax = fig.add_subplot(1, 1, 1, projection='3d')
-    P.plotR1R2('./figures/LoiCouple_' + series + '_' + str(case) + '.png', ax, dpi=dpi)
-    plt.close()
-    P.plotR1('./figures/LoiMarg_' + series + '_' + str(case) + '.png', dpi=dpi)
-    FIG = plt.figure()
-    AX = FIG.gca()
-    abscisse= np.linspace(start=mini, stop=maxi, num=maxi-mini)
-    AX.plot(abscisse, chain[mini:maxi], 'g')
-    #plt.title('Trajectory (Fuzzy jumps)')
-    AX.set_xlabel('$n$', fontsize=fontS)
-    AX.set_ylim(0., 1.05)
-    plt.savefig('./figures/Traj_' + series + '_' + str(case) + '.png', bbox_inches='tight', dpi=dpi)
-    plt.close()
 
     # NORMTRAP = 1. - (2.*(ALPHA+BETA) + GAMMA*(DELTA_U+DELTA_D))
     # trapeze = trapeze_Serie4_gen(momtype=0, name='trapeze_serie4', a=0., b=1., shapes="NORMTRAP, GAMMA, DELTA_D, DELTA_U")
@@ -184,7 +119,6 @@ class LoiAPrioriSeries4(LoiAPriori):
         self.__delta_u = delta_u
 
         M = 3.*(self.__delta_u+self.__delta_d) - 0.5*(self.__delta_d*self.__delta_d+self.__delta_u*self.__delta_u)
-
         if M != 0.:
             if gamma >= (1.-2.*self.__alpha)/M:
                 self.__gamma = (1.-2.*self.__alpha)/M - 1E-10
@@ -197,13 +131,22 @@ class LoiAPrioriSeries4(LoiAPriori):
 
         self.__beta = (1. - self.__gamma * M)/2. - self.__alpha
 
-        NormTrap = 1. - (2.*(self.__alpha+self.__beta) + self.__gamma*(self.__delta_u+self.__delta_d))
+        self.update()
+
+    def update(self):
+        NormTrap       = 1. - (2.*(self.__alpha+self.__beta) + self.__gamma*(self.__delta_u+self.__delta_d))
         # NormTrap = self.__gamma*(2*(self.__delta_u+self.__delta_d) - 0.5*(self.__delta_u*self.__delta_u + self.__delta_d*self.__delta_d)  ) # equivalently
         gamma          = self.__gamma
         beta           = self.__beta
         trap_01        = trapeze_Serie4_gen(momtype=0, name='trapeze_serie4', a=0., b=1., shapes="NormTrap, gamma, delta_d, delta_u")
         self.__rv_trap = trap_01(NormTrap, self.__gamma, self.__delta_d, self.__delta_u)
 
+    def setParametersFromSimul(self, Rsimul, nbcl):
+        
+        input('setParametersFromSimul : to be done')
+        Nsimul = len(Rsimul)
+
+        self.update()
 
     def getParam(self):
         """ Return the params of the law model."""
@@ -215,7 +158,7 @@ class LoiAPrioriSeries4(LoiAPriori):
         return str1
 
     def stringName(self):
-        return '4:'+str(self.__alpha)+':'+str(self.__gamma)+':'+str(self.__delta_d)+':'+str(self.__delta_u)
+        return '4:'+str('%.4f'%self.__alpha)+':'+str('%.4f'%self.__gamma)+':'+str('%.4f'%self.__delta_d)+':'+str('%.4f'%self.__delta_u)
 
     def getTheoriticalHardTransition(self, n_r):
 

@@ -3,6 +3,8 @@ import scipy as sp
 import copy
 import clipboard
 import warnings
+from sklearn.cluster import KMeans
+
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -18,11 +20,16 @@ dayFmt   = md.DateFormatter('%d')
 
 fontS = 13     # font size
 
-from sklearn.cluster import KMeans
-
 from OFAResto.LoiDiscreteFuzzy_TMC    import Loi1DDiscreteFuzzy_TMC, Loi2DDiscreteFuzzy_TMC, calcF, calcB
-from Fuzzy.APrioriFuzzyLaw_Series2ter import LoiAPrioriSeries2ter
 from CommonFun.CommonFun              import From_FQ_to_Cov_Lyapunov, Test_if_CGPMSM, is_pos_def, From_Cov_to_FQ
+
+from Fuzzy.APrioriFuzzyLaw_Series1    import LoiAPrioriSeries1
+from Fuzzy.APrioriFuzzyLaw_Series2    import LoiAPrioriSeries2
+from Fuzzy.APrioriFuzzyLaw_Series2bis import LoiAPrioriSeries2bis
+from Fuzzy.APrioriFuzzyLaw_Series2ter import LoiAPrioriSeries2ter
+from Fuzzy.APrioriFuzzyLaw_Series3    import LoiAPrioriSeries3
+from Fuzzy.APrioriFuzzyLaw_Series4    import LoiAPrioriSeries4
+from Fuzzy.APrioriFuzzyLaw_Series4bis import LoiAPrioriSeries4bis
 
 
 def Check_CovMatrix(Mat):
@@ -33,7 +40,7 @@ def Check_CovMatrix(Mat):
 
 ###################################################################################################
 class CGOFMSM_SemiSupervLearn:
-    def __init__(self, STEPS, nbIterSEM, nbRealSEM, Datatrain, filestem, verbose, graphics):
+    def __init__(self, STEPS, nbIterSEM, nbRealSEM, Datatrain, filestem, FSstring, verbose, graphics):
 
         self.__n_r       = 2
         self.__nbIterSEM = nbIterSEM
@@ -44,6 +51,7 @@ class CGOFMSM_SemiSupervLearn:
         self.__EPS       = 1E-8
         self.__filestem  = filestem
         self.__Datatrain = Datatrain
+        self.__FSstring  = FSstring
 
         self.__Datatrain.set_index(list(self.__Datatrain)[0], inplace=True)
         self.__listeHeader = list(self.__Datatrain)
@@ -195,7 +203,7 @@ class CGOFMSM_SemiSupervLearn:
         if self.__verbose >= 1: self.printParam()
         #input('pause')
 
-    def ConvertParameters(self):
+    def ConvertParameters_3to2by1(self):
 
         # Convert from Param 3 to Param 1 (using equations from Zied) ############################################################@
         MeanX = np.zeros(shape=(self.__STEPS+2, self.__n_x))
@@ -267,13 +275,27 @@ class CGOFMSM_SemiSupervLearn:
 
         return Cov, MeanX, MeanY
 
-    def SaveParameters(self, filenameParam, Cov, MeanX, MeanY):
 
-        # Save the CGOFMSM file ##################################################################################################@
+    def GenerateCommandline(self, chWork, fileTrain, filenameParam, steps, clipboardcopy=False):
+ 
+        A  = 'python3 Test_CGOFMSM_Signals.py ' + filenameParam + ' ' + self.__FS.stringName() + ' '
+        A += chWork + ' ' + fileTrain + ' ' + str(steps) + ' 2 1'
+        print('  -> Command line for data restoration:')
+        print('\n        ', A, '\n')
+
+        if clipboardcopy == True:
+            clipboard.copy(A.strip()) # mise en mémoire de la commande à exécuter
+
+
+    def SaveParameters_2(self, filenameParam, Cov, MeanX, MeanY):
+
+        # Save the parameters for the parametrization 2 #####################################################@
         
         # L'entete
         f = open(filenameParam, 'w')
-        f.write('#=====================================#\n# parameters for CGOFMSM with F discrete classes # \n#=====================================# \n# \n# \n# matrix Cov_XY \n# ===============================================#\n# \n')
+        f.write(  '#==========================================================#')
+        f.write('\n# CGOFMSM parameters (parametrization 2)                   #')
+        f.write('\n#==========================================================#\n#\n')
         f.close()
 
         f = open(filenameParam, 'ab')
@@ -293,26 +315,16 @@ class CGOFMSM_SemiSupervLearn:
 
         f.close()
 
-        # Generate the command to run the predictor 
-        #############################################################################@
-        hard, filt, smooth, predic = 0, 1, 0, 1
-        chWork = str(hard) + ',' + str(filt) + ',' + str(smooth) + ',' + str(predic)
-        param = self.__FS.getParam()
-        nameY = './Data/Traffic/TMUSite5509-2/TMUSite5509-2_train.csv'
-        A  = 'python3 Test_CGOFMSM_Signals.py ' + filenameParam + ' 2ter:' + str('%.4f'%param[0]) + ':' + str('%.4f'%param[1]) + ':' + str('%.4f'%param[2]) + ' '
-        A += chWork + ' ' + nameY + ' -1 2 1'
 
-        clipboard.copy(A.strip()) # mise en mémoire de la commande à exécuter
-        print('pour restaurer le signal:')
-        print('\n', A, '\n')
-
-    def SaveParametersInterpolation(self, filenameParam, Cov, MeanX, MeanY):
+    def SaveParameters_2Interpolation(self, filenameParam, Cov, MeanX, MeanY):
 
         # Save the CGOFMSM file ##################################################################################################@
         
         # L'entete
         f = open(filenameParam, 'w')
-        f.write('#=====================================#\n# parameters for CGOFMSM with F discrete classes # \n#=====================================# \n# \n# \n# matrix Cov_XY \n# ===============================================#\n# \n')
+        f.write(  '#==========================================================#')
+        f.write('\n# CGOFMSM parameters (parametrization 2 for interpolation) #')
+        f.write('\n#==========================================================#\n#\n')
         f.close()
 
         f = open(filenameParam, 'ab')
@@ -339,19 +351,36 @@ class CGOFMSM_SemiSupervLearn:
 
         f.close()
 
-        # Generate the command to run the predictor 
-        #############################################################################@
-        hard, filt, smooth, predic = 0, 1, 0, 1
-        chWork = str(hard) + ',' + str(filt) + ',' + str(smooth) + ',' + str(predic)
-        param  = self.__FS.getParam()
-        Fsteps = 1
-        nameY  = './Data/Traffic/TMUSite5509-2/TMUSite5509-2_train.csv'
-        A  = 'python3 Test_CGOFMSM_Signals.py ' + filenameParam + ' 2ter:' + str('%.4f'%param[0]) + ':' + str('%.4f'%param[1]) + ':' + str('%.4f'%param[2]) + ' '
-        A += chWork + ' ' + nameY + ' ' + str(Fsteps) + ' 2 1'
 
-        clipboard.copy(A.strip()) # mise en mémoire de la commande à exécuter
-        print('pour restaurer le signal (avec interpolation):')
-        print('\n', A, '\n')
+    def SaveParameters_3(self, filenameParam):
+
+        # Save the parameter for the parametrization 3 #####################################################@
+        
+        # L'entete
+        f = open(filenameParam, 'w')
+        f.write(  '#==========================================================#')
+        f.write('\n# CGOFMSM parameters (parametrization 3)                   #')
+        f.write('\n#==========================================================#\n#\n')
+        f.close()
+
+        f = open(filenameParam, 'ab')
+        
+        # the number of fuzzy steps
+        np.savetxt(f, np.array([self.__STEPS], dtype=int), delimiter=" ", header='number of fuzzy steps'+'\n================================', footer='\n')
+      
+        # Les paramètres M, Lambda2, P, Pi2
+        for j in range(self.__STEPS+2):
+            np.savetxt(f, self.__M[j],       delimiter=" ", header='M_'+str(j)+'x\n----------------------------', footer='\n', fmt='%.4f')
+            np.savetxt(f, self.__Lambda2[j], delimiter=" ", header='Lambda2_'+str(j)+'x\n----------------------------', footer='\n', fmt='%.4f')
+            np.savetxt(f, self.__P[j],       delimiter=" ", header='P_'+str(j)+'x\n----------------------------', footer='\n', fmt='%.4f')
+            np.savetxt(f, self.__Pi2[j],     delimiter=" ", header='Pi2_'+str(j)+'x\n----------------------------', footer='\n', fmt='%.4f')
+
+        # Les paramètres de maoyenneet covaraince pour le premier
+        for j in range(self.__STEPS+2):
+            np.savetxt(f, self.__aMeanCovFuzzy.getMean(j), delimiter=" ", header='Mean_'+str(j)+'x\n----------------------------', footer='\n', fmt='%.4f')
+            np.savetxt(f, self.__aMeanCovFuzzy.getCov(j),  delimiter=" ", header='Cov_'+str(j)+'x\n----------------------------', footer='\n', fmt='%.4f')
+        
+        f.close()   
     
 
     def simulRealization(self, Rsimul, ProbaGamma_0, ProbaJumpCond):
@@ -410,7 +439,24 @@ class CGOFMSM_SemiSupervLearn:
 
 
         # Parameter for fuzzy Markov model called APrioriFuzzyLaw_serie2ter.py
-        FS = LoiAPrioriSeries2ter(0., 0., 0., self.__EPS, 100)
+        FS = None
+        if self.__FSstring == '1':
+            FS = LoiAPrioriSeries1(alpha=0., gamma=0.)
+        elif self.__FSstring == '2':
+            FS = LoiAPrioriSeries2(alpha=0., eta=0., delta=0.)
+        elif self.__FSstring == '2bis':
+            FS = LoiAPrioriSeries2bis(alpha=0., eta=0., delta=0., lamb=0.)
+        elif self.__FSstring == '2ter':
+            FS = LoiAPrioriSeries2ter(alpha0=0., alpha1=0., beta=0.)
+        elif self.__FSstring == '3':
+            FS = LoiAPrioriSeries3(alpha=0., delta=0.)
+        elif self.__FSstring == '4':
+            FS = LoiAPrioriSeries4(alpha=0., gamma=0., delta_d=0., delta_u=0.)
+        elif self.__FSstring == '4bis':
+            FS = LoiAPrioriSeries4bis(alpha=0., gamma=0., delta_d=0., delta_u=0., lamb=0.)
+        else:
+            input('Impossible')
+            exit(1)
         FS.setParametersFromSimul(Rsimul, self.__STEPS+2)
 
         # if self.__graphics>=2:
@@ -985,7 +1031,14 @@ class MeanCovFuzzy:
         # input('hardcov')
 
     def getMean(self, indrn):
-        return self.__Mean_Zf[indrn, :]
+        if indrn>=0 and indrn<self.__STEPS+2:
+            return self.__Mean_Zf[indrn, :]
+        else:
+            return None
 
     def getCov(self, indrn):
-        return self.__Cov_Zf[indrn, :]
+        if indrn>=0 and indrn<self.__STEPS+2:
+            return self.__Cov_Zf[indrn, :]
+        else:
+            return None
+        

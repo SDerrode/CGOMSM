@@ -13,6 +13,7 @@ from CommonFun.CommonFun import Readin_CovMeansProba
 from Fuzzy.APrioriFuzzyLaw_Series1    import LoiAPrioriSeries1
 from Fuzzy.APrioriFuzzyLaw_Series2    import LoiAPrioriSeries2
 from Fuzzy.APrioriFuzzyLaw_Series2bis import LoiAPrioriSeries2bis
+from Fuzzy.APrioriFuzzyLaw_Series2ter import LoiAPrioriSeries2ter
 from Fuzzy.APrioriFuzzyLaw_Series3    import LoiAPrioriSeries3
 from Fuzzy.APrioriFuzzyLaw_Series4    import LoiAPrioriSeries4
 from Fuzzy.APrioriFuzzyLaw_Series4bis import LoiAPrioriSeries4bis
