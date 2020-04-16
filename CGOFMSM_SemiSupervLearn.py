@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from pandas.plotting import register_matplotlib_converters
 register_matplotlib_converters()
 
-from OFAResto.CGOFMSM_SemiSupervLearn import CGOFMSM_SemiSupervLearn, MeanCovFuzzy
+from OFAResto.CGOFMSM_Learn import CGOFMSM_Learn, MeanCovFuzzy
 
 if __name__ == '__main__':
     """
@@ -20,9 +20,9 @@ if __name__ == '__main__':
  
         :Example:
 
-        >> python3 SemiSupervLearn_CGOFMSM.py ./Data/Traffic/TMUSite5509-2/TMUSite5509-2_train.csv FS2ter 10 1 4 2 1
-        >> python3 SemiSupervLearn_CGOFMSM.py ./../Data_CGPMSM/OpenEI/BuildingTemp/input/building1retail_June_Week_672.csv FS2ter 5 1 4 2 1
-        >> python3 SemiSupervLearn_CGOFMSM.py ./../Data_CGPMSM/OpenEI/BuildingTemp/input/building1retail_June_Week_672.csv FS2ter 100 1 10 2 2 --> forward converge vers 0.!!
+        >> python3 CGOFMSM_SemiSupervLearn.py ./Data/Traffic/TMUSite5509-2/TMUSite5509-2_train.csv FS2ter 10 1 4 2 1
+        >> python3 CGOFMSM_SemiSupervLearn.py ./../Data_CGPMSM/OpenEI/BuildingTemp/input/building1retail_June_Week_672.csv FS2ter 5 1 4 2 1
+        >> python3 CGOFMSM_SemiSupervLearn.py ./../Data_CGPMSM/OpenEI/BuildingTemp/input/building1retail_June_Week_672.csv FS2ter 100 1 10 2 2 --> forward converge vers 0.!!
         
         argv[1] : csv filename with timestamp in col 0, observations in col 1 and states in col2
         argv[2] : fuzzy a priori law, with 'FS' before, e.g. FS2ter, or FS4
@@ -90,11 +90,10 @@ if __name__ == '__main__':
         print('  -->Date fin   série = ', Datatrain[listeHeader[0]].iloc[-1])
 
     # Learning fo parameters
-    filestem  = pathlib.Path(fileTrain).stem
-    aCGOFMSM_learn = CGOFMSM_SemiSupervLearn(STEPS, nbIterSEM, nbRealSEM, Datatrain, filestem, FSstring, verbose, graphics)
+    filestem       = pathlib.Path(fileTrain).stem
+    aCGOFMSM_learn = CGOFMSM_Learn(STEPS, nbIterSEM, nbRealSEM, Datatrain, filestem, FSstring, verbose, graphics)
     aCGOFMSM_learn.run_several()
     
-
     # Command ligne for filtering, smoothing, predicting
     hard, filt, smooth, predic = 0, 1, 0, 1
     chWork = str(hard) + ',' + str(filt) + ',' + str(smooth) + ',' + str(predic)
@@ -114,4 +113,3 @@ if __name__ == '__main__':
     filenameParam = './Parameters/Fuzzy/' + filestem + '_interpolation.param1'
     aCGOFMSM_learn.SaveParameters_2Interpolation(filenameParam, Cov, MeanX, MeanY)
     aCGOFMSM_learn.GenerateCommandline(chWork, fileTrain, filenameParam, -1, clipboardcopy=False)
-

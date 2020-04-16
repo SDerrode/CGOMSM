@@ -2,7 +2,7 @@
 
 Project to simulate and restore CGOFMSM : Conditionnally Gaussian Observed Fuzzy Markov Switching Model 
 
-      >>  python3 Test_CGOFMSM.py [arguments]
+      >>  python3 CGOFMSM_Simulation.py [arguments]
 
 ## Arguments
 
@@ -25,7 +25,7 @@ Project to simulate and restore CGOFMSM : Conditionnally Gaussian Observed Fuzzy
 
 ## Running Examples
 
-      >> python3 Test_CGOFMSM.py Parameters/Fuzzy/SP2018.param 2:0.07:0.24:0.09 1,1,1 72 3 5 2 1
+      >> python3 CGOFMSM_Simulation.py Parameters/Fuzzy/SP2018.param 2:0.07:0.24:0.09 1,1,1 72 3 5 2 1
       >> nohup python3 CGOFMSM.py Parameters/SP2018.param 4:0.15:0.15:0.:0.1 1,1,0 1000 1,2,3,5,7,10 10 1 0 1 > serie2.out &
 
 # CGOFMSM for Seattle Temperature data

@@ -19,16 +19,20 @@ from Fuzzy.APrioriFuzzyLaw_Series4    import LoiAPrioriSeries4
 from Fuzzy.APrioriFuzzyLaw_Series4bis import LoiAPrioriSeries4bis
 
 
-def simulateFuzzy(filenameParam, FSParameters, N):
+def simulateFuzzy(filenameParam, FSParameters, interpolation, N):
 
-    n_r, A, B, Q, Cov, Mean_X, Mean_Y = Readin_CovMeansProba(filenameParam)
-    n_x = np.shape(Mean_X)[1]
-    n_y = np.shape(Mean_Y)[1]
-    n_z = n_x+n_y
-    s_xz     = slice(n_x, n_z)
-    s_0x     = slice(0,   n_x)
-    s_0z     = slice(0,   n_z)
+    if interpolation == True:
+        A, B, Q, Cov, Mean_X, Mean_Y = Readin_CovMeansProba(filenameParam, interpolation)
+        n_r = 2
+    else:
+        n_r, STEPS, A, B, Q, Cov, Mean_X, Mean_Y = Readin_CovMeansProba(filenameParam, interpolation)
 
+    n_x  = np.shape(Mean_X)[1]
+    n_y  = np.shape(Mean_Y)[1]
+    n_z  = n_x+n_y
+    s_xz = slice(n_x, n_z)
+    s_0x = slice(0,   n_x)
+    s_0z = slice(0,   n_z)
 
     # Le bruit
     W = np.random.normal(loc=0., scale=1., size=(n_z, N))
@@ -53,15 +57,15 @@ def simulateFuzzy(filenameParam, FSParameters, N):
         input('Impossible')
 
     # La chainee de Markov
-    R       = np.zeros(shape=(1, N))
-    R[0, 0] = FS.tirageR1()
+    R       = np.zeros(shape=(N))
+    R[0] = FS.tirageR1()
     for np1 in range(1, N):
-        R[0, np1] = FS.tirageRnp1CondRn(R[0, np1-1])
+        R[np1] = FS.tirageRnp1CondRn(R[np1-1])
 
     # Les moyennes
     Mean_Z = np.zeros(shape=(n_z, N))
     for np1 in range(N):
-        alpha = R[0, np1]
+        alpha = R[np1]
         Mean_Z[:, np1] =  np.hstack((InterLineaire_Vector(Mean_X, alpha), InterLineaire_Vector(Mean_Y, alpha)))
 
     # Simulation de Z = [[X],[Y]]
@@ -71,11 +75,11 @@ def simulateFuzzy(filenameParam, FSParameters, N):
 
     i = 0
     N_xy[:, i]     = Mean_Z[:, 0]
-    Cov_alpha_beta = InterBiLineaire_Matrix(Cov, R[0, i], R[0, i+1])
+    Cov_alpha_beta = InterBiLineaire_Matrix(Cov, R[i], R[i+1])
     Z[:, i]        = np.random.multivariate_normal(mean=N_xy[:, i], cov=Cov_alpha_beta[s_0z, s_0z], size=1)
     for i in range(1, N):
-        alpha = R[0, i-1]
-        beta  = R[0, i]
+        alpha = R[i-1]
+        beta  = R[i]
         A_alpha_beta = InterBiLineaire_Matrix(A, alpha, beta)
         B_alpha_beta = InterBiLineaire_Matrix(B, alpha, beta)
 

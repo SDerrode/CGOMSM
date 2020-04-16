@@ -85,7 +85,7 @@ def main():
     # Commande pour simuler un signal de la même forme et le restaurer par CGOFMSM
     N = 2000
     NbExp = 1
-    B = 'python3 Test_CGOFMSM.py ./Parameters/Signal/' + filanemaneParam + ' 4:' + str(alpha) + ':' + str(gamma) + ':' + str(delta_d) + ':' + str(delta_u) + ' '
+    B = 'python3 CGOFMSM_Simulation.py ./Parameters/Signal/' + filanemaneParam + ' 4:' + str(alpha) + ':' + str(gamma) + ':' + str(delta_d) + ':' + str(delta_u) + ' '
     B += chWork + ' ' + str(N) + ' ' + steps + ' ' + str(NbExp) + ' ' + str(verbose) + ' ' + str(plot)
     # B = 'python3 CGOFMSM.py ./Parameters/Signal/' + filanemaneParam + ' 4:' + str(alpha) + ':' + str(beta) + ':' + str(eta) + ':' + str(delta) + ' '
     # B += chWork + ' ' + str(N) + ' ' + steps + ' ' + str(NbExp) + ' ' + str(verbose) + ' ' + str(plot)

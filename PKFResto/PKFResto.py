@@ -38,6 +38,8 @@ class RestorationPKF:
         E_Xn_N     = np.zeros((n_x,      N))
         Cov_Xn_N   = np.zeros((n_x, n_x, N))
         C_n_np1_N  = np.zeros((n_x, n_x, N))
+        E_Xnp1_n   = np.zeros((n_z,      N)) # predictor
+        Cov_Xnp1_n = np.zeros((n_z, n_z, N)) # predictor
 
         E_Yn_np1   = np.zeros((n_y, N))
         M_znp1     = np.zeros((n_z, 1))
@@ -125,7 +127,7 @@ class RestorationPKF:
         if Likelihood is True:
             return E_Xn_n, Cov_Xn_n, E_Xn_N, Cov_Xn_N, likelihood
 
-        return E_Xn_n, Cov_Xn_n, E_Xn_N, Cov_Xn_N
+        return E_Xn_n, Cov_Xn_n, E_Xn_N, Cov_Xn_N, E_Xnp1_n, Cov_Xnp1_n
 
 
     def restore_withjump(self, Y, R, F, Q, Cov, Mean_X, Mean_Y, Likelihood=False):

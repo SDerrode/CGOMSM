@@ -39,13 +39,13 @@ if __name__ == '__main__':
     #############################
     # Les données markoviennes à dessiner par dessus le fond (qui est la densité 2D de la loi floue)
     N = 50
-    chain = np.empty((1, N))
-    chain[:, 0] = P.tirageR1()
+    chain = np.empty(shape=(N))
+    chain[0] = P.tirageR1()
     # les suivantes...
     for i in range(1, N):
-        chain[0, i] = P.tirageRnp1CondRn(chain[0, i-1])
+        chain[i] = P.tirageRnp1CondRn(chain[0, i-1])
 
-    x, y, z = chain[:, 0], chain[:, 1], 0.
+    x, y, z = chain[0], chain[1], 0.
     line1, = ax1.plot(x, y, z, 'm*', alpha=1., linewidth=3.0)
 
 
@@ -61,17 +61,17 @@ if __name__ == '__main__':
     def animate(num, chain, lines): 
         if num>3:
             # animation dessin 3D
-            x, y, z = np.reshape(chain[:, 0:num], newshape=(num)), np.reshape(chain[:, 1:num+1], newshape=(num)), np.zeros((num))
+            x, y, z = chain[0:num], chain[1:num+1], np.zeros((num))
             lines[0].set_data(x,y)
             lines[0].set_3d_properties(z)
 
             # animation dessin 2D
-            y1 = np.reshape(chain[:, 0:num], newshape=(num))
+            y1 = chain[0:num]
             x1 = list(range(0, num))
             # print('Array y1 = ', y1)
             # print('Array x1 = ', x1)
             ax2.plot(x1, y1, 'b-', alpha=1., linewidth=1.0)
-            y1 = np.reshape(chain[:, num-2:num], newshape=(2))
+            y1 =chain[:num-2:num]
             x1 = list(range(num-2, num))
             # print('Array y1 = ', y1)
             # print('Array x1 = ', x1)

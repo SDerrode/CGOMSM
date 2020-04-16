@@ -11,7 +11,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.dates as md
 
-from Test_CGOFMSM import CGOFMSM
+from OFAResto.CGOFMSM_Restoration import CGOFMSM
 
 from pandas.plotting import register_matplotlib_converters
 register_matplotlib_converters()
@@ -31,7 +31,7 @@ if __name__ == '__main__':
 
         argv[1] : Name of the file of parameters (cov and means)
         argv[2] : Fuzzy joint law model and parameters; e.g. 2ter:0.3:0.3:0.05
-        argv[3] : Hard (0/1), filter (0/1), smoother (0/1), predictor (0/1); e.g. 0,1,0,1
+        argv[3] : Hard filter & smoother(0/1), filter (0/1), smoother (0/1), predictor (0/1); e.g. 0,1,0,1
         argv[4] : Observed signal filename
         argv[5] : If interpolation, number of discrete fuzzy, aka 'F'; e.g. 3.  If -1 then F is to be read in the parameter file
         argv[6] : Debug(3), pipelette (2), normal (1), presque muet (0)
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     # Default value for parameters
     filenameParamCov = 'Parameters/Signal.param'
     FSParametersStr  = '2:0.07:0.24:0.09'
-    work             = [1,1,0]
+    work             = [1,1,0,1]
     filename         = './Data/Kaggle/input/JoseRizalBridgeNorth_all_resample_1303_GT.csv'
     STEPS            = [3,7]
     NbExp            = 1
@@ -62,8 +62,7 @@ if __name__ == '__main__':
     STEPS            = list(map(int, sys.argv[5].split(',')))
     verbose          = int(sys.argv[6])
     Plot             = True
-    if int(sys.argv[7]) == 0: 
-        Plot = False
+    if int(sys.argv[7]) == 0: Plot = False
 
     interpolation = True
     if STEPS[0] == -1:

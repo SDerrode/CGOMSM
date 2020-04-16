@@ -14,7 +14,11 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 # import mpl_toolkits.mplot3d.art3d as art3d
 
-from LoisDiscreteFuzzy import Loi2DDiscreteFuzzy, Loi1DDiscreteFuzzy
+if __name__ == '__main__':
+    from LoisDiscreteFuzzy import Loi2DDiscreteFuzzy, Loi1DDiscreteFuzzy
+else:
+    from Fuzzy.LoisDiscreteFuzzy import Loi2DDiscreteFuzzy, Loi1DDiscreteFuzzy
+
 
 fontS = 13 # fontSize
 mpl.rc('xtick', labelsize=fontS)

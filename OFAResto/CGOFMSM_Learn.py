@@ -20,7 +20,11 @@ dayFmt   = md.DateFormatter('%d')
 
 fontS = 13     # font size
 
-from OFAResto.LoiDiscreteFuzzy_TMC    import Loi1DDiscreteFuzzy_TMC, Loi2DDiscreteFuzzy_TMC, calcF, calcB
+#from Fuzzy.LoisDiscreteFuzzy          import Loi2DDiscreteFuzzy, Loi1DDiscreteFuzzy
+from OFAResto.LoiDiscreteFuzzy_TMC    import calcF, calcB
+from OFAResto.LoiDiscreteFuzzy_TMC    import Loi1DDiscreteFuzzy_TMC, Loi2DDiscreteFuzzy_TMC
+from OFAResto.TabDiscreteFuzzy        import Tab1DDiscreteFuzzy, Tab2DDiscreteFuzzy
+
 from CommonFun.CommonFun              import From_FQ_to_Cov_Lyapunov, Test_if_CGPMSM, is_pos_def, From_Cov_to_FQ
 
 from Fuzzy.APrioriFuzzyLaw_Series1    import LoiAPrioriSeries1
@@ -39,19 +43,20 @@ def Check_CovMatrix(Mat):
     return True
 
 ###################################################################################################
-class CGOFMSM_SemiSupervLearn:
+class CGOFMSM_Learn:
     def __init__(self, STEPS, nbIterSEM, nbRealSEM, Datatrain, filestem, FSstring, verbose, graphics):
 
-        self.__n_r       = 2
-        self.__nbIterSEM = nbIterSEM
-        self.__nbRealSEM = nbRealSEM
-        self.__verbose   = verbose
-        self.__graphics  = graphics
-        self.__STEPS     = STEPS
-        self.__EPS       = 1E-8
-        self.__filestem  = filestem
-        self.__Datatrain = Datatrain
-        self.__FSstring  = FSstring
+        self.__n_r          = 2
+        self.__nbIterSEM    = nbIterSEM
+        self.__nbRealSEM    = nbRealSEM
+        self.__verbose      = verbose
+        self.__graphics     = graphics
+        self.__STEPS        = STEPS
+        self.__EPS          = 1E-8
+        self.__filestem     = filestem
+        self.__Datatrain    = Datatrain
+        self.__FSstring     = FSstring
+        self._interpolation = False
 
         self.__Datatrain.set_index(list(self.__Datatrain)[0], inplace=True)
         self.__listeHeader = list(self.__Datatrain)
@@ -87,11 +92,22 @@ class CGOFMSM_SemiSupervLearn:
         self.__graph_maxi = min(200, self.__N) # maxi=self.__N, maxi=min(500, self.__N)
         self.__graphRep   = './Result/Fuzzy/SimulatedR/'
 
-        # Detect the weekend days
+        # Detect the weekend days switches
         self.__weekend_indices = []
-        for i in range(len(self.__Datatrain.index[self.__graph_mini:self.__graph_maxi])):
-            if self.__Datatrain.index[i].weekday() >= 5:
-                self.__weekend_indices.append(i)
+        BoolWE = False
+        #for i in range(len(self.__Datatrain.index[self.__graph_mini:self.__graph_maxi])):
+        for i in range(self.__graph_mini,self.__graph_maxi):
+            if self.__Datatrain.index[i].weekday() >= 5 and BoolWE == False:
+                self.__weekend_indices.append(i) 
+                BoolWE = True
+            if self.__Datatrain.index[i].weekday() < 5 and BoolWE == True:
+                self.__weekend_indices.append(i) 
+                BoolWE = False
+        # refermer si ouvert
+        if BoolWE==True:
+            self.__weekend_indices.append(i)
+        # print('self.__weekend_indices=', self.__weekend_indices)
+        # input('weekday')
 
         if self.__graphics >= 1:
 
@@ -110,8 +126,8 @@ class CGOFMSM_SemiSupervLearn:
 
             i = 0
             while i < len(self.__weekend_indices)-1:
-                ax1.axvspan(self.__Datatrain.index[self.__weekend_indices[i]], self.__Datatrain.index[self.__weekend_indices[i] + 1], facecolor='gray', edgecolor='none', alpha=.25, zorder=-100)
-                i += 1
+                ax1.axvspan(self.__Datatrain.index[self.__weekend_indices[i]], self.__Datatrain.index[self.__weekend_indices[i+1]], facecolor='gray', edgecolor='none', alpha=.25, zorder=-100)
+                i += 2
 
             # format the ticks
             ax1.xaxis.set_major_locator(months)
@@ -122,7 +138,7 @@ class CGOFMSM_SemiSupervLearn:
             ax1.grid(True, which='major', axis='both')
             ax1.set_title('Sensor: ' + self.__filestem, fontsize=fontS+2)
             ax1.tick_params(axis='x', which='both', labelsize=fontS-2)
-            ax1.set_xlim(xmin=self.__Datatrain.index[self.__graph_mini], xmax=self.__Datatrain.index[self.__graph_maxi])
+            ax1.set_xlim(xmin=self.__Datatrain.index[self.__graph_mini], xmax=self.__Datatrain.index[self.__graph_maxi-1])
 
             fig.autofmt_xdate()
             plt.xticks(rotation=35)
@@ -132,7 +148,7 @@ class CGOFMSM_SemiSupervLearn:
 
     # def __del__(self):
     #     if self.__verbose >= 2: 
-    #         print('\nCGOFMSM_SemiSupervLearn deleted')
+    #         print('\nCGOFMSM_Learn deleted')
 
     def run_several(self):
 
@@ -670,7 +686,7 @@ class CGOFMSM_SemiSupervLearn:
         tab_GaussXY = []
 
         # La premiere ne sert à rien, uniquementà a synchroniser les indices
-        tab_GaussXY.append(Loi2DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
+        tab_GaussXY.append(Tab2DDiscreteFuzzy(self.__EPS, self.__STEPS, self._interpolation, self.__Rcentres, (1, 1)))
 
         znp1=self.__Ztrain[:, 0]
 
@@ -682,8 +698,8 @@ class CGOFMSM_SemiSupervLearn:
             zn   = znp1
             znp1 = self.__Ztrain[:, np1]
 
-            tab_GaussXY.append(Loi2DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
-            tab_GaussXY[np1].Calc_GaussXY(self.__M, self.__Lambda2, self.__P, self.__Pi2, zn, znp1)
+            tab_GaussXY.append(Tab2DDiscreteFuzzy(self.__EPS, self.__STEPS, self._interpolation, self.__Rcentres, (1, 1)))
+            tab_GaussXY[np1].Calc_GaussXY(self.__M, self.__Lambda2, self.__P, self.__Pi2, zn, znp1, self.__n_x)
 
         if self.__verbose >= 2: print(' ')
         return tab_GaussXY
@@ -697,7 +713,7 @@ class CGOFMSM_SemiSupervLearn:
         ######################
         # Initialisation
         np1  = 0
-        ProbaForward.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
+        ProbaForward.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self._interpolation, self.__Rcentres))
         ProbaForward[np1].CalcForw1(self.__FS, self.__Ztrain[:, np1], self.__aMeanCovFuzzy)
         Tab_Normalis[np1] = ProbaForward[np1].Integ()
         # normalisation (devijver)
@@ -709,7 +725,7 @@ class CGOFMSM_SemiSupervLearn:
             if self.__verbose >= 2:
                 print('\r         forward np1=', np1, ' sur N=', self.__N, end='', flush = True)
 
-            ProbaForward.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
+            ProbaForward.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self._interpolation, self.__Rcentres))
             ProbaForward[np1].CalcForB(calcF, ProbaForward[np1-1], self.__FS, Tab_GaussXY[np1])
             Tab_Normalis[np1] = ProbaForward[np1].Integ()
             #print('Tab_Normalis[np1]=', Tab_Normalis[np1])
@@ -730,7 +746,7 @@ class CGOFMSM_SemiSupervLearn:
 
         # on créé la liste de tous les lois discrétisées
         for n in range(self.__N):
-            ProbaBackward.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
+            ProbaBackward.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self._interpolation, self.__Rcentres))
 
         ##############################
         # initialisation de beta
@@ -760,7 +776,7 @@ class CGOFMSM_SemiSupervLearn:
         tab_psi   = []
         tab_cond  = []
 
-        loicorrective = Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres)
+        loicorrective = Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self._interpolation, self.__Rcentres)
 
         ###############################
         # Boucle sur gamma et psi
@@ -774,7 +790,7 @@ class CGOFMSM_SemiSupervLearn:
             ProbaBackwardNorm[n].normalisation(loicorrective.Integ())
 
             # calcul de gamma = produit forward norm * backward norm ****************************************************************
-            tab_gamma.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
+            tab_gamma.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self._interpolation, self.__Rcentres))
             tab_gamma[n].ProductFB(ProbaForwardNorm[n], ProbaBackwardNorm[n])
     
             # normalisation : uniquement due pour compenser des pb liés aux approximations numeriques de forward et de backward
@@ -794,7 +810,7 @@ class CGOFMSM_SemiSupervLearn:
             #     input('pause tab-gamma')
 
             # calcul de psi (loi jointe a posteriori) ****************************************************************
-            tab_psi.append(Loi2DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
+            tab_psi.append(Loi2DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self._interpolation, self.__Rcentres))
             tab_psi[n].CalcPsi(ProbaForwardNorm[n], ProbaBackwardNorm[n+1], self.__FS, Tab_GaussXY[n+1])
             # normalisation
             integ = tab_psi[n].Integ()
@@ -815,7 +831,7 @@ class CGOFMSM_SemiSupervLearn:
             Liste = []
             for indrn in range(self.__STEPS+2):
                 
-                Liste.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self.__Rcentres))
+                Liste.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self._interpolation, self.__Rcentres))
                 if tab_gamma[n].getindr(indrn) != 0.:
                     Liste[indrn].CalcCond(indrn, tab_gamma[n].getindr(indrn), tab_psi[n], self.__verbose)
                     #Liste[indrn].print()
@@ -936,12 +952,12 @@ class CGOFMSM_SemiSupervLearn:
             ax1.tick_params(axis='y', labelcolor=color, labelsize=fontS-2)
             ax1.tick_params(axis='x', which='both', labelsize=fontS-2)
             
-            ax1.set_ylim(ymax = 1.05, ymin = -0.05)
-            ax1.set_xlim(xmax = self.__Datatrain.index[self.__graph_maxi], xmin = self.__Datatrain.index[self.__graph_mini])
+            ax1.set_ylim(ymax=1.05, ymin=-0.05)
+            ax1.set_xlim(xmin=self.__Datatrain.index[self.__graph_mini], xmax=self.__Datatrain.index[self.__graph_maxi-1])
 
             ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
             color = 'tab:olive'
-            ax2.hlines (Centres, xmin=self.__Datatrain.index[self.__graph_mini], xmax=self.__Datatrain.index[self.__graph_maxi], color=color, linestyle='dashed')
+            ax2.hlines (Centres, xmin=self.__Datatrain.index[self.__graph_mini], xmax=self.__Datatrain.index[self.__graph_maxi-1], color=color, linestyle='dashed')
             ax2.tick_params(axis='y', labelcolor=color, labelsize=fontS-2)
             ax2.set_yticks(ticks=Centres)
 
@@ -959,8 +975,8 @@ class CGOFMSM_SemiSupervLearn:
             
             i = 0
             while i < len(self.__weekend_indices)-1:
-                ax1.axvspan(self.__Datatrain.index[self.__weekend_indices[i]], self.__Datatrain.index[self.__weekend_indices[i] + 1], facecolor='gray', edgecolor='none', alpha=.25, zorder=-100)
-                i += 1
+                ax1.axvspan(self.__Datatrain.index[self.__weekend_indices[i]], self.__Datatrain.index[self.__weekend_indices[i+1]], facecolor='gray', edgecolor='none', alpha=.25, zorder=-100)
+                i += 2
 
             fig.autofmt_xdate()
             #fig.tight_layout()  # otherwise the right y-label is slightly clipped
