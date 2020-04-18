@@ -91,6 +91,8 @@ class Tab2DDiscreteFuzzy():
 
             self._p = np.empty(shape=dim)
 
+    def getDim(self):
+        return self._dim
 
     def getr(self, r1, r2):
         
@@ -143,6 +145,28 @@ class Tab2DDiscreteFuzzy():
         if indr2==self._STEPS+1: return self._p11_01[indr1-1]
         return self._p[indr1-1, indr2-1]
 
+
+    def Integ(self):
+
+        if self._STEPS == 0:
+            return self._p00 + self._p10 + self._p01 + self._p11
+
+        TabInteg1D = Tab1DDiscreteFuzzy(self._EPS, self._STEPS, False, self._Rcentres, dim=self.getDim())
+
+        #### pour r1==0.
+        TabInteg1D.setindr(0, np.mean(self._p01_00, axis=0) + self._p00 + self._p01)
+        
+        #### pour r1==1.
+        TabInteg1D.setindr(self._STEPS+1, np.mean(self._p10_11, axis=0) + self._p10 + self._p11)
+
+        #### La surface à l'intérieur
+        for indr in range(self._STEPS):
+            TabInteg1D.setindr(indr+1, np.mean(self._p[indr, :], axis=0) + self._p00_10[indr] + self._p11_01[indr])
+
+
+        return TabInteg1D.Integ()
+
+
     def normalisation(self, norm):
 
         if norm != 0.:
@@ -185,6 +209,82 @@ class Tab2DDiscreteFuzzy():
                 for indrnp1 in range(self._STEPS):
                     print(self._p[indrn, indrnp1], end=' ')
                 print(" ")
+
+    def Prod(self, proba, tab_E):
+        self._p00 = proba.getindr(0,             0)             * tab_E.getindr(0,             0)
+        self._p10 = proba.getindr(self._STEPS+1, 0)             * tab_E.getindr(self._STEPS+1, 0)
+        self._p11 = proba.getindr(self._STEPS+1, self._STEPS+1) * tab_E.getindr(self._STEPS+1, self._STEPS+1)
+        self._p00 = proba.getindr(0,             self._STEPS+1) * tab_E.getindr(0,             self._STEPS+1)
+
+        for indr, r in enumerate(self._Rcentres):
+            self._p00_10[indr] = proba.getindr(indr+1,        0)             * tab_E.getindr(indr+1,        0)
+            self._p10_11[indr] = proba.getindr(self._STEPS+1, indr+1)        * tab_E.getindr(self._STEPS+1, indr+1)
+            self._p11_01[indr] = proba.getindr(indr+1,        self._STEPS+1) * tab_E.getindr(indr+1,        self._STEPS+1)
+            self._p01_00[indr] = proba.getindr(0,             indr+1)        * tab_E.getindr(0,             indr+1)
+
+            for indr2, r2 in enumerate(self._Rcentres):
+                self._p[indr, indr2] = proba.getindr(indr+1, indr2+1) * tab_E.getindr(indr+1, indr2+1)
+
+    def test_VarianceNeg_2Dbis(self, E2, E):
+        return E2 - np.dot(E, np.transpose(E))
+
+    def test_VarianceNeg_2D(self, tab_E_Xnp1_dp2):
+
+        OK = True
+        if self.test_VarianceNeg_2Dbis(self.getindr(0, 0), tab_E_Xnp1_dp2.getindr(0, 0)) <0.: 
+            print('A(0., 0.)=', self.test_VarianceNeg_2Dbis(self.getindr(0, 0), tab_E_Xnp1_dp2.getindr(0, 0))); OK = False
+        if self.test_VarianceNeg_2Dbis(self.getindr(self._STEPS+1, 0), tab_E_Xnp1_dp2.getindr(self._STEPS+1, 0)) <0.: 
+            print('A(1., 0.)=', self.test_VarianceNeg_2Dbis(self.getindr(self._STEPS+1, 0), tab_E_Xnp1_dp2.getindr(self._STEPS+1, 0))); OK = False
+        if self.test_VarianceNeg_2Dbis(self.getindr(0, self._STEPS+1), tab_E_Xnp1_dp2.getindr(0, self._STEPS+1)) <0.: 
+            print('A(0., 1.)=', self.test_VarianceNeg_2Dbis(self.getindr(0, self._STEPS+1), tab_E_Xnp1_dp2.getindr(0, self._STEPS+1))); OK = False
+        if self.test_VarianceNeg_2Dbis(self.getindr(self._STEPS+1, self._STEPS+1), tab_E_Xnp1_dp2.getindr(self._STEPS+1, self._STEPS+1)) <0.: 
+            print('A(1., 1.)=', self.test_VarianceNeg_2Dbis(self.getindr(self._STEPS+1, self._STEPS+1), tab_E_Xnp1_dp2.getindr(self._STEPS+1, self._STEPS+1))); OK = False
+
+        for j, r in enumerate(self._Rcentres):
+            if self.test_VarianceNeg_2Dbis(self.getindr(0, indr+1), tab_E_Xnp1_dp2.getindr(0, indr+1)) <0.: 
+                print('A(0., r)=', self.test_VarianceNeg_2Dbis(self.getindr(0, indr+1), tab_E_Xnp1_dp2.getindr(0, indr+1))); OK = False
+            if self.test_VarianceNeg_2Dbis(self.getindr(indr+1, self._STEPS+1), tab_E_Xnp1_dp2.getindr(indr+1, self._STEPS+1)) <0.: 
+                print('A(r, 1.)=', self.test_VarianceNeg_2Dbis(self.getindr(indr+1, self._STEPS+1), tab_E_Xnp1_dp2.getindr(indr+1, self._STEPS+1))); OK = False
+            if self.test_VarianceNeg_2Dbis(self.getindr(self._STEPS+1, indr+1), tab_E_Xnp1_dp2.getindr(self._STEPS+1, indr+1)) <0.: 
+                print('A(1., r)=', self.test_VarianceNeg_2Dbis(self.getindr(self._STEPS+1, indr+1), tab_E_Xnp1_dp2.getindr(self._STEPS+1, indr+1))); OK = False
+            if self.test_VarianceNeg_2Dbis(self.getindr(indr+1, 0), tab_E_Xnp1_dp2.getindr(indr+1, 0)) <0.: 
+                print('A(r, 0.)=', self.test_VarianceNeg_2Dbis(self.getindr(indr+1, 0), tab_E_Xnp1_dp2.getindr(indr+1, 0))); OK = False
+
+        for indr1, r1 in enumerate(self._Rcentres):
+            for indr2, r2 in enumerate(self._Rcentres):
+                if self.test_VarianceNeg_2Dbis(self.getindr(indr1+1, indr2+1), tab_E_Xnp1_dp2.getindr(indr1+1, indr2+1)) <0.: 
+                    print('A(r1, r2)=', self.test_VarianceNeg_2Dbis(self.getindr(indr1+1, indr2+1), tab_E_Xnp1_dp2.getindr(indr1+1, indr2+1))); OK = False
+
+        return OK
+
+    def test_VarianceNeg_2D_b(self):
+
+        OK = True
+        if self.getindr(0, 0)[0,0] <0. or self.getindr(0, 0)[1,1] <0.: 
+            print('Ab(0., 0.)=', self.getindr(0, 0)); OK = False
+        if self.getindr(self._STEPS+1, 0)[0,0] <0. or self.getindr(self._STEPS+1, 0)[1,1] <0.: 
+            print('Ab(1., 0.)=', self.getindr(self._STEPS+1, 0)); OK = False
+        if self.getindr(0, self._STEPS+1)[0,0] <0. or self.getindr(0, self._STEPS+1)[1,1] <0.: 
+            print('Ab(0., 1.)=', self.getindr(0, self._STEPS+1)); OK = False
+        if self.getindr(self._STEPS+1, self._STEPS+1)[0,0] <0. or self.getindr(self._STEPS+1, self._STEPS+1)[1,1] <0.: 
+            print('Ab(1., 1.)=', self.getindr(self._STEPS+1, self._STEPS+1)); OK = False
+
+        for indr, r in enumerate(self._Rcentres):
+            if self.getindr(0, indr+1)[0,0] <0. or self.getindr(0, indr+1)[1,1] <0.: 
+                print('Ab(0., r)=', self.getindr(0, indr+1)); OK = False
+            if self.getindr(indr+1, self._STEPS+1)[0,0] <0. or self.getindr(indr+1, self._STEPS+1)[1,1] <0.: 
+                print('Ab(r, 1.)=', self.getindr(indr+1, self._STEPS+1)); OK = False
+            if self.getindr(self._STEPS+1, indr+1)[0,0] <0. or self.getindr(self._STEPS+1, indr+1)[1,1] <0.: 
+                print('Ab(1., r)=', self.getindr(self._STEPS+1, indr+1)); OK = False
+            if self.getindr(indr+1, 0)[0,0] <0. or self.getindr(indr+1, 0)[1,1] <0.: 
+                print('Ab(r, 0.)=', self.getindr(indr+1, 0)); OK = False
+
+        for indr1, r1 in enumerate(self._Rcentres):
+            for indr2, r2 in enumerate(self._Rcentres):
+                if self.getindr(indr1+1, indr2+1)[0,0]<0. or self.getindr(indr1+1, indr2+1)[1,1]<0.: 
+                    print('Ab(r1, r2)=', self.getindr(indr1+1, indr2+1)); OK = False
+        
+        return OK
 
  
     def Mean_Z(self, Mean_X, Mean_Y, rn):
@@ -230,20 +330,19 @@ class Tab2DDiscreteFuzzy():
         return np.dot(A_r1_r2, E_Zn_dp_rnnp1_yun_yn) + N
 
     def set1_2D(self, Cov, Mean_X, Mean_Y, yn, tab_E_Xnp1_dp1):
-        self._p00 = self.set1_a_2D(Cov, Mean_X, Mean_Y, 0., 0., yn, tab_E_Xnp1_dp1.getr(0.))
-        self._p10 = self.set1_a_2D(Cov, Mean_X, Mean_Y, 1., 0., yn, tab_E_Xnp1_dp1.getr(1.))
-        self._p01 = self.set1_a_2D(Cov, Mean_X, Mean_Y, 0., 1., yn, tab_E_Xnp1_dp1.getr(0.))
-        self._p11 = self.set1_a_2D(Cov, Mean_X, Mean_Y, 1., 1., yn, tab_E_Xnp1_dp1.getr(1.))
+        self._p00 = self.set1_a_2D(Cov, Mean_X, Mean_Y, 0., 0., yn, tab_E_Xnp1_dp1.getindr(0))
+        self._p10 = self.set1_a_2D(Cov, Mean_X, Mean_Y, 1., 0., yn, tab_E_Xnp1_dp1.getindr(self._STEPS+1))
+        self._p01 = self.set1_a_2D(Cov, Mean_X, Mean_Y, 0., 1., yn, tab_E_Xnp1_dp1.getindr(0))
+        self._p11 = self.set1_a_2D(Cov, Mean_X, Mean_Y, 1., 1., yn, tab_E_Xnp1_dp1.getindr(self._STEPS+1))
 
-        for j, r in enumerate(self._Rcentres):
-            self._p00_10[j] = self.set1_a_2D(Cov, Mean_X, Mean_Y, r, 0., yn, tab_E_Xnp1_dp1.getr(r))
-            self._p10_11[j] = self.set1_a_2D(Cov, Mean_X, Mean_Y, 1., r, yn, tab_E_Xnp1_dp1.getr(1.))
-            self._p11_01[j] = self.set1_a_2D(Cov, Mean_X, Mean_Y, r, 1., yn, tab_E_Xnp1_dp1.getr(r))
-            self._p01_00[j] = self.set1_a_2D(Cov, Mean_X, Mean_Y, 0., r, yn, tab_E_Xnp1_dp1.getr(0.))
+        for indr, r in enumerate(self._Rcentres):
+            self._p00_10[indr] = self.set1_a_2D(Cov, Mean_X, Mean_Y, r, 0., yn, tab_E_Xnp1_dp1.getindr(indr+1))
+            self._p10_11[indr] = self.set1_a_2D(Cov, Mean_X, Mean_Y, 1., r, yn, tab_E_Xnp1_dp1.getindr(self._STEPS+1))
+            self._p11_01[indr] = self.set1_a_2D(Cov, Mean_X, Mean_Y, r, 1., yn, tab_E_Xnp1_dp1.getindr(indr+1))
+            self._p01_00[indr] = self.set1_a_2D(Cov, Mean_X, Mean_Y, 0., r, yn, tab_E_Xnp1_dp1.getindr(0))
 
-        for i, r1 in enumerate(self._Rcentres):
-            for j, r2 in enumerate(self._Rcentres):
-                self._p[i, j] = self.set1_a_2D(Cov, Mean_X, Mean_Y, r1, r2, yn, tab_E_Xnp1_dp1.getr(r1))
+            for indr2, r2 in enumerate(self._Rcentres):
+                self._p[indr, indr2] = self.set1_a_2D(Cov, Mean_X, Mean_Y, r, r2, yn, tab_E_Xnp1_dp1.getindr(indr+1))
 
     def set33_a_2D(self, Cov, r1, r2, yn, Expect, Expect2):
         
@@ -268,29 +367,28 @@ class Tab2DDiscreteFuzzy():
 
     def set33_2D(self, Cov, yn, tab_E_Xnp1_dp1, tab_E2_Xnp1_dp1):
         
-        self._p00 = self.set33_a_2D(Cov, 0., 0., yn, tab_E_Xnp1_dp1.getr(0.), tab_E2_Xnp1_dp1.getr(0.))
-        self._p10 = self.set33_a_2D(Cov, 1., 0., yn, tab_E_Xnp1_dp1.getr(1.), tab_E2_Xnp1_dp1.getr(1.))
-        self._p01 = self.set33_a_2D(Cov, 0., 1., yn, tab_E_Xnp1_dp1.getr(0.), tab_E2_Xnp1_dp1.getr(0.))
-        self._p11 = self.set33_a_2D(Cov, 1., 1., yn, tab_E_Xnp1_dp1.getr(1.), tab_E2_Xnp1_dp1.getr(1.))
+        self._p00 = self.set33_a_2D(Cov, 0., 0., yn, tab_E_Xnp1_dp1.getindr(0),             tab_E2_Xnp1_dp1.getindr(0))
+        self._p10 = self.set33_a_2D(Cov, 1., 0., yn, tab_E_Xnp1_dp1.getindr(self._STEPS+1), tab_E2_Xnp1_dp1.getindr(self._STEPS+1))
+        self._p01 = self.set33_a_2D(Cov, 0., 1., yn, tab_E_Xnp1_dp1.getindr(0),             tab_E2_Xnp1_dp1.getindr(0))
+        self._p11 = self.set33_a_2D(Cov, 1., 1., yn, tab_E_Xnp1_dp1.getindr(self._STEPS+1), tab_E2_Xnp1_dp1.getindr(self._STEPS+1))
 
-        for j, r in enumerate(self._Rcentres):
-            self._p00_10[j] = self.set33_a_2D(Cov, r, 0., yn, tab_E_Xnp1_dp1.getr(r),  tab_E2_Xnp1_dp1.getr(r))
-            self._p10_11[j] = self.set33_a_2D(Cov, 1., r, yn, tab_E_Xnp1_dp1.getr(1.), tab_E2_Xnp1_dp1.getr(1.))
-            self._p11_01[j] = self.set33_a_2D(Cov, r, 1., yn, tab_E_Xnp1_dp1.getr(r),  tab_E2_Xnp1_dp1.getr(r))
-            self._p01_00[j] = self.set33_a_2D(Cov, 0., r, yn, tab_E_Xnp1_dp1.getr(0),  tab_E2_Xnp1_dp1.getr(0.))
+        for indr, r in enumerate(self._Rcentres):
+            self._p00_10[indr] = self.set33_a_2D(Cov, r, 0., yn, tab_E_Xnp1_dp1.getindr(indr+1),        tab_E2_Xnp1_dp1.getindr(indr+1))
+            self._p10_11[indr] = self.set33_a_2D(Cov, 1., r, yn, tab_E_Xnp1_dp1.getindr(self._STEPS+1), tab_E2_Xnp1_dp1.getindr(self._STEPS+1))
+            self._p11_01[indr] = self.set33_a_2D(Cov, r, 1., yn, tab_E_Xnp1_dp1.getindr(indr+1),        tab_E2_Xnp1_dp1.getindr(indr+1))
+            self._p01_00[indr] = self.set33_a_2D(Cov, 0., r, yn, tab_E_Xnp1_dp1.getindr(0),             tab_E2_Xnp1_dp1.getindr(0))
 
-        for i, r1 in enumerate(self._Rcentres):
-            for j, r2 in enumerate(self._Rcentres):
-                self._p[i, j] = self.set33_a_2D(Cov, r1, r2, yn, tab_E_Xnp1_dp1.getr(r1), tab_E2_Xnp1_dp1.getr(r1))
+            for indr2, r2 in enumerate(self._Rcentres):
+                self._p[indr, indr2] = self.set33_a_2D(Cov, r, r2, yn, tab_E_Xnp1_dp1.getindr(indr+1), tab_E2_Xnp1_dp1.getindr(indr+1))
 
-    def set4_a_2D(self, r1, r2, E_Znp1, VAR_Znp1, ynp1):
+    def set4_a_2D(self, E_Znp1, VAR_Znp1, ynp1):
         n_y = np.shape(ynp1)[0]
         n_z = np.shape(E_Znp1)[0]
         n_x = n_z-n_y
 
         result = E_Znp1[0:n_x] + VAR_Znp1[0:n_x, n_x:] / VAR_Znp1[n_x:, n_x:] * (ynp1 - E_Znp1[n_x:])
         if not np.isfinite(float(result[0])):
-            print('E_Znp1[0]=', E_Znp1[0])
+            print('E_Znp1[0:n_x]=', E_Znp1[0:n_x])
             print('delta=', delta)
             print('VAR_Znp1=', VAR_Znp1)
             input('attente set4_a')
@@ -298,40 +396,38 @@ class Tab2DDiscreteFuzzy():
 
     def set4_2D(self, tab_E_Znp1, tab_VAR_Znp1, ynp1):
 
-        self._p00 = self.set4_a_2D(0., 0., tab_E_Znp1.getr(0., 0.), tab_VAR_Znp1.getr(0., 0.), ynp1)
-        self._p10 = self.set4_a_2D(1., 0., tab_E_Znp1.getr(1., 0.), tab_VAR_Znp1.getr(1., 0.), ynp1)
-        self._p01 = self.set4_a_2D(0., 1., tab_E_Znp1.getr(0., 1.), tab_VAR_Znp1.getr(0., 1.), ynp1)
-        self._p11 = self.set4_a_2D(1., 1., tab_E_Znp1.getr(1., 1.), tab_VAR_Znp1.getr(1., 1.), ynp1)
+        self._p00 = self.set4_a_2D(tab_E_Znp1.getindr(0, 0),                         tab_VAR_Znp1.getindr(0, 0),                         ynp1)
+        self._p10 = self.set4_a_2D(tab_E_Znp1.getindr(self._STEPS+1, 0),             tab_VAR_Znp1.getindr(self._STEPS+1, 0),             ynp1)
+        self._p01 = self.set4_a_2D(tab_E_Znp1.getindr(0, self._STEPS+1),             tab_VAR_Znp1.getindr(0, self._STEPS+1),             ynp1)
+        self._p11 = self.set4_a_2D(tab_E_Znp1.getindr(self._STEPS+1, self._STEPS+1), tab_VAR_Znp1.getindr(self._STEPS+1, self._STEPS+1), ynp1)
 
-        for j, r in enumerate(self._Rcentres):
-            self._p00_10[j] = self.set4_a_2D(r, 0., tab_E_Znp1.getr(r, 0.), tab_VAR_Znp1.getr(r, 0.), ynp1)
-            self._p10_11[j] = self.set4_a_2D(1., r, tab_E_Znp1.getr(1., r), tab_VAR_Znp1.getr(1., r), ynp1)
-            self._p11_01[j] = self.set4_a_2D(r, 1., tab_E_Znp1.getr(r, 1.), tab_VAR_Znp1.getr(r, 1.), ynp1)
-            self._p01_00[j] = self.set4_a_2D(0., r, tab_E_Znp1.getr(0., r), tab_VAR_Znp1.getr(0., r), ynp1)
+        for indr in range(self._STEPS):
+            self._p00_10[indr] = self.set4_a_2D(tab_E_Znp1.getindr(indr+1, 0),             tab_VAR_Znp1.getindr(indr+1, 0),             ynp1)
+            self._p10_11[indr] = self.set4_a_2D(tab_E_Znp1.getindr(self._STEPS+1, indr+1), tab_VAR_Znp1.getindr(self._STEPS+1, indr+1), ynp1)
+            self._p11_01[indr] = self.set4_a_2D(tab_E_Znp1.getindr(indr+1, self._STEPS+1), tab_VAR_Znp1.getindr(indr+1, self._STEPS+1), ynp1)
+            self._p01_00[indr] = self.set4_a_2D(tab_E_Znp1.getindr(0, indr+1),             tab_VAR_Znp1.getindr(0, indr+1),             ynp1)
 
-        for i, r1 in enumerate(self._Rcentres):
-            for j, r2 in enumerate(self._Rcentres):
-                self._p[i,j] = self.set4_a_2D(r1, r2, tab_E_Znp1.getr(r1, r2), tab_VAR_Znp1.getr(r1, r2), ynp1)
+            for indr2 in range(self._STEPS):
+                self._p[indr, indr2] = self.set4_a_2D(tab_E_Znp1.getindr(indr+1, indr2+1), tab_VAR_Znp1.getindr(indr+1, indr2+1), ynp1)
 
-    def set5_a_2D(self, r1, r2, E_Xnp1_dp, VAR_Znp1):
+    def set5_a_2D(self, E_Xnp1_dp, VAR_Znp1):
         return E_Xnp1_dp*E_Xnp1_dp + VAR_Znp1[0, 0] - VAR_Znp1[0, 1] / VAR_Znp1[1, 1] * VAR_Znp1[1, 0]
 
     def set5_2D(self, tab_E_Xnp1_dp, tab_VAR_Znp1):
 
-        self._p00 = self.set5_a_2D(0., 0., tab_E_Xnp1_dp.getr(0., 0.), tab_VAR_Znp1.getr(0., 0.))
-        self._p10 = self.set5_a_2D(1., 0., tab_E_Xnp1_dp.getr(1., 0.), tab_VAR_Znp1.getr(1., 0.))
-        self._p01 = self.set5_a_2D(0., 1., tab_E_Xnp1_dp.getr(0., 1.), tab_VAR_Znp1.getr(0., 1.))
-        self._p11 = self.set5_a_2D(1., 1., tab_E_Xnp1_dp.getr(1., 1.), tab_VAR_Znp1.getr(1., 1.))
+        self._p00 = self.set5_a_2D(tab_E_Xnp1_dp.getindr(0, 0),                         tab_VAR_Znp1.getindr(0, 0))
+        self._p10 = self.set5_a_2D(tab_E_Xnp1_dp.getindr(self._STEPS+1, 0),             tab_VAR_Znp1.getindr(self._STEPS+1, 0))
+        self._p01 = self.set5_a_2D(tab_E_Xnp1_dp.getindr(0, self._STEPS+1),             tab_VAR_Znp1.getindr(0, self._STEPS+1))
+        self._p11 = self.set5_a_2D(tab_E_Xnp1_dp.getindr(self._STEPS+1, self._STEPS+1), tab_VAR_Znp1.getindr(self._STEPS+1, self._STEPS+1))
 
-        for j, r in enumerate(self._Rcentres):
-            self._p00_10[j] = self.set5_a_2D(r, 0., tab_E_Xnp1_dp.getr(r, 0.), tab_VAR_Znp1.getr(r, 0.))
-            self._p10_11[j] = self.set5_a_2D(1., r, tab_E_Xnp1_dp.getr(1., r), tab_VAR_Znp1.getr(1., r))
-            self._p11_01[j] = self.set5_a_2D(r, 1., tab_E_Xnp1_dp.getr(r, 1.), tab_VAR_Znp1.getr(r, 1.))
-            self._p01_00[j] = self.set5_a_2D(0., r, tab_E_Xnp1_dp.getr(0., r), tab_VAR_Znp1.getr(0., r))
+        for indr in range(self._STEPS):
+            self._p00_10[indr] = self.set5_a_2D(tab_E_Xnp1_dp.getindr(indr+1, 0),             tab_VAR_Znp1.getindr(indr+1, 0))
+            self._p10_11[indr] = self.set5_a_2D(tab_E_Xnp1_dp.getindr(self._STEPS+1, indr+1), tab_VAR_Znp1.getindr(self._STEPS+1, indr+1))
+            self._p11_01[indr] = self.set5_a_2D(tab_E_Xnp1_dp.getindr(indr+1, self._STEPS+1), tab_VAR_Znp1.getindr(indr+1, self._STEPS+1))
+            self._p01_00[indr] = self.set5_a_2D(tab_E_Xnp1_dp.getindr(0, indr+1),             tab_VAR_Znp1.getindr(0, indr+1))
 
-        for i, r1 in enumerate(self._Rcentres):
-            for j, r2 in enumerate(self._Rcentres):
-                self._p[i,j] = self.set5_a_2D(r1, r2, tab_E_Xnp1_dp.getr(r1, r2), tab_VAR_Znp1.getr(r1, r2))
+            for indr2 in range(self._STEPS):
+                self._p[indr, indr2] = self.set5_a_2D(tab_E_Xnp1_dp.getindr(indr+1, indr2+1), tab_VAR_Znp1.getindr(indr+1, indr2+1))
 
     def Calc_GaussXY(self, M, Lambda2, P, Pi2, zn, znp1, n_x):
 
@@ -373,6 +469,7 @@ class Tab2DDiscreteFuzzy():
             for ind2 in range(1, self._STEPS+1):
                 self._p[ind-1, ind2-1] = getGaussXY(M[ind, ind2], Lambda2[ind, ind2], P[ind, ind2], Pi2[ind, ind2], xn, yn, xnpun, ynpun)
 
+
 ############################################################################################################
 class Tab1DDiscreteFuzzy():
 
@@ -397,11 +494,11 @@ class Tab1DDiscreteFuzzy():
         self._p1 = np.zeros(shape=dim)
 
     
-    def ProductFB(self, loi1, loi2):
-        self._p0 = loi1._p0 * loi2._p0
-        for i in range(self._STEPS):
-            self._p01[i] = loi1._p01[i] * loi2._p01[i]
-        self._p1 = loi1._p1 * loi2._p1
+    # def ProductFB(self, loi1, loi2):
+    #     self._p0 = loi1._p0 * loi2._p0
+    #     for i in range(self._STEPS):
+    #         self._p01[i] = loi1._p01[i] * loi2._p01[i]
+    #     self._p1 = loi1._p1 * loi2._p1
 
     def getRcentre(self):
         return self._Rcentres
@@ -444,6 +541,11 @@ class Tab1DDiscreteFuzzy():
         for i, rnp1 in enumerate(self._Rcentres):
             self._p01[i] = val
 
+    def Integ(self):
+        if self._STEPS == 0:
+            return self._p0 + self._p1
+        return self._p0 + self._p1 + np.mean(self._p01)
+
     # def nextAfterZeros(self):
  #        if self._p0 < 1e-300:
  #            self._p0 = 1e-300 #np.nextafter(0, 1)*10
@@ -471,6 +573,31 @@ class Tab1DDiscreteFuzzy():
             if self._p01[ind] != 0.: return False
         return True
 
+    def test_VarianceNeg_1Dbis(self, E2, E):
+        return E2 - np.dot(E, np.transpose(E))
+
+    def test_VarianceNeg_1D(self, tab_E_Xnp1_dp1):
+
+        r, indr = 0., 0
+        if self.getindr(indr) - tab_E_Xnp1_dp1.getindr(indr)**2 <0.: 
+            print('A(', r, ')=', self.test_VarianceNeg_1Dbis(self.getindr(indr), tab_E_Xnp1_dp1.getindr(indr)))
+            print('E2= ', self.getindr(indr), ', E = ', tab_E_Xnp1_dp1.getindr(indr))
+            return False
+
+        r, indr = 1., self._STEPS+1
+        if self.getindr(indr) - tab_E_Xnp1_dp1.getindr(indr)**2 <0.: 
+            print('A(', r, ')=', self.test_VarianceNeg_1Dbis(self.getindr(indr), tab_E_Xnp1_dp1.getindr(indr)))
+            print('E2= ', self.getindr(indr), ', E = ', tab_E_Xnp1_dp1.getindr(indr))
+            return False
+
+        for indr, r in enumerate(self._Rcentres):
+            if self.getindr(indr+1) - tab_E_Xnp1_dp1.getindr(indr+1)**2 <0.:
+                print('A(', r, ')=', self.test_VarianceNeg_1Dbis(self.getindr(indr+1), tab_E_Xnp1_dp1.getindr(indr+1)))
+                print('E2= ', self.getindr(indr+1), ', E = ', tab_E_Xnp1_dp1.getindr(indr+1))
+                return False
+
+        return True
+
     def set3a_1D(self, Mean_X, Mean_Y, Cov, ynp1):
 
         rnp1, indrnp1 = 0., 0
@@ -483,7 +610,7 @@ class Tab1DDiscreteFuzzy():
         else:
             Mean_Y_rn = Mean_Y[indrn]
             Mean_X_rn = Mean_X[indrn]
-            Cov_rn_0  = Cov[indrn*self._STEPS+indrnp1]
+            Cov_rn_0  = Cov[indrn*(self._STEPS+2)+indrnp1]
         self._p0 = Mean_X_rn + Cov_rn_0[0, 1] / Cov_rn_0[1, 1] * (ynp1 - Mean_Y_rn)
 
         rn, indrn = 1., self._STEPS+1
@@ -494,7 +621,7 @@ class Tab1DDiscreteFuzzy():
         else:
             Mean_Y_rn = Mean_Y[indrn]
             Mean_X_rn = Mean_X[indrn]
-            Cov_rn_0  = Cov[indrn*self._STEPS+indrnp1]
+            Cov_rn_0  = Cov[indrn*(self._STEPS+2)+indrnp1]
         self._p1 = Mean_X_rn + Cov_rn_0[0, 1] / Cov_rn_0[1, 1] * (ynp1 - Mean_Y_rn)
 
         for indrn, rn in enumerate(self._Rcentres):
@@ -503,9 +630,9 @@ class Tab1DDiscreteFuzzy():
                 Mean_Y_rn = InterLineaire_Vector(Mean_Y, rn)
                 Cov_rn_0  = InterBiLineaire_Matrix(Cov, rn, rnp1)
             else:
-                Mean_Y_rn = Mean_Y[indrn]
-                Mean_X_rn = Mean_X[indrn]
-                Cov_rn_0  = Cov[indrn*self._STEPS+indrnp1]
+                Mean_Y_rn = Mean_Y[indrn+1]
+                Mean_X_rn = Mean_X[indrn+1]
+                Cov_rn_0  = Cov[(indrn+1)*(self._STEPS+2)+indrnp1]
             self._p01[indrn] = Mean_X_rn + Cov_rn_0[0, 1] / Cov_rn_0[1, 1] * (ynp1 - Mean_Y_rn)
 
 
@@ -517,52 +644,52 @@ class Tab1DDiscreteFuzzy():
         if self._interpolation==True:
             Mean_X_rn = InterLineaire_Vector(Mean_X, rn)
             Mean_Y_rn = InterLineaire_Vector(Mean_Y, rn)
-            Cov_rn_0  = InterBiLineaire_Matrix(Cov, rn, 0.)
+            Cov_rn_0  = InterBiLineaire_Matrix(Cov, rn, rnp1)
         else:
             Mean_Y_rn = Mean_Y[indrn]
             Mean_X_rn = Mean_X[indrn]
-            Cov_rn_0  = Cov[indrn*self._STEPS+indrnp1]
+            Cov_rn_0  = Cov[indrn*(self._STEPS+2)+indrnp1]
         Var_n_n_rn = Cov_rn_0[0, 0] - Cov_rn_0[0, 1]*Cov_rn_0[0, 1] / Cov_rn_0[1, 1]
-        self._p0  = Var_n_n_rn + tab_E_Xnp1_dp1.getr(rn)*tab_E_Xnp1_dp1.getr(rn)
+        self._p0   = Var_n_n_rn + tab_E_Xnp1_dp1.getindr(indrn)*tab_E_Xnp1_dp1.getindr(indrn)
 
         rn, indrn = 1., self._STEPS+1
         if self._interpolation==True:
             Mean_X_rn = InterLineaire_Vector(Mean_X, rn)
             Mean_Y_rn = InterLineaire_Vector(Mean_Y, rn)
-            Cov_rn_0  = InterBiLineaire_Matrix(Cov, rn, 0.)
+            Cov_rn_0  = InterBiLineaire_Matrix(Cov, rn, rnp1)
         else:
             Mean_Y_rn = Mean_Y[indrn]
             Mean_X_rn = Mean_X[indrn]
-            Cov_rn_0  = Cov[indrn*self._STEPS+indrnp1]
+            Cov_rn_0  = Cov[indrn*(self._STEPS+2)+indrnp1]
         Var_n_n_rn = Cov_rn_0[0, 0] - Cov_rn_0[0, 1]*Cov_rn_0[0, 1] / Cov_rn_0[1, 1]
-        self._p1  = Var_n_n_rn + tab_E_Xnp1_dp1.getr(rn)*tab_E_Xnp1_dp1.getr(rn)
+        self._p1   = Var_n_n_rn + tab_E_Xnp1_dp1.getindr(indrn)*tab_E_Xnp1_dp1.getindr(indrn)
 
         for indrn, rn in enumerate(self._Rcentres):
             if self._interpolation==True:
                 Mean_X_rn = InterLineaire_Vector(Mean_X, rn)
                 Mean_Y_rn = InterLineaire_Vector(Mean_Y, rn)
-                Cov_rn_0  = InterBiLineaire_Matrix(Cov, rn, 0.)
+                Cov_rn_0  = InterBiLineaire_Matrix(Cov, rn, rnp1)
             else:
-                Mean_Y_rn = Mean_Y[indrn]
-                Mean_X_rn = Mean_X[indrn]
-                Cov_rn_0  = Cov[indrn*self._STEPS+indrnp1]
-            Var_n_n_rn        = Cov_rn_0[0, 0] - Cov_rn_0[0, 1]*Cov_rn_0[0, 1] / Cov_rn_0[1, 1]
-            self._p01[indrn] = Var_n_n_rn + tab_E_Xnp1_dp1.getr(rn)*tab_E_Xnp1_dp1.getr(rn)
+                Mean_Y_rn = Mean_Y[indrn+1]
+                Mean_X_rn = Mean_X[indrn+1]
+                Cov_rn_0  = Cov[(indrn+1)*(self._STEPS+2)+indrnp1]
+            Var_n_n_rn       = Cov_rn_0[0, 0] - Cov_rn_0[0, 1]*Cov_rn_0[0, 1] / Cov_rn_0[1, 1]
+            self._p01[indrn] = Var_n_n_rn + tab_E_Xnp1_dp1.getindr(indrn)*tab_E_Xnp1_dp1.getindr(indrn)
 
 
     def set4_1D (self, Integ_CalcE_X_np1_dp_rnpun, p_rn_d_rnpun_yun_ynpun, tab_E, np1):
-        self._p0 = Integ_CalcE_X_np1_dp_rnpun(self._EPS, self._STEPS, self._Rcentres, 0., p_rn_d_rnpun_yun_ynpun, tab_E, np1)
+        self._p0 = Integ_CalcE_X_np1_dp_rnpun(self._EPS, self._STEPS, self._Rcentres, 0, p_rn_d_rnpun_yun_ynpun, tab_E, np1)
         if np.isnan(self._p0):
             print('set4 0 : ', self._p0)
             input('Attente')
         
-        for i, rnp1 in enumerate(self._Rcentres):
-            self._p01[i] = Integ_CalcE_X_np1_dp_rnpun(self._EPS, self._STEPS, self._Rcentres, rnp1, p_rn_d_rnpun_yun_ynpun, tab_E, np1)
-            if np.isnan(self._p01[i]):
-                print('set4 ]0,1[: ', self._p01[i])
+        for indrnp1 in range(self._STEPS):
+            self._p01[indrnp1] = Integ_CalcE_X_np1_dp_rnpun(self._EPS, self._STEPS, self._Rcentres, indrnp1+1, p_rn_d_rnpun_yun_ynpun, tab_E, np1)
+            if np.isnan(self._p01[indrnp1]):
+                print('set4 ]0,1[: ', self._p01[indrnp1])
                 input('Attente')
 
-        self._p1 = Integ_CalcE_X_np1_dp_rnpun(self._EPS, self._STEPS, self._Rcentres, 1., p_rn_d_rnpun_yun_ynpun, tab_E, np1)
+        self._p1 = Integ_CalcE_X_np1_dp_rnpun(self._EPS, self._STEPS, self._Rcentres, self._STEPS+1, p_rn_d_rnpun_yun_ynpun, tab_E, np1)
         if np.isnan(self._p1):
             print('set4 1 : ', self._p1)
             input('Attente')

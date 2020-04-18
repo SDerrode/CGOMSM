@@ -248,7 +248,7 @@ class Loi1DDiscreteFuzzy():
         return self._p01[math.floor(r*self._STEPS)]
 
     def getindr(self, indr):
-        if indr==0:              return self._p0
+        if indr==0:             return self._p0
         if indr==self._STEPS+1: return self._p1
         return self._p01[indr-1]    
 
@@ -319,12 +319,4 @@ class Loi1DDiscreteFuzzy():
     def Integ(self):
         if self._STEPS == 0:
             return self._p0 + self._p1
-        else:
-            # print('ICI, self._p0=', self._p0, ', self._p1=', self._p1, ', self._p01=', self._p01)
-            # integ = np.trapz(y=self._p01, x=self._Rcentres)
-            # print('self._Rcentres=', self._Rcentres)
-            # print('integ trapz=', integ)
-            # integ = np.mean(self._p01)
-            # print('integ mean=', integ)
-            # input('pause Integ')
-            return self._p0 + self._p1 + np.mean(self._p01)
+        return self._p0 + self._p1 + np.mean(self._p01)

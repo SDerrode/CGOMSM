@@ -21,9 +21,7 @@ class RestorationPKF:
 
     def restore_withfuzzyjump(self, Y, R, Cov, Mean_X, Mean_Y, Likelihood=False, smooth=True):
 
-        R = np.array(np.squeeze(R), ndmin=2)
-
-        n_y, N   = np.shape(Y)
+        N, n_y   = np.shape(Y)
         n_r, n_x = np.shape(Mean_X)
         n_z      = n_x + n_y
         s_xz     = slice(n_x, n_z)
@@ -31,37 +29,37 @@ class RestorationPKF:
         # s_0z     = slice(0,   n_z)
 
         # State estimation arrays
-        E_Xn_n     = np.zeros((n_x,      N))
-        Cov_Xn_n   = np.zeros((n_x, n_x, N))
-        E_Xn_np1   = np.zeros((n_x,      N))
-        Cov_Xn_np1 = np.zeros((n_x, n_x, N))
-        E_Xn_N     = np.zeros((n_x,      N))
-        Cov_Xn_N   = np.zeros((n_x, n_x, N))
-        C_n_np1_N  = np.zeros((n_x, n_x, N))
-        E_Xnp1_n   = np.zeros((n_z,      N)) # predictor
-        Cov_Xnp1_n = np.zeros((n_z, n_z, N)) # predictor
+        E_Xn_n     = np.zeros((N, n_x     ))
+        Cov_Xn_n   = np.zeros((N, n_x, n_x))
+        E_Xn_np1   = np.zeros((N, n_x     ))
+        Cov_Xn_np1 = np.zeros((N, n_x, n_x))
+        E_Xn_N     = np.zeros((N, n_x     ))
+        Cov_Xn_N   = np.zeros((N, n_x, n_x))
+        C_n_np1_N  = np.zeros((N, n_x, n_x))
+        E_Xnp1_n   = np.zeros((N, n_z     )) # predictor
+        Cov_Xnp1_n = np.zeros((N, n_z, n_z)) # predictor
 
-        E_Yn_np1   = np.zeros((n_y, N))
+        E_Yn_np1   = np.zeros((N, n_y))
         M_znp1     = np.zeros((n_z, 1))
         M_zn       = np.zeros((n_z, 1))
-        A_n        = np.zeros((n_x, n_x, N))
+        A_n        = np.zeros((N, n_x, n_x))
 
         likelihood = 0
 
         # ====================== Le premier ====================== #
         i = 0
-        alpha = R[0, i]
+        alpha = R[i]
         MeanX_alpha = InterLineaire_Vector(Mean_X, alpha)
         MeanY_alpha = InterLineaire_Vector(Mean_Y, alpha)
         Cov_alpha_0 = InterBiLineaire_Matrix(Cov, alpha, 0.)
         Temp = np.dot(Cov_alpha_0[s_0x, s_xz], np.linalg.inv(Cov_alpha_0[s_xz, s_xz]))
-        E_Xn_n  [:,    i] = MeanX_alpha + np.dot(Temp, Y[:, i] -MeanY_alpha)
-        Cov_Xn_n[:, :, i] = Cov_alpha_0[s_0x, s_0x] - np.dot(Temp, Cov_alpha_0[s_xz, s_0x])
+        E_Xn_n  [i, :,  ] = MeanX_alpha + np.dot(Temp, Y[i, :]-MeanY_alpha)
+        Cov_Xn_n[i, :, :] = Cov_alpha_0[s_0x, s_0x] - np.dot(Temp, Cov_alpha_0[s_xz, s_0x])
 
         # ====================== Les suivants ====================== #
         for i in range(N-1):
-            alpha = R[0, i]
-            beta  = R[0, i+1]
+            alpha = R[i]
+            beta  = R[i+1]
 
             # interpolation of the covariance, then conversion to F, Q
             F_temp, Q_temp = From_Cov_to_FQ_bis(InterBiLineaire_Matrix(Cov, alpha, beta), n_z)
@@ -89,40 +87,40 @@ class RestorationPKF:
             N_y = N_z[s_xz, 0]
 
             # ----------------- Filtering (Forward) ---------------- #
-            A_n[:, :, i] = F_xx - np.dot(dot_Q_xy_Q_yy_inv, F_yx)
+            A_n[i, :, :] = F_xx - np.dot(dot_Q_xy_Q_yy_inv, F_yx)
             Q2           = Q_xx - np.dot(dot_Q_xy_Q_yy_inv, Q_yx)
 
-            S_n_np1      = Q_yy + np.dot(np.dot(F_yx, Cov_Xn_n[:, :, i]), F_yxT)
+            S_n_np1      = Q_yy + np.dot(np.dot(F_yx, Cov_Xn_n[i, :, :]), F_yxT)
             S_n_np1_inv  = np.linalg.inv(S_n_np1)
 
-            K_n_np1      = np.dot(np.dot(Cov_Xn_n[:, :, i], F_yxT), S_n_np1_inv)
-            E_Yn_np1     = np.dot(F_yx, E_Xn_n[:, i]) + np.dot(F_yy, Y[:, i])+N_y
+            K_n_np1      = np.dot(np.dot(Cov_Xn_n[i, :, :], F_yxT), S_n_np1_inv)
+            E_Yn_np1     = np.dot(F_yx, E_Xn_n[i, :]) + np.dot(F_yy, Y[i, :])+N_y
 
-            E_Xn_np1 [:,    i] = E_Xn_n[:, i] + np.dot(K_n_np1, (Y[:, i+1] - E_Yn_np1))
-            Cov_Xn_np1[:, :, i] = Cov_Xn_n[:, :, i] - np.dot(np.dot(K_n_np1, S_n_np1), np.transpose(K_n_np1))
-            B_n = np.dot(dot_Q_xy_Q_yy_inv, Y[:, i+1]) + np.dot((F_xy - np.dot(dot_Q_xy_Q_yy_inv, F_yy)), Y[:, i]) + N_x - np.dot(dot_Q_xy_Q_yy_inv, N_y)
+            E_Xn_np1 [i, :]     = E_Xn_n[i, :] + np.dot(K_n_np1, (Y[i+1, :] - E_Yn_np1))
+            Cov_Xn_np1[i, :, :] = Cov_Xn_n[i, :, :] - np.dot(np.dot(K_n_np1, S_n_np1), np.transpose(K_n_np1))
+            B_n = np.dot(dot_Q_xy_Q_yy_inv, Y[i+1, :]) + np.dot((F_xy - np.dot(dot_Q_xy_Q_yy_inv, F_yy)), Y[i, :]) + N_x - np.dot(dot_Q_xy_Q_yy_inv, N_y)
 
             # Filter X
-            E_Xn_n  [:,    i+1] = np.dot(A_n[:, :, i], E_Xn_np1[:, i]) + B_n
-            Cov_Xn_n[:, :, i+1] = Q2 + np.dot(np.dot(A_n[:, :, i], Cov_Xn_np1[:, :, i]), np.transpose(A_n[:, :, i]))
+            E_Xn_n  [i+1, :,  ] = np.dot(A_n[i, :, :], E_Xn_np1[i, :]) + B_n
+            Cov_Xn_n[i+1, :, :] = Q2 + np.dot(np.dot(A_n[i, :, :], Cov_Xn_np1[i, :, :]), np.transpose(A_n[i, :, :]))
 
             if Likelihood is True:
-                likelihood -= math.log(np.linalg.det(S_n_np1), math.e) - np.squeeze(np.dot(np.dot((Y[:, i+1] - E_Yn_np1)[np.newaxis], S_n_np1_inv), (Y[:, i+1] - E_Yn_np1)[np.newaxis].T))
+                likelihood -= math.log(np.linalg.det(S_n_np1), math.e) - np.squeeze(np.dot(np.dot((Y[i+1, :] - E_Yn_np1)[np.newaxis], S_n_np1_inv), (Y[i+1, :] - E_Yn_np1)[np.newaxis].T))
 
-        E_Xn_np1  [:,    N-1] = E_Xn_n  [:,    N-1]
-        Cov_Xn_np1[:, :, N-1] = Cov_Xn_n[:, :, N-1]
+        E_Xn_np1  [N-1, :   ] = E_Xn_n  [N-1, :   ]
+        Cov_Xn_np1[N-1, :, :] = Cov_Xn_n[N-1, :, :]
 
         # ----------------- Smoothing (Backward) ----------------- #
         if smooth:
-            E_Xn_N  [:,    N-1] = E_Xn_np1  [:,    N-1]
-            Cov_Xn_N[:, :, N-1] = Cov_Xn_np1[:, :, N-1]
+            E_Xn_N  [N-1:   ] = E_Xn_np1  [N-1:   ]
+            Cov_Xn_N[N-1:, :] = Cov_Xn_np1[N-1:, :]
 
             for i in range(N-2, -1, -1):
-                K_n_N             = np.dot(np.dot(Cov_Xn_np1[:, :, i], np.transpose(A_n[:, :, i])), np.linalg.inv(Cov_Xn_n[:, :, i+1]))
-                E_Xn_N  [:,    i] = E_Xn_np1 [:,    i] + np.dot(K_n_N, (E_Xn_N[:, i+1] - E_Xn_n[:, i+1]))
-                Cov_Xn_N[:, :, i] = Cov_Xn_np1[:, :, i] + np.dot(np.dot(K_n_N, (Cov_Xn_N[:, :, i +1] - Cov_Xn_n[:, :, i+1])), np.transpose(K_n_N))
+                K_n_N             = np.dot(np.dot(Cov_Xn_np1[i, :, :], np.transpose(A_n[i, :, :])), np.linalg.inv(Cov_Xn_n[i+1, :, :]))
+                E_Xn_N  [i, :,  ] = E_Xn_np1  [i, :,  ] + np.dot(K_n_N, (E_Xn_N[i+1, :] - E_Xn_n[i+1, :]))
+                Cov_Xn_N[i, :, :] = Cov_Xn_np1[i, :, :] + np.dot(np.dot(K_n_N, (Cov_Xn_N[i+1, :, :] - Cov_Xn_n[i+1, :, :])), np.transpose(K_n_N))
 
-                C_n_np1_N[:, :, i] = np.dot(K_n_N, Cov_Xn_N[:, :, i+1])
+                C_n_np1_N[i, :, :] = np.dot(K_n_N, Cov_Xn_N[i+1, :, :])
 
         if Likelihood is True:
             return E_Xn_n, Cov_Xn_n, E_Xn_N, Cov_Xn_N, likelihood
@@ -132,7 +130,7 @@ class RestorationPKF:
 
     def restore_withjump(self, Y, R, F, Q, Cov, Mean_X, Mean_Y, Likelihood=False):
 
-        n_y, N   = np.shape(Y)
+        N, n_y   = np.shape(Y)
         n_r, n_x = np.shape(Mean_X)
         n_z      = n_x + n_y
         s_xz     = slice(n_x, n_z)
@@ -140,18 +138,18 @@ class RestorationPKF:
         s_0z     = slice(0,   n_z)
 
         # State estimation arrays
-        E_Xn_n     = np.zeros((n_x,      N))
-        Cov_Xn_n   = np.zeros((n_x, n_x, N))
-        E_Xn_np1   = np.zeros((n_x,      N))
-        Cov_Xn_np1 = np.zeros((n_x, n_x, N))
-        E_Xn_N     = np.zeros((n_x,      N))
-        Cov_Xn_N   = np.zeros((n_x, n_x, N))
-        C_n_np1_N  = np.zeros((n_x, n_x, N))
+        E_Xn_n     = np.zeros((N, n_x ))
+        Cov_Xn_n   = np.zeros((N, n_x, n_x))
+        E_Xn_np1   = np.zeros((N, n_x  ))
+        Cov_Xn_np1 = np.zeros((N, n_x, n_x))
+        E_Xn_N     = np.zeros((N, n_x  ))
+        Cov_Xn_N   = np.zeros((N, n_x, n_x))
+        C_n_np1_N  = np.zeros((N, n_x, n_x))
 
-        E_Yn_np1  = np.zeros((n_y, N))
+        E_Yn_np1  = np.zeros((N, n_y, 1))
         M_znp1    = np.zeros((n_z, 1))
         M_zn      = np.zeros((n_z, 1))
-        A_n       = np.zeros((n_x, n_x, N))
+        A_n       = np.zeros((N, n_x, n_x))
 
         likelihood = 0
 
@@ -160,8 +158,8 @@ class RestorationPKF:
         rn = R[i]
         l  = rn*n_r+rn
         Temp = np.dot(Cov[l, s_0x, s_xz], np.linalg.inv(Cov[l, s_xz, s_xz]))
-        E_Xn_n  [:,    i] = Mean_X[rn, :] + np.dot(Temp, Y[:, i] - Mean_Y[rn, :])
-        Cov_Xn_n[:, :, i] = Cov[l, s_0x, s_0x] - np.dot(Temp, Cov[l, s_xz, s_0x])
+        E_Xn_n  [i, :]    = Mean_X[rn, :] + np.dot(Temp, Y[i, :] - Mean_Y[rn, :])
+        Cov_Xn_n[i, :, :] = Cov[l, s_0x, s_0x] - np.dot(Temp, Cov[l, s_xz, s_0x])
 
         # ====================== Les suivants ====================== #
         for i in range(N-1):
@@ -193,51 +191,48 @@ class RestorationPKF:
             N_y = N_z[s_xz, 0]
 
             # ----------------- Filtering (Forward) ---------------- #
-            A_n[:, :, i] = F_xx - np.dot(dot_Q_xy_Q_yy_inv, F_yx)
+            A_n[i, :, :] = F_xx - np.dot(dot_Q_xy_Q_yy_inv, F_yx)
             Q2           = Q_xx - np.dot(dot_Q_xy_Q_yy_inv, Q_yx)
 
-            S_n_np1      = Q_yy + np.dot(np.dot(F_yx, Cov_Xn_n[:, :, i]), F_yxT)
+            S_n_np1      = Q_yy + np.dot(np.dot(F_yx, Cov_Xn_n[i, :, :]), F_yxT)
             S_n_np1_inv  = np.linalg.inv(S_n_np1)
 
-            K_n_np1      = np.dot(np.dot(Cov_Xn_n[:, :, i], F_yxT), S_n_np1_inv)
-            E_Yn_np1     = np.dot(F_yx, E_Xn_n[:, i]) + np.dot(F_yy, Y[:, i])+N_y
+            K_n_np1      = np.dot(np.dot(Cov_Xn_n[i, :, :], F_yxT), S_n_np1_inv)
+            E_Yn_np1     = np.dot(F_yx, E_Xn_n[i, :]) + np.dot(F_yy, Y[i, :])+N_y
 
-            E_Xn_np1  [:,    i] = E_Xn_n  [:,    i] + np.dot(K_n_np1, (Y[:, i+1] - E_Yn_np1))
-            Cov_Xn_np1[:, :, i] = Cov_Xn_n[:, :, i] - np.dot(np.dot(K_n_np1, S_n_np1), np.transpose(K_n_np1))
-            B_n = np.dot(dot_Q_xy_Q_yy_inv, Y[:, i+1]) + np.dot((F_xy - np.dot(dot_Q_xy_Q_yy_inv, F_yy)), Y[:, i]) + N_x - np.dot(dot_Q_xy_Q_yy_inv, N_y)
+            E_Xn_np1  [i, :]    = E_Xn_n  [i, :] + np.dot(K_n_np1, Y[i+1, :] - E_Yn_np1)
+            Cov_Xn_np1[i, :, :] = Cov_Xn_n[i, :, :] - np.dot(np.dot(K_n_np1, S_n_np1), np.transpose(K_n_np1))
+            B_n = np.dot(dot_Q_xy_Q_yy_inv, Y[i+1, :]) + np.dot((F_xy - np.dot(dot_Q_xy_Q_yy_inv, F_yy)), Y[i, :]) + N_x - np.dot(dot_Q_xy_Q_yy_inv, N_y)
 
             # Filter X
-            E_Xn_n  [:,    i+1] = np.dot(A_n[:, :, i], E_Xn_np1[:, i]) + B_n
-            Cov_Xn_n[:, :, i+1] = Q2 + np.dot(np.dot(A_n[:, :, i], Cov_Xn_np1[:, :, i]), np.transpose(A_n[:, :, i]))
+            E_Xn_n  [i+1, :,  ] = np.dot(A_n[i, :, :], E_Xn_np1[i, :]) + B_n
+            Cov_Xn_n[i+1, :, :] = Q2 + np.dot(np.dot(A_n[i, :, :], Cov_Xn_np1[i, :, :]), np.transpose(A_n[i, :, :]))
 
             if Likelihood is True:
-                likelihood -= math.log(np.linalg.det(S_n_np1), math.e) - np.squeeze(np.dot(np.dot((Y[:, i+1] - E_Yn_np1)[np.newaxis], S_n_np1_inv), (Y[:, i+1] - E_Yn_np1)[np.newaxis].T))
-
-        # E_Xn_np1  [:,    N-1] = E_Xn_n  [:,    N-1]
-        # Cov_Xn_np1[:, :, N-1] = Cov_Xn_n[:, :, N-1]
+                likelihood -= math.log(np.linalg.det(S_n_np1), math.e) - np.squeeze(np.dot(np.dot((Y[i+1, :] - E_Yn_np1)[np.newaxis], S_n_np1_inv), (Y[i+1, :] - E_Yn_np1)[np.newaxis].T))
 
         # ----------------- Smoothing (Backward) ----------------- #
-        E_Xn_N  [:,    N-1] = E_Xn_n  [:,    N-1]
-        Cov_Xn_N[:, :, N-1] = Cov_Xn_n[:, :, N-1]
+        E_Xn_N  [N-1, :]    = E_Xn_n  [N-1, :]
+        Cov_Xn_N[N-1, :, :] = Cov_Xn_n[N-1, :, :]
 
         for i in range(N-2, -1, -1):
-            K_n_N             = np.dot(np.dot(Cov_Xn_np1[:, :, i], np.transpose(A_n[:, :, i])), np.linalg.inv(Cov_Xn_n[:, :, i+1]))
-            E_Xn_N  [:,    i] = E_Xn_np1  [:,    i] + np.dot(K_n_N, (E_Xn_N[:, i+1] - E_Xn_n[:, i+1]))
-            Cov_Xn_N[:, :, i] = Cov_Xn_np1[:, :, i] + np.dot(np.dot(K_n_N, (Cov_Xn_N[:, :, i +1] - Cov_Xn_n[:, :, i+1])), np.transpose(K_n_N))
+            K_n_N             = np.dot(np.dot(Cov_Xn_np1[i, :, :], np.transpose(A_n[i, :, :])), np.linalg.inv(Cov_Xn_n[i+1, :, :]))
+            E_Xn_N  [i, :,  ] = E_Xn_np1  [i, :,  ] + np.dot(K_n_N, (E_Xn_N[i+1, :] - E_Xn_n[i+1, :]))
+            Cov_Xn_N[i, :, :] = Cov_Xn_np1[i, :, :] + np.dot(np.dot(K_n_N, (Cov_Xn_N[i+1, :, :] - Cov_Xn_n[i+1, :, :])), np.transpose(K_n_N))
 
-            C_n_np1_N[:, :, i] = np.dot(K_n_N, Cov_Xn_N[:, :, i+1])
+            C_n_np1_N[i, :, :] = np.dot(K_n_N, Cov_Xn_N[i+1, :, :])
 
         if Likelihood is True:
-            return E_Xn_n, Cov_Xn_n, E_Xn_N, Cov_Xn_N, likelihood
+            return E_Xn_n, Cov_Xn_n, E_Xn_N, Cov_Xn_N, E_Xn_np1, Cov_Xn_np1, likelihood
 
-        return E_Xn_n, Cov_Xn_n, E_Xn_N, Cov_Xn_N
+        return E_Xn_n, Cov_Xn_n, E_Xn_N, Cov_Xn_N, E_Xn_np1, Cov_Xn_np1
 
 
 
 
     def restore_withjump2(self, Y, R, F, Q, Cov, Mean_X, Mean_Y):
 
-        n_y, N   = np.shape(Y)
+        N, n_y   = np.shape(Y)
         n_r, n_x = np.shape(Mean_X)
         n_z      = n_x + n_y
         s_xz     = slice(n_x, n_z)
@@ -245,14 +240,14 @@ class RestorationPKF:
         s_0z     = slice(0,   n_z)
 
         # State estimation arrays
-        E_Xnp1_Ynp1   = np.zeros((n_z,      N))
-        Cov_Xnp1_Ynp1 = np.zeros((n_z, n_z, N))
-        E_Xn_n        = np.zeros((n_x,      N))
-        Cov_Xn_n      = np.zeros((n_x, n_x, N))
-        E_Xn_N        = np.zeros((n_x,      N))
-        Cov_Xn_N      = np.zeros((n_x, n_x, N))
+        E_Xnp1_Ynp1   = np.zeros((N, n_z, 1  ))
+        Cov_Xnp1_Ynp1 = np.zeros((N, n_z, n_z))
+        E_Xn_n        = np.zeros((N, n_x, 1  ))
+        Cov_Xn_n      = np.zeros((N, n_x, n_x))
+        E_Xn_N        = np.zeros((N, n_x, 1  ))
+        Cov_Xn_N      = np.zeros((N, n_x, n_x))
         
-        E_Yn_np1   = np.zeros((n_y, N))
+        E_Yn_np1   = np.zeros((N, n_y))
         M_znp1     = np.zeros((n_z, 1))
         M_zn       = np.zeros((n_z, 1))
 
@@ -261,8 +256,8 @@ class RestorationPKF:
         rn = R[i]
         l  = rn*n_r+rn
         Temp = np.dot(Cov[l, s_0x, s_xz], np.linalg.inv(Cov[l, s_xz, s_xz]))
-        E_Xn_n  [:,    i] = Mean_X[rn, :] + np.dot(Temp, Y[:, i] - Mean_Y[rn, :])
-        Cov_Xn_n[:, :, i] = Cov[l, s_0x, s_0x] - np.dot(Temp, Cov[l, s_xz, s_0x])
+        E_Xn_n  [i, :,  ] = Mean_X[rn, :] + np.dot(Temp, Y[i, :] - Mean_Y[rn, :])
+        Cov_Xn_n[i, :, :] = Cov[l, s_0x, s_0x] - np.dot(Temp, Cov[l, s_xz, s_0x])
 
         # ====================== Les suivants ====================== #
         for i in range(N-1):
@@ -280,16 +275,13 @@ class RestorationPKF:
             Fzx = F[l, s_0z, s_0x]
             Fzy = F[l, s_0z, s_xz]
 
-            E_Xnp1_Ynp1  [:,    i+1] = np.dot(Fzx, E_Xn_n[:, i]) + np.dot(Fzy, Y[:, i]) + np.reshape(N_z, newshape=(n_z))
-            # print('shape of Fzx = ', np.shape(Fzx))
-            # print('shape of Cov_Xn_n[:, :, i] = ', np.shape(Cov_Xn_n[:, :, i]))
-            # input('pause')
-            Cov_Xnp1_Ynp1[:, :, i+1] = np.dot(np.dot(Fzx, Cov_Xn_n[:, :, i]), np.transpose(Fzx)) + Q[l, :, :]
+            E_Xnp1_Ynp1  [i+1, :   ] = np.dot(Fzx, E_Xn_n[:, i]) + np.dot(Fzy, Y[i, :]) + np.reshape(N_z, newshape=(n_z))
+            Cov_Xnp1_Ynp1[i+1, :, :] = np.dot(np.dot(Fzx, Cov_Xn_n[i, :, :]), np.transpose(Fzx)) + Q[l, :, :]
             
             # marginalisation --> filter
-            Temp                = np.dot(Cov_Xnp1_Ynp1[s_0x, s_xz, i+1], np.linalg.inv(Cov_Xnp1_Ynp1[s_xz, s_xz, i+1]))
-            E_Xn_n  [:,    i+1] = E_Xnp1_Ynp1[s_0x, i+1] + np.dot(Temp, Y[:, i+1] - E_Xnp1_Ynp1[s_xz, i+1])
-            Cov_Xn_n[:, :, i+1] = Cov_Xnp1_Ynp1[s_0x, s_0x, i+1] - np.dot(Temp, Cov_Xnp1_Ynp1[s_xz, s_0x, i+1])
+            Temp                = np.dot(Cov_Xnp1_Ynp1[i+1, s_0x, s_xz], np.linalg.inv(Cov_Xnp1_Ynp1[i+1, s_xz, s_xz]))
+            E_Xn_n  [i+1, :,  ] = E_Xnp1_Ynp1[i+1, s_0x] + np.dot(Temp, Y[i+1, :] - E_Xnp1_Ynp1[i+1, s_xz])
+            Cov_Xn_n[i+1, :, :] = Cov_Xnp1_Ynp1[i+1, s_0x, s_0x] - np.dot(Temp, Cov_Xnp1_Ynp1[i+1, s_xz, s_0x])
 
 
         # ----------------- Smoothing non-recursive algo ----------------- #
@@ -363,22 +355,14 @@ class RestorationPKF:
                     Sigma_YX[i-j, i] =  Sigma_YX[i-j, i-1] * np.transpose(F[l, 0:n_x, 0:n_x]) + \
                                         Sigma_Y [i-j, i-1] * np.transpose(F[l, 0:n_x, n_x:n_z])
 
-        # # print('R = ', R)
-        # print('Sigma_Y = \n', Sigma_Y)
-        # print('Is Y mat cov ? --> ', is_pos_def(Sigma_Y))
-        # print('Sigma_YX = \n', Sigma_YX)
-        # ##Sigma_YX[0,1]=0.3 -----> c'est la bonne réponse!
-        # print('Sigma_YX[0,1]=', Sigma_YX[0,1], ' - valuer attendue 3 !!!!!!!!!')
-        # input('attente XY')
-
         # pour chacune des données
         invSigma_Y = np.linalg.inv(Sigma_Y) # to save time
         for i in range(N):
 
             l = R[i]*n_r+R[i]
-            Temp               = np.dot(np.transpose(Sigma_YX[:, i]), invSigma_Y)
-            E_Xn_N  [:,    i]  = Mean_X[R[i], :] + np.dot(Temp, np.transpose(Y) - Mean_Y[R, :])
-            Cov_Xn_N[:, :, i]  = Cov[l, 0:n_x, 0:n_x] - np.dot(Temp, Sigma_YX[:, i])
+            Temp              = np.dot(np.transpose(Sigma_YX[:, i]), invSigma_Y)
+            E_Xn_N  [i, :]    = Mean_X[R[i], :] + np.dot(Temp, np.transpose(Y) - Mean_Y[R, :])
+            Cov_Xn_N[i, :, :] = Cov[l, 0:n_x, 0:n_x] - np.dot(Temp, Sigma_YX[:, i])
             # print('i=', i)
             # print('  E_Xn_N  [:,    i]=', E_Xn_N  [:,    i])
             # print('  Cov_Xn_N[:, :, i]=', Cov_Xn_N[:, :, i])

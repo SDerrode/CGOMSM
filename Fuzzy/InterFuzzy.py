@@ -35,7 +35,7 @@ def simulateFuzzy(filenameParam, FSParameters, interpolation, N):
     s_0z = slice(0,   n_z)
 
     # Le bruit
-    W = np.random.normal(loc=0., scale=1., size=(n_z, N))
+    W = np.random.normal(loc=0., scale=1., size=(N, n_z))
 
     # Le modèle Flou
     FS = None
@@ -57,37 +57,37 @@ def simulateFuzzy(filenameParam, FSParameters, interpolation, N):
         input('Impossible')
 
     # La chainee de Markov
-    R       = np.zeros(shape=(N))
+    R    = np.zeros(shape=(N))
     R[0] = FS.tirageR1()
     for np1 in range(1, N):
         R[np1] = FS.tirageRnp1CondRn(R[np1-1])
 
     # Les moyennes
-    Mean_Z = np.zeros(shape=(n_z, N))
+    Mean_Z = np.zeros(shape=(N, n_z))
     for np1 in range(N):
         alpha = R[np1]
-        Mean_Z[:, np1] =  np.hstack((InterLineaire_Vector(Mean_X, alpha), InterLineaire_Vector(Mean_Y, alpha)))
+        Mean_Z[np1, :] =  np.hstack((InterLineaire_Vector(Mean_X, alpha), InterLineaire_Vector(Mean_Y, alpha)))
 
     # Simulation de Z = [[X],[Y]]
     #######################################@
-    Z    = np.zeros(shape=(n_z, N)) # Z = [[X],[Y]]
-    N_xy = np.zeros(shape=(n_z, N))
+    Z    = np.zeros(shape=(N, n_z)) # Z = [[X],[Y]]
+    N_xy = np.zeros(shape=(N, n_z))
 
     i = 0
-    N_xy[:, i]     = Mean_Z[:, 0]
+    N_xy[i, :]     = Mean_Z[0, :]
     Cov_alpha_beta = InterBiLineaire_Matrix(Cov, R[i], R[i+1])
-    Z[:, i]        = np.random.multivariate_normal(mean=N_xy[:, i], cov=Cov_alpha_beta[s_0z, s_0z], size=1)
+    Z[i, :]        = np.random.multivariate_normal(mean=N_xy[i, :], cov=Cov_alpha_beta[s_0z, s_0z], size=1)
     for i in range(1, N):
         alpha = R[i-1]
         beta  = R[i]
         A_alpha_beta = InterBiLineaire_Matrix(A, alpha, beta)
         B_alpha_beta = InterBiLineaire_Matrix(B, alpha, beta)
 
-        N_xy[:, i] = Mean_Z[:, i] - np.dot(A_alpha_beta, Mean_Z[:, i-1])
-        Z[:, i]    = np.dot(A_alpha_beta, Z[:, i-1]) + np.dot(B_alpha_beta, W[:, i]) + N_xy[:, i]
+        N_xy[i, :] = Mean_Z[i, :] - np.dot(A_alpha_beta, Mean_Z[i-1, :])
+        Z[i, :]    = np.dot(A_alpha_beta, Z[i-1, :]) + np.dot(B_alpha_beta, W[i, :]) + N_xy[i, :]
 
-    X = Z[s_0x, :]
-    Y = Z[s_xz, :]
+    X = Z[:, s_0x]
+    Y = Z[:, s_xz]
     return n_r, X, R, Y
 
 def InterLineaire_Vector(Vect, alpha):

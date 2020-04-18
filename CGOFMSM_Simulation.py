@@ -15,9 +15,10 @@ if __name__ == '__main__':
  
         :Example:
 
-        >> python3 CGOFMSM_Simulation.py Parameters/Fuzzy/SP2018.param 2:0.07:0.24:0.09 1,1,1,1 72 3 5 2 1
+        >> python3 CGOFMSM_Simulation.py Parameters/Fuzzy/SP2018.param 2:0.12:0.12:0.09 1,1,1,1 40000 0 1 2 0
+        >> python3 CGOFMSM_Simulation.py Parameters/Fuzzy/SP2018.param 2:0.07:0.24:0.09 1,1,1,1 72    3 5 2 1
         >> python3 CGOFMSM_Simulation.py Parameters/Fuzzy/SP2018.param 2:0.07:0.24:0.09 1,1,0,1 500 1,2,3,5,7,10 10 1 0 1
-        >> nohup python3 CGOFMSM_Simulation.py Parameters/Fuzzy/SP2018.param 4:0.15:0.15:0.:0.1 1,1,0,1 1000 1,2,3,5,7,10 10 1 0 1 > serie2.out &
+        >> nohup python3 CGOFMSM_Simulation.py Parameters/Fuzzy/SP2018.param 4:0.15:0.15:0.05:0.05 1,1,0,1 1000 1,2,3,5,7,10 10 1 0 1 > serie2.out &
 
         argv[1] : Parameters file name
         argv[2] : Fuzzy joint law model and parameters. e.g. 2:0.07:0.24:0.09, or 4:0.15:0.15:0.:0.1
@@ -85,8 +86,11 @@ if __name__ == '__main__':
 
     readData = False  # Data are read or resimulated ?
 
+    import time
+    start_time = time.time()
+
     # Moyenne de plusieurs expériences
     aCGOFMSM = CGOFMSM(N, filenameParamCov, verbose, FSParametersStr, interpolation)
     mean_tab_MSE, mean_tab_MSE_HARD, mean_time = aCGOFMSM.run_several(NbExp, STEPS=STEPS, hard=hard, filt=filt, smooth=smooth, predic=predic, Plot=Plot)
 
-
+    print("--- %s seconds ---" % (time.time() - start_time))

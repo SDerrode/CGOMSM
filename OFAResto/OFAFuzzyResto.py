@@ -29,17 +29,17 @@ from Fuzzy.APrioriFuzzyLaw_Series3    import LoiAPrioriSeries3
 from Fuzzy.APrioriFuzzyLaw_Series4    import LoiAPrioriSeries4
 from Fuzzy.APrioriFuzzyLaw_Series4bis import LoiAPrioriSeries4bis
 
-def getrnFromindrn(Rcentres, indrn):
-    if indrn == 0:               return 0.
-    if indrn == len(Rcentres)+1: return 1.
-    return Rcentres[indrn-1]
+# def getrnFromindrn(Rcentres, indrn):
+#     if indrn == 0:               return 0.
+#     if indrn == len(Rcentres)+1: return 1.
+#     return Rcentres[indrn-1]
 
 def getindrnFromrn(STEPS, rn):
     if rn == 0.: return 0
     if rn == 1.: return STEPS+1
     return int(math.floor(rn*STEPS)+1)
 
-def loijointeAP1(rn, rnp1, proba, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, interpolation, STEPS):
+def loijointeAP1(rn, rnp1, indrnp1, proba, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, interpolation, STEPS):
     n_z = int(np.shape(Cov)[1]/2)
 
     if interpolation == True:
@@ -48,8 +48,7 @@ def loijointeAP1(rn, rnp1, proba, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, int
         moyrnp1 = float(InterLineaire_Vector(Mean_Y, rnp1))
     else:
         indrn   = getindrnFromrn(STEPS, rn)
-        indrnp1 = getindrnFromrn(STEPS, rnp1)
-        A_rn_rnp1, Q_rn_rnp1 = From_Cov_to_FQ_bis(Cov[indrn*STEPS+indrnp1], n_z)
+        A_rn_rnp1, Q_rn_rnp1 = From_Cov_to_FQ_bis(Cov[indrn*(STEPS+2)+indrnp1], n_z)
         moyrn   = Mean_Y[indrn]
         moyrnp1 = Mean_Y[indrnp1]
 
@@ -66,7 +65,7 @@ def loijointeAP1(rn, rnp1, proba, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, int
     return result
 
 
-def loijointeAP2(rnp1, rn, proba, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, interpolation, STEPS):
+def loijointeAP2(rnp1, rn, indrn, proba, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, interpolation, STEPS):
 
     n_z = int(np.shape(Cov)[1]/2)
 
@@ -75,9 +74,8 @@ def loijointeAP2(rnp1, rn, proba, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, int
         moyrn   = float(InterLineaire_Vector(Mean_Y, rn))
         moyrnp1 = float(InterLineaire_Vector(Mean_Y, rnp1))
     else:
-        indrn   = getindrnFromrn(STEPS, rn)
-        inrnp1  = getindrnFromrn(STEPS, rnp1)
-        A_rn_rnp1, Q_rn_rnp1 = From_Cov_to_FQ_bis(Cov[indrn*STEPS+indrnp1], n_z)
+        indrnp1  = getindrnFromrn(STEPS, rnp1)
+        A_rn_rnp1, Q_rn_rnp1 = From_Cov_to_FQ_bis(Cov[indrn*(STEPS+2)+indrnp1], n_z)
         moyrn   = Mean_Y[indrn]
         moyrnp1 = Mean_Y[indrnp1]
 
@@ -93,13 +91,13 @@ def loijointeAP2(rnp1, rn, proba, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, int
 
     return result
 
-def calcMarg(r, interpolation, EPS, STEPS, LJ_AP, ProbaFB, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1):
+def calcMarg(r, indr, interpolation, EPS, STEPS, LJ_AP, ProbaFB, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1):
 
     # Atemp, errtemp = 0., 0.
     # if STEPS != 0:
     #      Atemp, errtemp = sc.integrate.quad(func=LJ_AP, a=0.+EPS, b=1.-EPS, args=argument, epsabs=1E-3, epsrel=1E-3, limit=100)
     
-    argument = (r, ProbaFB, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, interpolation, STEPS)
+    argument = (r, indr, ProbaFB, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, interpolation, STEPS)
     A        = 0.
     # err1     = 0.
     if STEPS != 0:
@@ -127,8 +125,8 @@ def calcMarg(r, interpolation, EPS, STEPS, LJ_AP, ProbaFB, probaR2CondR1, Cov, M
         #     plt.close()
         #     input('attente - calcMarg')
 
-    A0 = LJ_AP(0., r, ProbaFB, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, interpolation, STEPS)
-    A1 = LJ_AP(1., r, ProbaFB, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, interpolation, STEPS)
+    A0 = LJ_AP(0., r, indr, ProbaFB, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, interpolation, STEPS)
+    A1 = LJ_AP(1., r, indr, ProbaFB, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, interpolation, STEPS)
     if np.isnan(A + A0 + A1):
         print('np1= ', np1)
         print('A  = ', A)
@@ -138,46 +136,17 @@ def calcMarg(r, interpolation, EPS, STEPS, LJ_AP, ProbaFB, probaR2CondR1, Cov, M
 
     return A+A0+A1
 
-def CalcE_X_np1(rnp1, proba, tab_E):
-    return proba.getr(rnp1) * tab_E.getr(rnp1)
-
-def IntegDouble_Predictor(EPS, STEPS, proba, tab_E, n_z, Rcentres):
-    
-    if STEPS == 0:
-        return proba.getr(0., 0.)*tab_E.getr(0., 0.) + proba.getr(0., 1.)*tab_E.getr(0., 1.) + proba.getr(1., 0.)*tab_E.getr(1., 0.) + proba.getr(1., 1.)*tab_E.getr(1., 1.)
-    
-    pR = np.zeros(shape=(STEPS, n_z))
-
-    #### pour r1==0.
-    rn, indrn = 0., 0
-    for indrnp1, rnp1 in enumerate(Rcentres):
-        pR[indrnp1, :] = proba.getr(rn, rnp1) * np.reshape(tab_E.getr(rn, rnp1), newshape=(n_z))
-    integ = np.mean(pR) + proba.getr(0., 0.)*tab_E.getr(0., 0.) + proba.getr(0., 1.)*tab_E.getr(0., 1.)
-
-    #### pour r1==1.
-    rn, indrn = 1., STEPS+1
-    for indrnp1, rnp1 in enumerate(Rcentres):
-        pR[indrnp1, :] = proba.getr(rn, rnp1) * np.reshape(tab_E.getr(rn, rnp1), newshape=(n_z))
-    integ += np.mean(pR) + proba.getr(1., 0.)*tab_E.getr(1., 0.) + proba.getr(1., 1.)*tab_E.getr(1., 1.)
-
-    # #### La surface à l'intérieur
-    for indrn, rn in enumerate(Rcentres):
-        for indrnp1, rnp1 in enumerate(Rcentres):
-            pR[indrnp1, :] = proba.getr(rn, rnp1) * np.reshape(tab_E.getr(rn, rnp1), newshape=(n_z))
-        integ += np.mean(pR) + proba.getr(rn, 0.)*tab_E.getr(rn, 0.) + proba.getr(rn, 1.)*tab_E.getr(rn, 1.)
-
-    return integ
-
+def CalcE_X_np1(indrnp1, proba, tab_E):
+    return proba.getindr(indrnp1) * tab_E.getindr(indrnp1)
 
 def Integ_CalcE_X_np1(EPS, STEPS, proba, tab_E, np1, Rcentres):
 
-    argument = (proba, tab_E)
     A = 0.
-    for c in Rcentres:
-        A += CalcE_X_np1(c, proba, tab_E)/STEPS
+    for indr in range(STEPS):
+        A += CalcE_X_np1(indr+1, proba, tab_E)/STEPS
 
-    A0 = CalcE_X_np1(0., proba, tab_E)
-    A1 = CalcE_X_np1(1., proba, tab_E)
+    A0 = CalcE_X_np1(0,       proba, tab_E)
+    A1 = CalcE_X_np1(STEPS+1, proba, tab_E)
     if np.isnan(A + A0 + A1):
         print('np1= ', np1)
         print('A  = ', A)
@@ -185,21 +154,26 @@ def Integ_CalcE_X_np1(EPS, STEPS, proba, tab_E, np1, Rcentres):
         print('A1 = ', A1)
         input('Nan!!')
 
+    # print('A  = ', A)
+    # print('A0 = ', A0)
+    # print('A1 = ', A1)
+    # print('A+A0+A1=', A+A0+A1)
+    # input('attente Integ_CalcE_X_np1')
+
     return A+A0+A1
 
-def CalcE_X_np1_dp_rnpun(r, rnp1, proba, tab_E, normalisationNum):
-
-    result = proba.getr(r, rnp1) * tab_E.getr(r, rnp1) / normalisationNum
+def CalcE_X_np1_dp_rnpun(indr, indrnp1, proba, tab_E, normalisationNum):
+    result = proba.getindr(indr, indrnp1) * tab_E.getindr(indr, indrnp1) / normalisationNum
     if np.isnan(result):
-        print('proba.getr(r, rnp1)=', proba.getr(r, rnp1))
-        print('tab_E.getr(r, rnp1)=', tab_E.getr(r, rnp1))
+        print('proba.getindr(indr, indrnp1)=', proba.getindr(indr, indrnp1))
+        print('tab_E.getindr(indr, indrnp1)=', tab_E.getindr(indr, indrnp1))
         print('=',result)
 
     return result
 
-def Integ_CalcE_X_np1_dp_rnpun(EPS, STEPS, Rcentres, rnp1, proba, tab_E, np1):
+def Integ_CalcE_X_np1_dp_rnpun(EPS, STEPS, Rcentres, indrnp1, proba, tab_E, np1):
 
-    normalisationNum = TestIntegMarg(proba, rnp1, EPS, STEPS, Rcentres)
+    normalisationNum = TestIntegMarg(proba, indrnp1, EPS, STEPS, Rcentres)
     if normalisationNum == 0.:
         # print('normalisationNum=', normalisationNum)
         normalisationNum = 1. # lorsque toutes les proba sont nulles, alors on s'en fout.
@@ -207,84 +181,47 @@ def Integ_CalcE_X_np1_dp_rnpun(EPS, STEPS, Rcentres, rnp1, proba, tab_E, np1):
         # proba.print();
         # input('normalisation num')
 
-    argument = (rnp1, proba, tab_E, normalisationNum)
+    # argument = (indrnp1, proba, tab_E, normalisationNum)
 
-    # A        = 0.
-    # err1     = 0.
-    # 
-    # if STEPS != 0:
-    #     val = 0.
-    #     for i in range(STEPS):
-    #         ATemp, errTemp = sc.integrate.quad(func=CalcE_X_np1_dp_rnpun, args=argument, a=i*1./STEPS+EPS, b=(i+1)*1./STEPS-EPS, limit=200, epsabs=1E-3, epsrel=1E-3)
-    #         A    += ATemp
-    #         err1 += errTemp
-    #     if (err1>1E-8):
-    #         print('\nA=', A)
-    #         print('err1=', err1)
-    #         input('pause Integ_CalcE_X_np1_dp_rnpun')
-        
     A = 0.
-    for c in Rcentres:
-        A += CalcE_X_np1_dp_rnpun(c, rnp1, proba, tab_E, normalisationNum)[0]/STEPS
-    # print('A=', A)
-
-    # print('rnp1=', rnp1)
-    A0 = CalcE_X_np1_dp_rnpun(0., rnp1, proba, tab_E, normalisationNum)
-    # print('A0=', A0)
-
-    A1 = CalcE_X_np1_dp_rnpun(1., rnp1, proba, tab_E, normalisationNum)
-    # print('A1=', A1)
-    # input('attente A0 A1')
+    for indrn in range(STEPS):
+        A += CalcE_X_np1_dp_rnpun(indrn+1, indrnp1, proba, tab_E, normalisationNum)[0]/STEPS
+    
+    # print('indrnp1=', indrnp1)
+    A0 = CalcE_X_np1_dp_rnpun(0,       indrnp1, proba, tab_E, normalisationNum)
+    A1 = CalcE_X_np1_dp_rnpun(STEPS+1, indrnp1, proba, tab_E, normalisationNum)
     if np.isnan(A + A0 + A1):
-        print('np1=', np1, ', rnp1=', rnp1)
+        print('np1=', np1, ', indrnp1=', indrnp1)
         print('normalisationNum=', normalisationNum)
         print('A  = ', A)
         print('A0 = ', A0)
         print('A1 = ', A1)
         input('Nan!!')
 
+    # print('A  = ', A)
+    # print('CalcE_X_np1_dp_rnpun(1, indrnp1, proba, tab_E, normalisationNum)=', CalcE_X_np1_dp_rnpun(1, indrnp1, proba, tab_E, normalisationNum))
+    # print('A0 = ', A0)
+    # print('A1 = ', A1)
+    # print('A+A0+A1=', A+A0+A1)
+    # input('attente Integ_CalcE_X_np1')
+
     return A + A0 + A1
 
-def IntegMarg(rn, rnp1, p_rn_d_rnpun_yun_ynpun):
-    return p_rn_d_rnpun_yun_ynpun.getr(rn, rnp1)
+def IntegMarg(indrn, indrnp1, p_rn_d_rnpun_yun_ynpun):
+    return p_rn_d_rnpun_yun_ynpun.getindr(indrn, indrnp1)
 
-def TestIntegMarg(p_rn_d_rnpun_yun_ynpun, rnp1, EPS, STEPS, Rcentres):
+def TestIntegMarg(p_rn_d_rnpun_yun_ynpun, indrnp1, EPS, STEPS, Rcentres):
 
-    argument = (rnp1, p_rn_d_rnpun_yun_ynpun)
-
-    # err1     = 0.
-    # A        = 0.
-    # if STEPS != 0:
-    #     val = 0.
-    #     for i in range(STEPS):
-    #         ATemp, errTemp = sc.integrate.quad(limit=200, func=IntegMarg, a=i*1./STEPS+EPS, b=(i+1)*1./STEPS-EPS, epsabs=1E-3, epsrel=1E-3, args=argument)
-    #         A    += ATemp
-    #         err1 += errTemp
-    #     if (err1>1E-8):
-    #         print('\nA=', A)
-    #         print('err1=', err1)
-    #         for i, e in enumerate(argument):
-    #             print('arg[', i, '] = ', e)
-    #         absci = np.linspace(0.+EPS, 1.-EPS, 50)
-    #         dessin = np.zeros(shape=(len(absci)))
-    #         for i, rnp1 in enumerate(absci):
-    #             dessin[i] = CalcE_X_np1(rnp1, proba, tab_E)
-    #         plt.figure()
-    #         plt.plot(absci, dessin, color='b', marker='P', label='Erreur integration par sc.integrate.quad - TestIntegMarg')
-    #         plt.legend()
-    #         plt.show()
-    #         #plt.savefig('./Result/Fuzzy/Figures/SimuXY_SerieX_Y', bbox_inches='tight', dpi=dpi)
-    #         plt.close()
-    #         input('attente - TestIntegMarg')
+    argument = (indrnp1, p_rn_d_rnpun_yun_ynpun)
 
     A = 0.
-    for c in Rcentres:
-        A += IntegMarg(c, rnp1, p_rn_d_rnpun_yun_ynpun)/STEPS
+    for indr in range(STEPS):
+        A += IntegMarg(indr+1, indrnp1, p_rn_d_rnpun_yun_ynpun)/STEPS
 
-    A0 = IntegMarg(0., rnp1, p_rn_d_rnpun_yun_ynpun)
-    A1 = IntegMarg(1., rnp1, p_rn_d_rnpun_yun_ynpun)
+    A0 = IntegMarg(0,       indrnp1, p_rn_d_rnpun_yun_ynpun)
+    A1 = IntegMarg(STEPS+1, indrnp1, p_rn_d_rnpun_yun_ynpun)
     if np.isnan(A + A0 + A1):
-        print('rnp1=', rnp1)
+        print('indrnp1=', indrnp1)
         print('A  = ', A)
         print('A0 = ', A0)
         print('A1 = ', A1)
@@ -292,6 +229,16 @@ def TestIntegMarg(p_rn_d_rnpun_yun_ynpun, rnp1, EPS, STEPS, Rcentres):
 
     return A + A0 + A1
 
+
+def IntegDouble_Predictor(EPS, STEPS, proba, tab_E, n_z, Rcentres):
+    
+    # if STEPS == 0:
+    #     return proba.getindr(0, 0)*tab_E.getindr(0, 0)              + proba.getindr(0, STEPS+1)*tab_E.getindr(0, STEPS+1) + \
+    #            proba.getindr(STEPS+1, 0.)*tab_E.getindr(STEPS+1, 0) + proba.getindr(STEPS+1, STEPS+1)*tab_E.getindr(STEPS+1, STEPS+1)
+    
+    tab_E_pondere = Tab2DDiscreteFuzzy(EPS, STEPS, False, Rcentres, dim=tab_E.getDim())
+    tab_E_pondere.Prod(proba, tab_E)
+    return tab_E_pondere.Integ()
 
 
 #############################################################################################
@@ -373,7 +320,7 @@ class RestorationOFAFuzzy:
 
     def compute_jumps_forward(self, EPS, Y, Rcentres):
 
-        n_y, N = np.shape(Y)
+        N, n_y = np.shape(Y)
         
         ProbaForward = []
         p_rn_d_rnpun_yun_ynpun = []
@@ -382,9 +329,9 @@ class RestorationOFAFuzzy:
         ######################
         # Initialisation
         np1 = 0
-        ynp1 = Y[:, np1]
+        ynp1 = Y[np1, :]
         ProbaForward.append(Loi1DDiscreteFuzzy_TMC(EPS, self.__STEPS, self.__interpolation, Rcentres))
-        ProbaForward[np1].set1_1D(self.__FS.probaR, self.__Cov, ynp1, self.__Mean_Y)
+        ProbaForward[np1].setForward_1(self.__FS.probaR, self.__Cov, ynp1, self.__Mean_Y)
 
         tab_normalis.append(ProbaForward[np1].Integ())
         ProbaForward[np1].normalisation(tab_normalis[np1])
@@ -400,15 +347,15 @@ class RestorationOFAFuzzy:
                 print('\r         forward np1=', np1, ' sur N=', N, end='', flush = True)
 
             yn   = ynp1
-            ynp1 = Y[:, np1]
+            ynp1 = Y[np1, :]
 
             ProbaForward.append(Loi1DDiscreteFuzzy_TMC(EPS, self.__STEPS, self.__interpolation, Rcentres))
-            ProbaForward[np1].set2_1D(calcMarg, loijointeAP1, ProbaForward[np1-1], self.__FS.probaR2CondR1, self.__Cov, self.__Mean_Y, yn, ynp1, np1)
+            ProbaForward[np1].setForwBack(calcMarg, loijointeAP1, ProbaForward[np1-1], self.__FS.probaR2CondR1, self.__Cov, self.__Mean_Y, yn, ynp1, np1)
             #ProbaForward[np1].nextAfterZeros() # on evite des proba de zero
 
             ### AVANT normalisation de ProbaForward
             p_rn_d_rnpun_yun_ynpun.append(Loi2DDiscreteFuzzy_TMC(EPS, self.__STEPS, self.__interpolation, self.__Rcentres))
-            p_rn_d_rnpun_yun_ynpun[np1-1].set1b_2D(ProbaForward[np1], ProbaForward[np1-1], loijointeAP1, self.__FS.probaR2CondR1, self.__Cov, self.__Mean_Y, yn, ynp1, np1)
+            p_rn_d_rnpun_yun_ynpun[np1-1].CalcProbaTransAposteriori(ProbaForward[np1], ProbaForward[np1-1], loijointeAP1, self.__FS.probaR2CondR1, self.__Cov, self.__Mean_Y, yn, ynp1, np1)
 
             tab_normalis.append(ProbaForward[np1].Integ())
             ProbaForward[np1].normalisation(tab_normalis[np1])
@@ -438,7 +385,6 @@ class RestorationOFAFuzzy:
             ProbaPredict.append(Loi2DDiscreteFuzzy_TMC(EPS, self.__STEPS, self.__interpolation, self.__Rcentres))
             ProbaPredict[np1].predicSauts(self.__FS.probaR2CondR1, ProbaForward[np1-1])
             # print('np1=', np1, ', Integ=', ProbaPredict[np1].Integ())
-            # input('attente')
 
             # normalisation in order to compensate for the fuzzy discretization
             ProbaPredict[np1].normalisation(ProbaPredict[np1].Integ())
@@ -451,7 +397,7 @@ class RestorationOFAFuzzy:
 
     def compute_jumps_backward(self, EPS, Y, tab_normalis, Rcentres):
 
-        n_y, N = np.shape(Y)
+        N, n_y = np.shape(Y)
 
         # attention, on va stocker dans l'ordre inverse (et à la fin on fait un reverse)
         ProbaBackward = []
@@ -460,7 +406,7 @@ class RestorationOFAFuzzy:
         # initialisation de beta
         n = N-1
         indice = N-n-1
-        yn = Y[:, n]
+        yn = Y[n, :]
         
         ProbaBackward.append(Loi1DDiscreteFuzzy_TMC(EPS, self.__STEPS, self.__interpolation, Rcentres))
         ProbaBackward[indice].setValCste(1.)
@@ -476,10 +422,10 @@ class RestorationOFAFuzzy:
 
             indice = N-n-1
             ynp1 = yn
-            yn = Y[:, n]
+            yn = Y[n, :]
 
             ProbaBackward.append(Loi1DDiscreteFuzzy_TMC(EPS, self.__STEPS, self.__interpolation, Rcentres))
-            ProbaBackward[indice].set2_1D(calcMarg, loijointeAP2, ProbaBackward[indice-1], self.__FS.probaR2CondR1, self.__Cov, self.__Mean_Y, yn, ynp1, n)
+            ProbaBackward[indice].setForwBack(calcMarg, loijointeAP2, ProbaBackward[indice-1], self.__FS.probaR2CondR1, self.__Cov, self.__Mean_Y, yn, ynp1, n)
             #ProbaBackward[indice].nextAfterZeros() # on evite des proba de zero
             ProbaBackward[indice].normalisation(tab_normalis[n+1])
             #ProbaBackward[indice].plot('$p(r_{n+1} | y_1^{n+1})$')
@@ -523,29 +469,32 @@ class RestorationOFAFuzzy:
         1 dimension should be faster than multiD
         """
         # Taille des échantillons à restaurer
-        N = np.shape(Y)[1]
+        N = np.shape(Y)[0]
 
         # Les constantes
         EPS = 1E-15
 
         # les tableaux a remplir...
         E_R_n    = np.zeros((N))
+        E_R_np1  = np.zeros((N))
         E_R_N    = np.zeros((N))
-        E_X_n    = np.zeros((1, N))
-        E2_X_n   = np.zeros((1, N))
-        E_Z_np1  = np.zeros((self.__n_z, N))
-        E2_Z_np1 = np.zeros((self.__n_z, self.__n_z, N))
-        E_X_N    = np.zeros((1, N))
-        E2_X_N   = np.zeros((1, N))
+        E_X_n    = np.zeros((N, self.__n_x))
+        E2_X_n   = np.zeros((N, self.__n_x, self.__n_x))
+        E_Z_np1  = np.zeros((N, self.__n_z))
+        VAR_Z_np1 = np.zeros((N, self.__n_z, self.__n_z))
+        E_X_N    = np.zeros((N, self.__n_x))
+        E2_X_N   = np.zeros((N, self.__n_x, self.__n_x))
 
         ########################
         # Preparations des X
-        tab_E_Znp1      = Tab2DDiscreteFuzzy(EPS, self.__STEPS, self.__interpolation, self.__Rcentres, dim=(self.__n_z, 1))
-        tab_VAR_Znp1    = Tab2DDiscreteFuzzy(EPS, self.__STEPS, self.__interpolation, self.__Rcentres, dim=(self.__n_z, self.__n_z))
-        tab_E_Xnp1_dp2  = Tab2DDiscreteFuzzy(EPS, self.__STEPS, self.__interpolation, self.__Rcentres, dim=(self.__n_x, 1))
-        tab_E2_Xnp1_dp2 = Tab2DDiscreteFuzzy(EPS, self.__STEPS, self.__interpolation, self.__Rcentres, dim=(self.__n_x, self.__n_x))
-        tab_E_Xnp1_dp1  = Tab1DDiscreteFuzzy(EPS, self.__STEPS, self.__interpolation, self.__Rcentres, dim=(self.__n_x, 1))
-        tab_E2_Xnp1_dp1 = Tab1DDiscreteFuzzy(EPS, self.__STEPS, self.__interpolation, self.__Rcentres, dim=(self.__n_x, self.__n_x))
+        E_Znp1_dp2   = Tab2DDiscreteFuzzy(EPS, self.__STEPS, self.__interpolation, self.__Rcentres, dim=(self.__n_z, 1))
+        VAR_Znp1_dp2 = Tab2DDiscreteFuzzy(EPS, self.__STEPS, self.__interpolation, self.__Rcentres, dim=(self.__n_z, self.__n_z))
+        E_Xnp1_dp2   = Tab2DDiscreteFuzzy(EPS, self.__STEPS, self.__interpolation, self.__Rcentres, dim=(self.__n_x, 1))
+        E2_Xnp1_dp2  = Tab2DDiscreteFuzzy(EPS, self.__STEPS, self.__interpolation, self.__Rcentres, dim=(self.__n_x, self.__n_x))
+        E_Xnp1_dp1   = Tab1DDiscreteFuzzy(EPS, self.__STEPS, self.__interpolation, self.__Rcentres, dim=(self.__n_x, 1))
+        E2_Xnp1_dp1  = Tab1DDiscreteFuzzy(EPS, self.__STEPS, self.__interpolation, self.__Rcentres, dim=(self.__n_x, self.__n_x))
+
+        p_rnp1_dp_rn = Loi1DDiscreteFuzzy_TMC(EPS, self.__STEPS, self.__interpolation, self.__Rcentres)
 
         ########################
         # Proba sauts
@@ -557,50 +506,54 @@ class RestorationOFAFuzzy:
             tab_p_rn_dp_y1_to_yN = self.compute_jumps_smooth  (N, EPS, tab_p_rn_dp_y1_to_yn, ProbaBackward, self.__Rcentres)
 
         np1  = 0
-        ynp1 = Y[:, np1]
+        ynp1 = Y[np1, :]
 
         #########################
         # MPM filtrage et lissage
         if filt:
             flevel_max_filt, proba_max_filt = tab_p_rn_dp_y1_to_yn[np1].fuzzyMPM_1D()
             E_R_n[np1] = flevel_max_filt
+        if predic:
+            p_rnp1_dp_rn.setProbaPredict_1(self.__FS.probaR)
+            flevel_max_pred, proba_max_pred = p_rnp1_dp_rn.fuzzyMPM_1D()
+            E_R_np1[np1] = flevel_max_pred
         if smooth:
             flevel_max_smoo, proba_max_smoo = tab_p_rn_dp_y1_to_yN[np1].fuzzyMPM_1D()
             E_R_N[np1] = flevel_max_smoo
 
         ######################
         # initialisation des X filtrés et lissés
-        tab_E_Xnp1_dp1.set3a_1D (self.__Mean_X, self.__Mean_Y, self.__Cov, ynp1)
-        tab_E2_Xnp1_dp1.set3b_1D(self.__Mean_X, self.__Mean_Y, self.__Cov, ynp1, tab_E_Xnp1_dp1)
+        E_Xnp1_dp1.set3a_1D (self.__Mean_X, self.__Mean_Y, self.__Cov, ynp1)
+        E2_Xnp1_dp1.set3b_1D(self.__Mean_X, self.__Mean_Y, self.__Cov, ynp1, E_Xnp1_dp1)
         if self.__verbose >= 3:
-            if tab_E2_Xnp1_dp1.test_VarianceNeg_1D(tab_E_Xnp1_dp1) == False:
+            if E2_Xnp1_dp1.test_VarianceNeg_1D(E_Xnp1_dp1) == False:
                 print('np1=', np1)
-                tab_E_Xnp1_dp1.print()
-                tab_E2_Xnp1_dp1.print()
+                E_Xnp1_dp1.print()
+                E2_Xnp1_dp1.print()
                 input('pause - initialisation des X filtrés et lissés')
 
         if filt:
-            E_X_n [0, np1] = Integ_CalcE_X_np1(EPS, self.__STEPS, tab_p_rn_dp_y1_to_yn[np1], tab_E_Xnp1_dp1,  np1, self.__Rcentres)
-            E2_X_n[0, np1] = Integ_CalcE_X_np1(EPS, self.__STEPS, tab_p_rn_dp_y1_to_yn[np1], tab_E2_Xnp1_dp1, np1, self.__Rcentres)
+            E_X_n [np1, :]    = Integ_CalcE_X_np1(EPS, self.__STEPS, tab_p_rn_dp_y1_to_yn[np1], E_Xnp1_dp1,  np1, self.__Rcentres)
+            E2_X_n[np1, :, :] = Integ_CalcE_X_np1(EPS, self.__STEPS, tab_p_rn_dp_y1_to_yn[np1], E2_Xnp1_dp1, np1, self.__Rcentres)
             if self.__verbose >= 3:
-                if (E2_X_n[0, np1] - E_X_n[0, np1]*E_X_n[0, np1]) < 0.:
+                if (E2_X_n[np1, :, :] - np.outer(E_X_n[np1, :], E_X_n[np1, :])) < 0.:
                     print('np1=', np1)
-                    print('E2_X_n! np1=', np1, ', ', E2_X_n[0, np1] - E_X_n[0, np1]*E_X_n[0, np1])
-                    print('E2_X_n! ', E2_X_n[0, np1], ', ', E_X_n[0, np1]*E_X_n[0, np1])
+                    print('E2_X_n! np1=', np1, ', ', E2_X_n[np1, :, :] - np.outer(E_X_n[np1, :], E_X_n[np1, :]))
+                    print('E2_X_n! ', E2_X_n[np1, :, :], ', ', np.outer(E_X_n[np1, :], E_X_n[np1, :]))
                     input('pause - if filt:')
 
         if predic:
-            E_Z_np1 [:, np1]    = 0. # pas de prediction
-            E2_Z_np1[:, :, np1] = 0. # pas de prediction
+            E_Z_np1 [np1, :]    = 0. # pas de prediction
+            VAR_Z_np1[np1, :, :] = 0. # pas de prediction
 
         if smooth:
-            E_X_N [0, np1] = Integ_CalcE_X_np1(EPS, self.__STEPS, tab_p_rn_dp_y1_to_yN[np1], tab_E_Xnp1_dp1,  np1, self.__Rcentres)
-            E2_X_N[0, np1] = Integ_CalcE_X_np1(EPS, self.__STEPS, tab_p_rn_dp_y1_to_yN[np1], tab_E2_Xnp1_dp1, np1, self.__Rcentres)
+            E_X_N [np1, :]    = Integ_CalcE_X_np1(EPS, self.__STEPS, tab_p_rn_dp_y1_to_yN[np1], E_Xnp1_dp1,  np1, self.__Rcentres)
+            E2_X_N[np1, :, :] = Integ_CalcE_X_np1(EPS, self.__STEPS, tab_p_rn_dp_y1_to_yN[np1], E2_Xnp1_dp1, np1, self.__Rcentres)
             if self.__verbose >= 3:
                 print('np1=', np1)
-                if (E2_X_N[0, np1] - E_X_N[0, np1]*E_X_N[0, np1]) < 0.:
-                    print('E2_X_N! np1=', np1, ', ', E2_X_N[0, np1] - E_X_N[0, np1]*E_X_N[0, np1])
-                    print('E2_X_N! ', E2_X_N[0, np1], ', ', E_X_N[0, np1]*E_X_N[0, np1])
+                if (E2_X_N[np1, :, :] - np.outer(E_X_N[np1, :], E_X_N[np1, :])) < 0.:
+                    print('E2_X_N! np1=', np1, ', ', E2_X_N[np1, :, :] - np.outer(E_X_N[np1, :], E_X_N[np1, :]))
+                    print('E2_X_N! ', E2_X_N[np1, :, :], ', ', np.outer(E_X_N[np1, :], E_X_N[np1, :]))
                     input('pause - if smooth:')
 
         ###############################
@@ -610,7 +563,7 @@ class RestorationOFAFuzzy:
                 print('\r         filter and/or smoother np1=', np1, ' sur N=', N, end='    ', flush = True)
 
             yn   = ynp1
-            ynp1 = Y[:, np1]
+            ynp1 = Y[np1, :]
 
             ##################################
             ###### PARTIE CONCERNANT LES SAUTS
@@ -621,6 +574,10 @@ class RestorationOFAFuzzy:
             if filt:
                 flevel_max_filt, proba_max_filt = tab_p_rn_dp_y1_to_yn[np1].fuzzyMPM_1D()
                 E_R_n[np1] = flevel_max_filt
+            if predic:
+                p_rnp1_dp_rn.setProbaPredict(self.__FS.probaR2CondR1, E_R_np1[np1-1])
+                flevel_max_pred, proba_max_pred = p_rnp1_dp_rn.fuzzyMPM_1D()
+                E_R_np1[np1] = flevel_max_pred
             if smooth:
                 flevel_max_smoo, proba_max_smoo = tab_p_rn_dp_y1_to_yN[np1].fuzzyMPM_1D()
                 E_R_N[np1] = flevel_max_smoo
@@ -631,68 +588,64 @@ class RestorationOFAFuzzy:
 
             # SOUS PARTIE CONCERNANT les calculs sur X
             ##################################
-            # 1. calcul de E_Znp1 = E[Zn+1 | r_n^{n+1}, ...] et covariance associée
-            tab_E_Znp1.set1_2D(self.__Cov, self.__Mean_X, self.__Mean_Y, yn, tab_E_Xnp1_dp1)
-            tab_VAR_Znp1.set33_2D(self.__Cov, yn, tab_E_Xnp1_dp1, tab_E2_Xnp1_dp1)
-            
+            # 1. calcul de E_Znp1_ = E[Zn+1 | r_n^{n+1}, ...] et covariance associée
+            E_Znp1_dp2.set1_2D(self.__Cov, self.__Mean_X, self.__Mean_Y, yn, E_Xnp1_dp1)
+            VAR_Znp1_dp2.set33_2D(self.__Cov, yn, E_Xnp1_dp1, E2_Xnp1_dp1)
             if self.__verbose >= 3:
-                OK = tab_VAR_Znp1.test_VarianceNeg_2D_b()
+                OK = VAR_Znp1_dp2.test_VarianceNeg_2D_b()
                 if OK == False:
                     print('PB Variance phase 1')
                     input('pause')
 
             # 2. calcul de E[X_{n+1} | r_n^{n+1}, ...] et la covariance associée
-            tab_E_Xnp1_dp2.set4_2D (tab_E_Znp1,     tab_VAR_Znp1, ynp1)
-            tab_E2_Xnp1_dp2.set5_2D(tab_E_Xnp1_dp2, tab_VAR_Znp1)
+            E_Xnp1_dp2.set4_2D (E_Znp1_dp2, VAR_Znp1_dp2, ynp1)
+            E2_Xnp1_dp2.set5_2D(E_Xnp1_dp2, VAR_Znp1_dp2)
             if self.__verbose >= 3:
-                OK = tab_E2_Xnp1_dp2.test_VarianceNeg_2D(tab_E_Xnp1_dp2)
+                OK = E2_Xnp1_dp2.test_VarianceNeg_2D(E_Xnp1_dp2)
                 if OK == False:
                     print('PB Variance phase 2')
                     input('pause')
 
             # 3. Calcul de E[X_{n+1} | r_{n+1}, ...] et la covariance associée
-            tab_E_Xnp1_dp1.set4_1D (Integ_CalcE_X_np1_dp_rnpun, p_rn_d_rnpun_yun_ynpun[np1-1], tab_E_Xnp1_dp2,  np1)
-            tab_E2_Xnp1_dp1.set4_1D(Integ_CalcE_X_np1_dp_rnpun, p_rn_d_rnpun_yun_ynpun[np1-1], tab_E2_Xnp1_dp2, np1)
+            E_Xnp1_dp1.set4_1D (Integ_CalcE_X_np1_dp_rnpun, p_rn_d_rnpun_yun_ynpun[np1-1], E_Xnp1_dp2,  np1)
+            E2_Xnp1_dp1.set4_1D(Integ_CalcE_X_np1_dp_rnpun, p_rn_d_rnpun_yun_ynpun[np1-1], E2_Xnp1_dp2, np1)
             if self.__verbose >= 3:
-                OK = tab_E2_Xnp1_dp1.test_VarianceNeg_1D(tab_E_Xnp1_dp1)
+                OK = E2_Xnp1_dp1.test_VarianceNeg_1D(E_Xnp1_dp1)
                 if OK == False:
                     print('PB Variance phase 3')
                     input('pause')
 
             # 4a. Calcul du filtre :  E[X_{n+1} | ...] et la covariance associée
             if filt:
-                E_X_n[0, np1]  = Integ_CalcE_X_np1(EPS, self.__STEPS, tab_p_rn_dp_y1_to_yn[np1], tab_E_Xnp1_dp1,  np1, self.__Rcentres)
-                E2_X_n[0, np1] = Integ_CalcE_X_np1(EPS, self.__STEPS, tab_p_rn_dp_y1_to_yn[np1], tab_E2_Xnp1_dp1, np1, self.__Rcentres)
+                E_X_n [np1, :]    = Integ_CalcE_X_np1(EPS, self.__STEPS, tab_p_rn_dp_y1_to_yn[np1], E_Xnp1_dp1,  np1, self.__Rcentres)
+                E2_X_n[np1, :, :] = Integ_CalcE_X_np1(EPS, self.__STEPS, tab_p_rn_dp_y1_to_yn[np1], E2_Xnp1_dp1, np1, self.__Rcentres)
                 if self.__verbose >= 3:
-                    if (E2_X_n[0, np1] - E_X_n[0, np1]*E_X_n[0, np1]) <0.:
-                        print('-->PB Variance Neg FILTRAGE E2_X_n! np1=', np1, ', ', E2_X_n[0, np1] - E_X_n[0, np1]*E_X_n[0, np1])
+                    if (E2_X_n[np1, :, :] - np.outer(E_X_n[np1, :], E_X_n[np1, :])) <0.:
+                        print('-->PB Variance Neg FILTRAGE E2_X_n! np1=', np1, ', ', np.outer(E_X_n[np1, :], E_X_n[np1, :]))
                         input('Variance Neg!')
 
             # 4b. Calcul du lisseur :  E[X_{n+1} | ...] et la covariance associée
             if smooth:
-                E_X_N[0, np1]  = Integ_CalcE_X_np1(EPS, self.__STEPS, tab_p_rn_dp_y1_to_yN[np1], tab_E_Xnp1_dp1,  np1, self.__Rcentres)
-                E2_X_N[0, np1] = Integ_CalcE_X_np1(EPS, self.__STEPS, tab_p_rn_dp_y1_to_yN[np1], tab_E2_Xnp1_dp1, np1, self.__Rcentres)
+                E_X_N [np1, :]    = Integ_CalcE_X_np1(EPS, self.__STEPS, tab_p_rn_dp_y1_to_yN[np1], E_Xnp1_dp1,  np1, self.__Rcentres)
+                E2_X_N[np1, :, :] = Integ_CalcE_X_np1(EPS, self.__STEPS, tab_p_rn_dp_y1_to_yN[np1], E2_Xnp1_dp1, np1, self.__Rcentres)
                 if self.__verbose >= 3:
-                    if (E2_X_N[0, np1] - E_X_N[0, np1]*E_X_N[0, np1]) <0.:
-                        print('-->PB Variance Neg LISSAGE E2_X_N! np1=', np1, ', ', E2_X_N[0, np1] - E_X_N[0, np1]*E_X_N[0, np1])
+                    if (E2_X_N[np1, :, :] - np.outer(E_X_N[np1, :], E_X_N[np1, :])) <0.:
+                        print('-->PB Variance Neg LISSAGE E2_X_N! np1=', np1, ', ', E2_X_N[np1, :, :] - np.outer(E_X_N[np1, :], E_X_N[np1, :]))
                         input('Variance Neg!')
 
             # 4c. Calcul du predicteur :  E[Z_{n+1} | ...] et la covariance associée
             if predic:
-                A = IntegDouble_Predictor(EPS, self.__STEPS, tab_p_rnnp1_dp_y1_to_yn[np1], tab_E_Znp1, self.__n_z, self.__Rcentres)
-                E_Z_np1 [:, np1] = np.reshape(A, newshape=(self.__n_z))
-                # print('E_Z_np1 [:, np1]=', E_Z_np1 [:, np1])
-                # input('pause')
-                # E2_Z_np1[:, :, np1] = np.reshape(IntegDouble_Predictor(EPS, self.__STEPS, tab_p_rnnp1_dp_y1_to_yn[np1], tab_VAR_Znp1, self.__n_z, self.__Rcentres)), newshape=(self.__n_z))
-                # if self.__verbose >= 3:
-                #     A = E2_Z_np1[:, :, np1] - np.outer(E_Z_np1[:, np1], E_Z_np1[:, np1])
-                #     if is_pos_def(A) == False:
-                #         print('np1=', np1)
-                #         print('E2_Z_np1! np1=', np1, ', ', A)
-                #         print('E2_Z_np1! ', E2_Z_np1[:, :, np1], ', ', np.outer(E_Z_np1[:, np1], E_Z_np1[:, np1]))
-                #         input('pause - if predic:')
+                A = IntegDouble_Predictor(EPS, self.__STEPS, tab_p_rnnp1_dp_y1_to_yn[np1], E_Znp1_dp2,   self.__n_z, self.__Rcentres)
+                E_Z_np1 [np1, :] = np.reshape(A, newshape=(self.__n_z))
+                VAR_Z_np1[np1, :, :] = IntegDouble_Predictor(EPS, self.__STEPS, tab_p_rnnp1_dp_y1_to_yn[np1], VAR_Znp1_dp2, self.__n_z, self.__Rcentres)
+                if self.__verbose >= 3:
+                    if is_pos_def(VAR_Z_np1[np1, :, :]) == False:
+                        print('np1=', np1)
+                        print('A = ', A)
+                        print('B = ', B)
+                        input('pause - if predic:')
 
 
         if self.__verbose >= 2: print(' ')
 
-        return E_X_n, E_R_n, E_X_N, E_R_N, E_Z_np1
+        return E_X_n, E_R_n, E_X_N, E_R_N, E_Z_np1, E_R_np1

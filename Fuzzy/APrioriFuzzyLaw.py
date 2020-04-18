@@ -9,15 +9,11 @@ Created on Fri Dec 15 11:06:52 2017
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-# from mpl_toolkits.mplot3d import axes3d, Axes3D
-# from matplotlib.patches import Circle, PathPatch
 from mpl_toolkits.mplot3d import Axes3D
-# import mpl_toolkits.mplot3d.art3d as art3d
 
-if __name__ == '__main__':
-    from LoisDiscreteFuzzy import Loi2DDiscreteFuzzy, Loi1DDiscreteFuzzy
-else:
-    from Fuzzy.LoisDiscreteFuzzy import Loi2DDiscreteFuzzy, Loi1DDiscreteFuzzy
+
+from Fuzzy.LoisDiscreteFuzzy import Loi2DDiscreteFuzzy, Loi1DDiscreteFuzzy
+#from LoisDiscreteFuzzy import Loi2DDiscreteFuzzy, Loi1DDiscreteFuzzy
 
 
 fontS = 13 # fontSize

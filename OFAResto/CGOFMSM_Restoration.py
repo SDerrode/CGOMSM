@@ -70,7 +70,7 @@ class CGOFMSM:
                 self.PlotSimul(X, R, Y)
         else:
             X, R, Y = ReadSimulatedFuzzyData(filenameSimulatedXRY)
-            useless, self.__N = np.shape(X)
+            self.__N = np.shape(X)[0]
 
         cpt = 0
         for i in range(self.__N):
@@ -164,14 +164,14 @@ class CGOFMSM:
     def run_several(self, nb_exp, STEPS=[5], hard=True, filt=True, smooth=False, predic=True, Plot=False):
 
         tab_MSE          = np.zeros((nb_exp, len(STEPS), 10))
-        tab_MSE_HARD     = np.zeros((nb_exp, len(STEPS), 7))
+        tab_MSE_HARD     = np.zeros((nb_exp, len(STEPS), 10))
         tab_elapsed_time = np.zeros((nb_exp))
 
         for e in range(nb_exp):
             if self.__verbose >= 1:
                 print('\n##########Experiment ', e)
             # result of one experiment
-            tab_MSE[e,:], tab_MSE_HARD[e,:], tab_elapsed_time[e], FStext, pHNum = self.run_one("EXP"+ str(e+1), STEPS=STEPS, hard=hard, filt=filt, smooth=smooth, readData=False, Plot=Plot)
+            tab_MSE[e,:], tab_MSE_HARD[e,:], tab_elapsed_time[e], FStext, pHNum = self.run_one("EXP"+ str(e+1), STEPS=STEPS, hard=hard, filt=filt, smooth=smooth, predic=predic, readData=False, Plot=Plot)
 
         #print('tab_MSE=', tab_MSE)
         #print('tab_MSE_HARD=', tab_MSE_HARD)
@@ -193,7 +193,7 @@ class CGOFMSM:
 
         # Save of MSE results
         MSE      = np.zeros((len(STEPS), 10))
-        MSE_HARD = np.zeros((len(STEPS), 7))
+        MSE_HARD = np.zeros((len(STEPS), 10))
 
         header = 'Nombre de donnees : N = ' + str(self.__N)
 
@@ -224,6 +224,8 @@ class CGOFMSM:
         #####################################################
         E_X_OFA_HARD = None
         E_R_OFA_HARD = None
+        E_X_OSA_HARD = None
+        E_R_OSA_HARD = None
         if hard:
             start_time = time.time()
 
@@ -234,32 +236,38 @@ class CGOFMSM:
             MProba, TProba, JProba = Resto.getFS().getTheoriticalHardTransition(self.__n_r)
 
             # Filtrage Hard avec les jumps
-            E_X_PF_HARD, E2_X_PF_HARD,  E_X_PS_HARD, E2_X_PS_HARD\
+            E_X_PF_HARD, E2_X_PF_HARD,  E_X_PS_HARD, E2_X_PS_HARD,  E_X_PP_HARD, E2_X_PP_HARD\
                 = RestorationPKF().restore_withjump(Y, Rhard, F, Q, Resto.getCov(), Resto.getMean_X(), Resto.getMean_Y(), Likelihood=False)
 
             MSE_HARD[0, 1] = MSE_PK(E_X_PF_HARD, X)
             MSE_HARD[0, 2] = MSE_PK(E_X_PS_HARD, X)
+            MSE_HARD[0, 3] = MSE_PK(E_X_PP_HARD[0:self.__N-1, 0:n_x], X[1:])
 
             # Filtrage Hard sans les jumps
             E_X_OFA_HARD, E2_X_OFA_HARD, Cov_X_OFA_HARD, \
             E_X_OSA_HARD, E2_X_OSA_HARD, Cov_X_OSA_HARD, \
-            useless0, useless1, useless2, \
-            useless3, E_R_OFA_HARD, E_R_OSA_HARD\
+            E_X_OPA_HARD, E2_X_OPA_HARD, Cov_X_OPA_HARD, \
+            useless0, useless1, useless2, useless3, \
+            E_R_OFA_HARD, E_R_OSA_HARD, E_R_OPA_HARD \
                 = RestorationOFA().restore_withoutjumps(Y, F, Q, Resto.getCov(), Resto.getMean_X(), Resto.getMean_Y(), TProba, MProba)
             # print('E_R_OFA_HARD=', E_R_OFA_HARD[0:5])
             # print('E_X_OFA_HARD=', E_X_OFA_HARD[0:5])
             elapsed_time += time.time() - start_time
 
-            MSE_HARD[0, 3] = MSE_PK(E_X_OFA_HARD, X)
-            MSE_HARD[0, 5] = MSE_PK(E_R_OFA_HARD, Rfuzzy)
-            MSE_HARD[0, 4] = MSE_PK(E_X_OSA_HARD, X)
-            MSE_HARD[0, 6] = MSE_PK(E_R_OSA_HARD, Rfuzzy)
+            MSE_HARD[0, 4] = MSE_PK(E_X_OFA_HARD, X)
+            MSE_HARD[0, 5] = MSE_PK(E_X_OSA_HARD, X)
+            MSE_HARD[0, 6] = MSE_PK(E_X_OPA_HARD, X)
+            MSE_HARD[0, 7] = MSE_PK(E_R_OFA_HARD, Rfuzzy)
+            MSE_HARD[0, 8] = MSE_PK(E_R_OSA_HARD, Rfuzzy)
+            MSE_HARD[0, 9] = MSE_PK(E_R_OPA_HARD, Rfuzzy)
 
             if Plot is True:
                 chaine = Resto.getFSText() + '_' + ch + '_FILT_HARD'
-                self.PlotTrajectories(chaine, 'Hard filter (CGOMSM)', X, Rhard, Y, E_X_PF_HARD, E_X_OFA_HARD, E_R_OFA_HARD, bottom=0.)
+                self.PlotTrajectories(chaine, 'Hard filter (CGOMSM)',    X, Rhard, Y, E_X_PF_HARD, E_X_OFA_HARD, E_R_OFA_HARD, bottom=0.)
                 chaine = Resto.getFSText() + '_' + ch + '_SMOO_HARD'
-                self.PlotTrajectories(chaine, 'Hard smoother (CGOMSM)', X, Rhard, Y, E_X_PS_HARD, E_X_OSA_HARD, E_R_OSA_HARD, bottom=0.)
+                self.PlotTrajectories(chaine, 'Hard smoother (CGOMSM)',  X, Rhard, Y, E_X_PS_HARD, E_X_OSA_HARD, E_R_OSA_HARD, bottom=0.)
+                chaine = Resto.getFSText() + '_' + ch + '_PRED_HARD'
+                self.PlotTrajectories(chaine, 'Hard predictor (CGOMSM)', X, Rhard, Y, E_X_PP_HARD, E_X_OPA_HARD, E_R_OPA_HARD, bottom=0.)
 
 
         # Fuzzy : Restoration with known and unknown fuzzy jumps
@@ -287,7 +295,7 @@ class CGOFMSM:
                 Resto.resetSTEPS(STEPS[i])
 
                 # FUZZY: filter (and smooth) with unknown jumps
-                E_X_OFA, E_R_OFA, E_X_OSA, E_R_OSA, E_Z_OPA = Resto.restore_Fuzzy1D(Y, filt=filt, smooth=smooth, predic=predic)
+                E_X_OFA, E_R_OFA, E_X_OSA, E_R_OSA, E_Z_OPA, E_R_OPA = Resto.restore_Fuzzy1D(Y, filt=filt, smooth=smooth, predic=predic)
 
                 elapsed_time += time.time() - start_time
 
@@ -300,8 +308,8 @@ class CGOFMSM:
                     MSE[i, 8] = MSE_PK(E_R_OSA, Rfuzzy)
 
                 if predic:
-                    MSE[i, 6] = MSE_PK(E_Z_OPA[0:n_x, 1:], X[0,1:])
-                    #MSE[i, 9] = MSE_PK(E_R_OPA[1:], Rfuzzy[1:])
+                    MSE[i, 6] = MSE_PK(E_Z_OPA[1:, 0:n_x], X[1:, 0])
+                    MSE[i, 9] = MSE_PK(E_R_OPA, Rfuzzy)
 
                 if Plot is True:
                     if filt:
@@ -328,7 +336,14 @@ class CGOFMSM:
 
                     if predic:
                         chaine = Resto.getFSText() + '_' + ch + '_STEPS' + str(steps) + '_PRED'
-                        self.PlotTrajectories_withoutR(chaine, 'Fuzzy predictor (CGOFMSM)', X, Rfuzzy, Y, E_Z_PP[0:n_x, :], E_Z_OPA[0:n_x, :], bottom=0.)
+                        self.PlotTrajectories(chaine, 'Fuzzy predictor (CGOFMSM)', X, Rfuzzy, Y, E_Z_PP[:, 0:n_x], E_Z_OPA[:, 0:n_x], E_R_OPA, bottom=0.)
+                        if hard:
+                            # chaine = Resto.getFSText() + '_' + ch + '_STEPS' + str(steps) + '_PRED_UJ_X'
+                            # self.PlotFuzzyHard(chaine, 'CGOFMSM vs CGOMSM predictors (UJ)', X, E_X_OPA_HARD[:, 0:n_x], E_Z_OPA[:, 0:n_x])
+                            chaine = Resto.getFSText() + '_' + ch + '_STEPS' + str(steps) + '_PRED_KJ_X'
+                            self.PlotFuzzyHard(chaine, 'CGOFMSM vs CGOMSM predictors (KJ)', X, E_X_PP_HARD[:, 0:n_x], E_Z_PP[:, 0:n_x])
+                            chaine = Resto.getFSText() + '_' + ch + '_STEPS' + str(steps) + '_PRED_UJ_R'
+                            self.PlotFuzzyHard_R(chaine, 'CGOFMSM vs CGOMSM predictors (UJ)', Rfuzzy, E_R_OPA_HARD, E_R_OPA, bottom=0)
     
 
         if self.__verbose >= 1:
@@ -351,39 +366,47 @@ class CGOFMSM:
 
         print("\n================ Restoration results "+ ch + " ===============")
         # print("  mse_Y\t:", MSE[0, 0])
-        print("  STEPS (F)\t\t: ", STEPS, sep='')
+        print("  STEPS (F)        : ", STEPS, sep='')
         print("")
         if predic:
-            print("  PREDICTOR------------------------------------")
-            print("    Fuzzy X  (KJ)\t: TO BE DONE!") #", MSE[0, 3], "TO BE DONE!", sep='')
-            print("    Fuzzy X  (UJ)\t: ", MSE[:, 6], sep='')
-            #print("    Fuzzy R  (UJ)\t: ", MSE[:, 9], sep='')
+            print("  PREDICTOR---------------------------------")
+            print("    Fuzzy X  (KJ)  : TO BE DONE!") #", MSE[0, 3], "TO BE DONE!", sep='')
+            print("    Fuzzy X  (UJ)  : ", MSE[:, 6], sep='')
+            print("    Fuzzy R  (UJ)  : ", MSE[:, 9], sep='')
+        if hard and predic:
+            print("      Hard X (KJ)  : ", MSE_HARD[0, 3], sep='')
+            print("      Hard X (UJ)  : ", MSE_HARD[0, 6], sep='')
+            print("      Hard R (UJ)  : ", MSE_HARD[0, 9], sep='')
+            print("")
         if filt:
             print("  FILTER------------------------------------")
-            print("    Fuzzy X  (KJ)\t: ", MSE[0, 1], sep='')
-            print("    Fuzzy X  (UJ)\t: ", MSE[:, 4], sep='')
-            print("    Fuzzy R  (UJ)\t: ", MSE[:, 7], sep='')
+            print("    Fuzzy X  (KJ)  : ", MSE[0, 1], sep='')
+            print("    Fuzzy X  (UJ)  : ", MSE[:, 4], sep='')
+            print("    Fuzzy R  (UJ)  : ", MSE[:, 7], sep='')
         if hard and filt:
-            print("      Hard X (KJ)\t: ", MSE_HARD[0, 1], sep='')
-            print("      Hard X (UJ)\t: ", MSE_HARD[0, 3], sep='')
-            print("      Hard R (UJ)\t: ", MSE_HARD[0, 5], sep='')
+            print("      Hard X (KJ)  : ", MSE_HARD[0, 1], sep='')
+            print("      Hard X (UJ)  : ", MSE_HARD[0, 4], sep='')
+            print("      Hard R (UJ)  : ", MSE_HARD[0, 7], sep='')
             print("")
         if smooth:
-            print("  SMOOTHER------------------------------------")
-            print("    Fuzzy X  (KJ)\t: ", MSE[0, 2], sep='')
-            print("    Fuzzy X  (UJ)\t: ", MSE[:, 5], sep='')
-            print("    Fuzzy R  (UJ)\t: ", MSE[:, 8], sep='')
+            print("  SMOOTHER----------------------------------")
+            print("    Fuzzy X  (KJ)  : ", MSE[0, 2], sep='')
+            print("    Fuzzy X  (UJ)  : ", MSE[:, 5], sep='')
+            print("    Fuzzy R  (UJ)  : ", MSE[:, 8], sep='')
         if hard and smooth:
-            print("      Hard X  (KJ)\t: ", MSE_HARD[0, 2], sep='')
-            print("      Hard X  (UJ)\t: ", MSE_HARD[0, 4], sep='')
-            print("      Hard R  (UJ)\t: ", MSE_HARD[0, 6], sep='')
+            print("      Hard X  (KJ) : ", MSE_HARD[0, 2], sep='')
+            print("      Hard X  (UJ) : ", MSE_HARD[0, 5], sep='')
+            print("      Hard R  (UJ) : ", MSE_HARD[0, 8], sep='')
         if hard and filt==False and smooth==False and predic==False:
+            print("  PREDCITOR---------------------------------")
+            print("    Hard X    (KJ) : ", MSE_HARD[0, 3], sep='')
+            print("    Hard X, R (UJ) : ", MSE_HARD[0, 6], ", ", MSE_HARD[0, 9], sep='')
             print("  FILTER------------------------------------")
-            print("    Hard X    (KJ)\t: ", MSE_HARD[0, 1], sep='')
-            print("    Hard X, R (UJ)\t: ", MSE_HARD[0, 3], ", ", MSE_HARD[0, 5], sep='')
-            print("  SMOOTHER------------------------------------")
-            print("    Hard X    (KJ)\t: ", MSE_HARD[0, 2], sep='')
-            print("    Hard X, R (UJ)\t: ", MSE_HARD[0, 4], ", ", MSE_HARD[0, 6], sep='')
+            print("    Hard X    (KJ) : ", MSE_HARD[0, 1], sep='')
+            print("    Hard X, R (UJ) : ", MSE_HARD[0, 4], ", ", MSE_HARD[0, 7], sep='')
+            print("  SMOOTHER----------------------------------")
+            print("    Hard X    (KJ) : ", MSE_HARD[0, 2], sep='')
+            print("    Hard X, R (UJ) : ", MSE_HARD[0, 5], ", ", MSE_HARD[0, 8], sep='')
 
         print("--- %s seconds ---" % (int(elapsed_time)), flush=True)
 
@@ -397,16 +420,23 @@ class CGOFMSM:
             axs[0].plot(STEPS, MSE[:, 7], dashes=[3, 1, 3, 1], color='b', label='Fuzzy filter')
             ListeMaxiJumps.append(max(MSE[:, 7]))
             if hard:
-                hard_jump_filter = np.ones(len(MSE_HARD[:, 5])) * MSE_HARD[0, 5]
+                hard_jump_filter = np.ones(len(MSE_HARD[:, 7])) * MSE_HARD[0, 7]
                 axs[0].plot(STEPS, hard_jump_filter, dashes=[5, 2, 5, 2], color='k', label='Hard filter')
-                ListeMaxiJumps.append(max(MSE_HARD[:, 5]))
+                ListeMaxiJumps.append(max(MSE_HARD[:, 7]))
         if smooth:
             axs[0].plot(STEPS, MSE[:, 8], dashes=[6, 6, 6, 6], color='c', label='Fuzzy smoother')
             ListeMaxiJumps.append(max(MSE[:, 8]))
             if hard:
-                hard_jump_smoother = np.ones(len(MSE_HARD[:, 6])) * MSE_HARD[0, 6]
+                hard_jump_smoother = np.ones(len(MSE_HARD[:, 8])) * MSE_HARD[0, 8]
                 axs[0].plot(STEPS, hard_jump_smoother, dashes=[1, 3, 1, 3], color='k', label='Hard smoother')
-                ListeMaxiJumps.append(max(MSE_HARD[:, 6]))
+                ListeMaxiJumps.append(max(MSE_HARD[:, 8]))
+        if predic:
+            axs[0].plot(STEPS, MSE[:, 9], dashes=[6, 6, 6, 6], color='c', label='Fuzzy predictor')
+            ListeMaxiJumps.append(max(MSE[:, 9]))
+            if hard:
+                hard_jump_smoother = np.ones(len(MSE_HARD[:, 9])) * MSE_HARD[0, 9]
+                axs[0].plot(STEPS, hard_jump_smoother, dashes=[1, 3, 1, 3], color='k', label='Hard predictor')
+                ListeMaxiJumps.append(max(MSE_HARD[:, 9]))
         axs[0].set_xticks(STEPS)
         axs[0].set_ylabel('MSE (Jumps)', fontsize=fontS)
         maxi = max(ListeMaxiJumps)
@@ -422,9 +452,9 @@ class CGOFMSM:
             ListeMaxiStates.append(max(MSE[:, 4]))
             ListeMaxiStates.append(max(superv_filter))
             if hard:
-                hard_filter = np.ones(len(MSE_HARD[:, 3])) * MSE_HARD[0, 3]
+                hard_filter = np.ones(len(MSE_HARD[:, 4])) * MSE_HARD[0, 4]
                 axs[1].plot(STEPS, hard_filter, dashes=[5, 2, 5, 2], color='k', label='Hard filter - UJ')
-                ListeMaxiStates.append(max(MSE_HARD[:, 3]))
+                ListeMaxiStates.append(max(MSE_HARD[:, 4]))
                 ListeMaxiStates.append(max(hard_filter))
         if smooth:
             superv_smoother = np.ones(len(MSE[:, 2])) * MSE[0, 2]
@@ -434,9 +464,9 @@ class CGOFMSM:
             ListeMaxiStates.append(max(MSE[:, 5]))
             ListeMaxiStates.append(max(superv_smoother))
             if hard:
-                hard_smoother = np.ones(len(MSE_HARD[:, 4])) * MSE_HARD[0, 4]
+                hard_smoother = np.ones(len(MSE_HARD[:, 5])) * MSE_HARD[0, 5]
                 axs[1].plot(STEPS, hard_smoother, dashes=[1, 3, 1, 3], color='k', label='Hard smoother - UJ')
-                ListeMaxiStates.append(max(MSE_HARD[:, 4]))
+                ListeMaxiStates.append(max(MSE_HARD[:, 5]))
                 ListeMaxiStates.append(max(hard_smoother))
         if predic:
             superv_predictor = np.ones(len(MSE[:, 3])) * MSE[0, 3]
@@ -445,6 +475,12 @@ class CGOFMSM:
             ListeMaxiStates.append(max(MSE[:, 2]))
             ListeMaxiStates.append(max(MSE[:, 6]))
             ListeMaxiStates.append(max(superv_predictor))
+            if hard:
+                hard_smoother = np.ones(len(MSE_HARD[:, 6])) * MSE_HARD[0, 6]
+                axs[1].plot(STEPS, hard_smoother, dashes=[1, 3, 1, 3], color='k', label='Hard predictor - UJ')
+                ListeMaxiStates.append(max(MSE_HARD[:, 6]))
+                ListeMaxiStates.append(max(hard_smoother))
+
         axs[1].set_xticks(STEPS)
         axs[1].set_ylabel('MSE (States)', fontsize=fontS)
         maxi = max(ListeMaxiStates)
@@ -462,8 +498,8 @@ class CGOFMSM:
     def PlotSimul(self, X, Rfuzzy, Y):
         abscisse= np.linspace(start=i_min, stop=i_max-1, num=i_max-i_min)
         plt.figure()
-        plt.plot(abscisse, X[0, i_min:i_max], color='b', label='Simulated states')
-        plt.plot(abscisse, Y[0, i_min:i_max], color='k', label='Observations')
+        plt.plot(abscisse, X[i_min:i_max, 0], color='b', label='Simulated states')
+        plt.plot(abscisse, Y[i_min:i_max, 0], color='k', label='Observations')
         plt.xlabel('n', fontsize=fontS)
         plt.xlim(right=i_max-1, left=i_min)
         plt.legend()
@@ -471,7 +507,7 @@ class CGOFMSM:
         plt.close()
 
         plt.figure()
-        plt.plot(abscisse, Rfuzzy[0, i_min:i_max], color='c', label='Simulated jumps')
+        plt.plot(abscisse, Rfuzzy[i_min:i_max], color='c', label='Simulated jumps')
         plt.xlabel('n', fontsize=fontS)
         plt.xlim(right=i_max-1, left=i_min)
         plt.legend()
@@ -481,10 +517,11 @@ class CGOFMSM:
     def PlotTrajectories(self, ch, ch2, X, Rfuzzy, Y, E_X, E_X_O, E_R, bottom=None):
         abscisse= np.linspace(start=i_min, stop=i_max-1, num=i_max-i_min)
         plt.figure()
-        plt.plot(abscisse, X[0, i_min:i_max], color='g', label='Simulated states')
-        #plt.plot(abscisse, Y[0, i_min:i_max], color='k', label='Observations')
-        plt.plot(abscisse, E_X[0, i_min:i_max], color='b', dashes=[5, 2, 5, 2], label='Restored (KJ)')
-        plt.plot(abscisse, E_X_O[0, i_min:i_max], color='r', dashes=[3, 1, 3, 1], label='Restored (UJ)')
+        plt.plot(abscisse, X[i_min:i_max, 0], color='g', label='Simulated states')
+        #plt.plot(abscisse, Y[i_min:i_max, 0], color='k', label='Observations')
+        plt.plot(abscisse, E_X[i_min:i_max, 0], color='b', dashes=[5, 2, 5, 2], label='Restored (KJ)')
+        if len(np.shape(E_X_O)) != 0:
+            plt.plot(abscisse, E_X_O[i_min:i_max, 0], color='r', dashes=[3, 1, 3, 1], label='Restored (UJ)')
         plt.xlabel('n', fontsize=fontS)
         plt.xlim(right=i_max-1, left=i_min)
         plt.legend()
@@ -494,25 +531,26 @@ class CGOFMSM:
         plt.savefig('./Result/Fuzzy/Figures/' + ch + '_XY_CGOFMSM_restored', bbox_inches='tight', dpi=dpi)
         plt.close()
 
-        plt.figure()
-        plt.plot(abscisse, Rfuzzy[i_min:i_max], color='g', label='Simulated jumps')
-        plt.plot(abscisse, E_R[i_min:i_max], color='r', dashes=[3, 1, 3, 1], label='Restored')
-        plt.xlabel('n', fontsize=fontS)
-        plt.xlim(right=i_max-1, left=i_min)
-        if bottom != None:
-            plt.ylim(bottom=bottom)
-        plt.legend()
-        plt.title(ch2, fontsize=fontS)
-        plt.savefig('./Result/Fuzzy/Figures/' + ch + '_R_CGOFMSM_restored', bbox_inches='tight', dpi=dpi)
-        plt.close()
+        if len(np.shape(E_R)) != 0:
+            plt.figure()
+            plt.plot(abscisse, Rfuzzy[i_min:i_max], color='g', label='Simulated jumps')
+            plt.plot(abscisse, E_R[i_min:i_max], color='r', dashes=[3, 1, 3, 1], label='Restored')
+            plt.xlabel('n', fontsize=fontS)
+            plt.xlim(right=i_max-1, left=i_min)
+            if bottom != None:
+                plt.ylim(bottom=bottom)
+            plt.legend()
+            plt.title(ch2, fontsize=fontS)
+            plt.savefig('./Result/Fuzzy/Figures/' + ch + '_R_CGOFMSM_restored', bbox_inches='tight', dpi=dpi)
+            plt.close()
 
-    def PlotTrajectories_withoutR(self, ch, ch2, X, Rfuzzy, Y, E_X, E_X_O, bottom=None):
+    def PlotTrajectories_withoutR(self, ch, ch2, X, Y, E_X, E_X_O, bottom=None):
         abscisse= np.linspace(start=i_min, stop=i_max-1, num=i_max-i_min)
         plt.figure()
-        plt.plot(abscisse, X[0, i_min:i_max], color='g', label='Simulated states')
-        #plt.plot(abscisse, Y[0, i_min:i_max], color='k', label='Observations')
-        plt.plot(abscisse, E_X[0, i_min:i_max], color='b', dashes=[5, 2, 5, 2], label='Restored (KJ)')
-        plt.plot(abscisse, E_X_O[0, i_min:i_max], color='r', dashes=[3, 1, 3, 1], label='Restored (UJ)')
+        plt.plot(abscisse, X[i_min:i_max, 0], color='g', label='Simulated states')
+        #plt.plot(abscisse, Y[i_min:i_max, 0], color='k', label='Observations')
+        plt.plot(abscisse, E_X[i_min:i_max, 0], color='b', dashes=[5, 2, 5, 2], label='Restored (KJ)')
+        plt.plot(abscisse, E_X_O[i_min:i_max, 0], color='r', dashes=[3, 1, 3, 1], label='Restored (UJ)')
         plt.xlabel('n', fontsize=fontS)
         plt.xlim(right=i_max-1, left=i_min)
         plt.legend()
@@ -605,15 +643,15 @@ class CGOFMSM:
             np.savetxt('./Result/Fuzzy/Result_csv/' + ch + '_R_CGOFMSM_restored.csv', Data2.R_E, delimiter=',')
 
 
-
-
     def PlotFuzzyHard(self, ch, ch2, X, E_X_HARD, E_X, bottom=None):
 
         abscisse= np.linspace(start=i_min, stop=i_max-1, num=i_max-i_min)
         plt.figure()
-        plt.plot(abscisse, X       [0, i_min:i_max], color='g',                      label='Simulated states')
-        plt.plot(abscisse, E_X     [0, i_min:i_max], color='r', dashes=[3, 1, 3, 1], label='CGOFMSM')
-        plt.plot(abscisse, E_X_HARD[0, i_min:i_max], color='b', dashes=[5, 2, 5, 2], label='CGOMSM')
+        plt.plot(abscisse, X[i_min:i_max, 0], color='g',                      label='Simulated states')
+        if len(np.shape(E_X)) != 0:
+            plt.plot(abscisse, E_X     [i_min:i_max, 0], color='r', dashes=[3, 1, 3, 1], label='CGOFMSM')
+        if len(np.shape(E_X_HARD)) != 0:
+            plt.plot(abscisse, E_X_HARD[i_min:i_max, 0], color='b', dashes=[5, 2, 5, 2], label='CGOMSM')
 
         plt.xlabel('n', fontsize=fontS)
         plt.xlim(right=i_max-1, left=i_min)
@@ -629,8 +667,10 @@ class CGOFMSM:
         abscisse= np.linspace(start=i_min, stop=i_max-1, num=i_max-i_min)
         plt.figure()
         plt.plot(abscisse, R       [i_min:i_max], color='g',                      label='Simulated states')
-        plt.plot(abscisse, E_R     [i_min:i_max], color='r', dashes=[3, 1, 3, 1], label='CGOFMSM')
-        plt.plot(abscisse, E_R_HARD[i_min:i_max], color='b', dashes=[5, 2, 5, 2], label='CGOMSM')
+        if len(np.shape(E_R)) != 0:
+            plt.plot(abscisse, E_R     [i_min:i_max], color='r', dashes=[3, 1, 3, 1], label='CGOFMSM')
+        if len(np.shape(E_R_HARD)) != 0:
+            plt.plot(abscisse, E_R_HARD[i_min:i_max], color='b', dashes=[5, 2, 5, 2], label='CGOMSM')
 
         plt.xlabel('n', fontsize=fontS)
         plt.xlim(right=i_max-1, left=i_min)

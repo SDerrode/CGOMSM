@@ -109,6 +109,8 @@ class LoiAPrioriSeries4(LoiAPriori):
         LoiAPriori.__init__(self, EPS=EPS, discretization=discretization)
 
         if delta_d != delta_u:
+            print('delta_u=', delta_u)
+            print('delta_d=', delta_d)
             input('ATTENTION: LES CALCULS NE SONT PAS BONS LORSQUE DELTA_D >< DELTA_U !!!!!')
 
         self.__alpha = alpha

@@ -20,12 +20,13 @@ dpi = 150
 
 if __name__ == '__main__':
     from APrioriFuzzyLaw import LoiAPriori, plotSample
+    from LoisDiscreteFuzzy import Loi2DDiscreteFuzzy, Loi1DDiscreteFuzzy
 else:
     from Fuzzy.APrioriFuzzyLaw import LoiAPriori, plotSample
 
 def main():
 
-    discretization = 1000
+    discretization = 200
     EPS            = 1E-8
     epsilon        = 1E-2
     verbose        = True
@@ -42,7 +43,8 @@ def main():
 
     #P, case = LoiAPrioriSeries2ter(alpha0 = 0.10, alpha1 = 0.20, beta=0.06, EPS=EPS, discretization=discretization), 1
     #P, case = LoiAPrioriSeries2ter(alpha0 = 0.05, alpha1 = 0.02, beta=0.01, EPS=EPS, discretization=discretization), 2
-    P, case = LoiAPrioriSeries2ter(alpha0 = 0.144, alpha1 = 0.050, beta=0.000, EPS=EPS, discretization=discretization), 4
+    # P, case = LoiAPrioriSeries2ter(alpha0 = 0.144, alpha1 = 0.050, beta=0.000, EPS=EPS, discretization=discretization), 3
+    P, case = LoiAPrioriSeries2ter(alpha0 = 0.07, alpha1 = 0.24, beta=0.09, EPS=EPS, discretization=discretization), 4
 
     print(P)
     print('model string', P.stringName())
@@ -57,7 +59,6 @@ def main():
     if graphics == True:
         P.plotR1R2   ('./figures/LoiCouple_' + series + '_' + str(case) + '.png', dpi=dpi)
         P.plotR1     ('./figures/LoiMarg_'   + series + '_' + str(case) + '.png', dpi=dpi)
-        # Dessins
         mini, maxi = 100, 150
         P.PlotMCchain('./figures/Traj_'      + series + '_' + str(case) + '.png', chain, mini=mini, maxi=maxi, dpi=dpi)
 

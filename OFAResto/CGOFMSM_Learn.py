@@ -71,9 +71,9 @@ class CGOFMSM_Learn:
         self.__N = len_y
 
         # les données 
-        self.__Ztrain = np.zeros(shape=(self.__n_x+self.__n_y, self.__N))
-        self.__Ztrain[0:self.__n_x,          :] = self.__Datatrain[self.__listeHeader[1]].values
-        self.__Ztrain[self.__n_x:self.__n_z, :] = self.__Datatrain[self.__listeHeader[0]].values
+        self.__Ztrain = np.zeros(shape=(self.__N, self.__n_z))
+        self.__Ztrain[:, 0:self.__n_x         ] = self.__Datatrain[self.__listeHeader[1]].values
+        self.__Ztrain[:, self.__n_x:self.__n_z] = self.__Datatrain[self.__listeHeader[0]].values
 
         if self.__STEPS != 0:
             self.__Rcentres = np.linspace(start=1./(2.*self.__STEPS), stop=1.0-1./(2.*self.__STEPS), num=self.__STEPS, endpoint=True)
@@ -993,7 +993,7 @@ class MeanCovFuzzy:
         self.__Ztrain   = Ztrain
         self.__n_z      = n_z
 
-        self.__N = np.shape(Ztrain)[1]
+        self.__N = np.shape(Ztrain)[0]
 
         self.__Mean_Zf  = np.zeros(shape=(self.__STEPS+2, self.__n_z))
         self.__Cov_Zf   = np.zeros(shape=(self.__STEPS+2, self.__n_z, self.__n_z))

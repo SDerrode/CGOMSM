@@ -55,7 +55,7 @@ if __name__ == '__main__':
 
     # ------ Optimal filter approximation unknown switches ------- #
     # find the nearest CGOMSM paremeters 
-    F_CGO, Q_CGO, useless           = GetParamNearestCGO(F, Q, n_x=np.shape(X)[0])
+    F_CGO, Q_CGO, useless           = GetParamNearestCGO(F, Q, n_x=np.shape(X)[1])
     E_X_OFA,E_X_OSA,E_R_OFA,E_R_OSA = RestorationOFA().restore_1D(Y, F_CGO, Q_CGO, Cov, Mean_X, Mean_Y, JProba, TProba, MProba)   # ATTENTION: parafile F_yx=0 for restoration always!!!
     # E_X_OFA, E_X_OSA, E_R_OFA, E_R_OSA = RestorationOFA().restore_MultiD(Y, F_CGO, Q_CGO, Mean_X, Mean_Y, TProba, MProba)   # ATTENTION: parafile F_yx=0 for restoration always!!!
 

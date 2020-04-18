@@ -509,7 +509,7 @@ def printMSE(TabMSE, TabMSE_Var, TabERR, Tab_MajMSE_Aveugle, f=sys.stdout, latex
 
 def PlotFigures(plotMax, a, X, E_X_OFA_DIR, E_X_OSA_DIR, R, E_R_OFA_DIR, E_R_OSA_DIR, E_R_OFA_REV, E_R_OSA_REV, E_X_OFA_REV, E_X_OSA_REV, E_Xn_dp_yn_rn_DIR, E_Xn_dp_yn_rn_REV, E_X_OSA_NEW):
 
-    n_x = np.shape(X)[0]
+    n_x = np.shape(X)[1]
     for x in range(n_x):
 
         plt.figure()

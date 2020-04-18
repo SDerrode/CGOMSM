@@ -172,100 +172,38 @@ class Loi2DDiscreteFuzzy_TMC(Loi2DDiscreteFuzzy):
 
         return loi.fuzzyMPM_1D()
 
-
-    def test_VarianceNeg_2Dbis(self, E2, E):
-        return E2 - np.dot(E, np.transpose(E))
-
-    def test_VarianceNeg_2D(self, tab_E_Xnp1_dp2):
-
-        OK= True
-        if self.test_VarianceNeg_2Dbis(self.getr(0., 0.), tab_E_Xnp1_dp2.getr(0., 0.)) <0.: 
-            print('A(0., 0.)=', self.test_VarianceNeg_2Dbis(self.getr(0., 0.), tab_E_Xnp1_dp2.getr(0., 0.))); OK = False
-        if self.test_VarianceNeg_2Dbis(self.getr(1., 0.), tab_E_Xnp1_dp2.getr(1., 0.)) <0.: 
-            print('A(1., 0.)=', self.test_VarianceNeg_2Dbis(self.getr(1., 0.), tab_E_Xnp1_dp2.getr(1., 0.))); OK = False
-        if self.test_VarianceNeg_2Dbis(self.getr(0., 1.), tab_E_Xnp1_dp2.getr(0., 1.)) <0.: 
-            print('A(0., 1.)=', self.test_VarianceNeg_2Dbis(self.getr(0., 1.), tab_E_Xnp1_dp2.getr(0., 1.))); OK = False
-        if self.test_VarianceNeg_2Dbis(self.getr(1., 1.), tab_E_Xnp1_dp2.getr(1., 1.)) <0.: 
-            print('A(1., 1.)=', self.test_VarianceNeg_2Dbis(self.getr(1., 1.), tab_E_Xnp1_dp2.getr(1., 1.))); OK = False
-
-        for j, r in enumerate(self._Rcentres):
-            if self.test_VarianceNeg_2Dbis(self.getr(0., r), tab_E_Xnp1_dp2.getr(0., r)) <0.: 
-                print('A(0., r)=', self.test_VarianceNeg_2Dbis(self.getr(0., r), tab_E_Xnp1_dp2.getr(0., r))); OK = False
-            if self.test_VarianceNeg_2Dbis(self.getr(r, 1.), tab_E_Xnp1_dp2.getr(r, 1.)) <0.: 
-                print('A(r, 1.)=', self.test_VarianceNeg_2Dbis(self.getr(r, 1.), tab_E_Xnp1_dp2.getr(r, 1.))); OK = False
-            if self.test_VarianceNeg_2Dbis(self.getr(1., r), tab_E_Xnp1_dp2.getr(1., r)) <0.: 
-                print('A(1., r)=', self.test_VarianceNeg_2Dbis(self.getr(1., r), tab_E_Xnp1_dp2.getr(1., r))); OK = False
-            if self.test_VarianceNeg_2Dbis(self.getr(r, 0.), tab_E_Xnp1_dp2.getr(r, 0.)) <0.: 
-                print('A(r, 0.)=', self.test_VarianceNeg_2Dbis(self.getr(r, 0.), tab_E_Xnp1_dp2.getr(r, 0.))); OK = False
-
-        for i, r1 in enumerate(self._Rcentres):
-            for j, r2 in enumerate(self._Rcentres):
-                if self.test_VarianceNeg_2Dbis(self.getr(r1, r2), tab_E_Xnp1_dp2.getr(r1, r2)) <0.: 
-                    print('A(r1, r2)=', self.test_VarianceNeg_2Dbis(self.getr(r1, r2), tab_E_Xnp1_dp2.getr(r1, r2))); OK = False
-
-        return OK
-
-    def test_VarianceNeg_2D_b(self):
-
-        OK = True
-        if self.getr(0., 0.)[0,0] <0. or self.getr(0., 0.)[1,1] <0.: 
-            print('Ab(0., 0.)=', self.getr(0., 0.)); OK = False
-        if self.getr(1., 0.)[0,0] <0. or self.getr(1., 0.)[1,1] <0.: 
-            print('Ab(1., 0.)=', self.getr(1., 0.)); OK = False
-        if self.getr(0., 1.)[0,0] <0. or self.getr(0., 1.)[1,1] <0.: 
-            print('Ab(0., 1.)=', self.getr(0., 1.)); OK = False
-        if self.getr(1., 1.)[0,0] <0. or self.getr(1., 1.)[1,1] <0.: 
-            print('Ab(1., 1.)=', self.getr(1., 1.)); OK = False
-
-        for j, r in enumerate(self._Rcentres):
-            if self.getr(0., r)[0,0] <0. or self.getr(0., r)[1,1] <0.: 
-                print('Ab(0., r)=', self.getr(0., r)); OK = False
-            if self.getr(r, 1.)[0,0] <0. or self.getr(r, 1.)[1,1] <0.: 
-                print('Ab(r, 1.)=', self.getr(r, 1.)); OK = False
-            if self.getr(1., r)[0,0] <0. or self.getr(1., r)[1,1] <0.: 
-                print('Ab(1., r)=', self.getr(1., r)); OK = False
-            if self.getr(r, 0.)[0,0] <0. or self.getr(r, 0.)[1,1] <0.: 
-                print('Ab(r, 0.)=', self.getr(r, 0.)); OK = False
-
-        for i, r1 in enumerate(self._Rcentres):
-            for j, r2 in enumerate(self._Rcentres):
-                if self.getr(r1, r2)[0,0]<0. or self.getr(r1, r2)[1,1]<0.: 
-                    print('Ab(r1, r2)=', self.getr(r1, r2)); OK = False
-        
-        return OK
-
     def predicSauts(self, probaR2CondR1, ProbaForward_n):
-        self._p00 = probaR2CondR1(0., 0.) * ProbaForward_n.getr(0.)
-        self._p10 = probaR2CondR1(1., 0.) * ProbaForward_n.getr(1.)
-        self._p01 = probaR2CondR1(0., 1.) * ProbaForward_n.getr(0.)
-        self._p11 = probaR2CondR1(1., 1.) * ProbaForward_n.getr(1.)
+        self._p00 = probaR2CondR1(0., 0.) * ProbaForward_n.getindr(0)
+        self._p10 = probaR2CondR1(1., 0.) * ProbaForward_n.getindr(self._STEPS+1)
+        self._p01 = probaR2CondR1(0., 1.) * ProbaForward_n.getindr(0.)
+        self._p11 = probaR2CondR1(1., 1.) * ProbaForward_n.getindr(self._STEPS+1)
 
-        for j, r in enumerate(self._Rcentres):
-            self._p00_10[j] = probaR2CondR1(r, 0.) * ProbaForward_n.getr(r)
-            self._p10_11[j] = probaR2CondR1(1., r) * ProbaForward_n.getr(1.)
-            self._p11_01[j] = probaR2CondR1(r, 1.) * ProbaForward_n.getr(r)
-            self._p01_00[j] = probaR2CondR1(0., r) * ProbaForward_n.getr(0.)
+        for indr, r in enumerate(self._Rcentres):
+            self._p00_10[indr] = probaR2CondR1(r, 0.) * ProbaForward_n.getindr(indr+1)
+            self._p10_11[indr] = probaR2CondR1(1., r) * ProbaForward_n.getindr(self._STEPS+1)
+            self._p11_01[indr] = probaR2CondR1(r, 1.) * ProbaForward_n.getindr(indr+1)
+            self._p01_00[indr] = probaR2CondR1(0., r) * ProbaForward_n.getindr(0)
 
-        for i, r1 in enumerate(self._Rcentres):
-            for j, r2 in enumerate(self._Rcentres):
-                self._p[i, j] = probaR2CondR1(r1, r2) * ProbaForward_n.getr(r1)
+        for indr1, r1 in enumerate(self._Rcentres):
+            for indr2, r2 in enumerate(self._Rcentres):
+                self._p[indr1, indr2] = probaR2CondR1(r1, r2) * ProbaForward_n.getindr(indr1+1)
 
 
-    def set1b_2D(self, ProbaForward_np1, ProbaForward_n, loijointeAP1, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1):
-        self._p00 = loijointeAP1(0., 0., ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getr(0.)
-        self._p10 = loijointeAP1(1., 0., ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getr(0.)
-        self._p01 = loijointeAP1(0., 1., ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getr(1.)
-        self._p11 = loijointeAP1(1., 1., ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getr(1.)
+    def CalcProbaTransAposteriori(self, ProbaForward_np1, ProbaForward_n, loijointeAP1, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1):
+        self._p00 = loijointeAP1(0., 0., 0,             ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getindr(0)
+        self._p10 = loijointeAP1(1., 0., 0,             ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getindr(0)
+        self._p01 = loijointeAP1(0., 1., self._STEPS+1, ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getindr(self._STEPS+1)
+        self._p11 = loijointeAP1(1., 1., self._STEPS+1, ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getindr(self._STEPS+1)
 
-        for j, r in enumerate(self._Rcentres):
-            self._p00_10[j] = loijointeAP1(r, 0., ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getr(0.)
-            self._p10_11[j] = loijointeAP1(1., r, ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getr(r)
-            self._p11_01[j] = loijointeAP1(r, 1., ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getr(1.)
-            self._p01_00[j] = loijointeAP1(0., r, ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getr(r)
+        for indr, r in enumerate(self._Rcentres):
+            self._p00_10[indr] = loijointeAP1(r, 0., 0,             ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getindr(0)
+            self._p10_11[indr] = loijointeAP1(1., r, indr+1,        ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getindr(indr+1)
+            self._p11_01[indr] = loijointeAP1(r, 1., self._STEPS+1, ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getindr(self._STEPS+1)
+            self._p01_00[indr] = loijointeAP1(0., r, indr+1,        ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getindr(indr+1)
 
-        for i, r1 in enumerate(self._Rcentres):
-            for j, r2 in enumerate(self._Rcentres):
-                self._p[i, j] = loijointeAP1(r1, r2, ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getr(r2)
+        for indr1, r1 in enumerate(self._Rcentres):
+            for indr2, r2 in enumerate(self._Rcentres):
+                self._p[indr1, indr2] = loijointeAP1(r1, r2, indr2+1, ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getindr(indr2+1)
     
 
 
@@ -355,36 +293,8 @@ class Loi1DDiscreteFuzzy_TMC(Loi1DDiscreteFuzzy):
             print('indrn=', indrn)
             input('Attente dans CalcCond a posteriori')
 
-    # self.print()
-        # input('Attente dans CalcCond')
 
-    def test_VarianceNeg_1Dbis(self, E2, E):
-        A = E2 - np.dot(E, np.transpose(E))
-        return A
-
-    def test_VarianceNeg_1D(self, tab_E_Xnp1_dp1):
-
-        alpha = 0.
-        if self.getr(alpha) - tab_E_Xnp1_dp1.getr(alpha)**2 <0.: 
-            print('A(', alpha, ')=', self.test_VarianceNeg_1Dbis(self.getr(alpha), tab_E_Xnp1_dp1.getr(alpha)))
-            print('E2= ', self.getr(alpha), ', E = ', tab_E_Xnp1_dp1.getr(alpha))
-            return False
-
-        alpha = 1.
-        if self.getr(alpha) - tab_E_Xnp1_dp1.getr(alpha)**2 <0.: 
-            print('A(', alpha, ')=', self.test_VarianceNeg_1Dbis(self.getr(alpha), tab_E_Xnp1_dp1.getr(alpha)))
-            print('E2= ', self.getr(alpha), ', E = ', tab_E_Xnp1_dp1.getr(alpha))
-            return False
-
-        for j, alpha in enumerate(self._Rcentres):
-            if self.getr(alpha) - tab_E_Xnp1_dp1.getr(alpha)**2 <0.:
-                print('A(', alpha, ')=', self.test_VarianceNeg_1Dbis(self.getr(alpha), tab_E_Xnp1_dp1.getr(alpha)))
-                print('E2= ', self.getr(alpha), ', E = ', tab_E_Xnp1_dp1.getr(alpha))
-                return False
-
-        return True
-
-    def set1_1D(self, probaR, Cov, y, Mean_Y):
+    def setForward_1(self, probaR, Cov, y, Mean_Y):
         
         rnp1, indrnp1 = 0., 0
 
@@ -418,12 +328,29 @@ class Loi1DDiscreteFuzzy_TMC(Loi1DDiscreteFuzzy):
         self.normalisation(self.Integ())
 
 
-    def set2_1D(self, fonction, loijointeAP, proba, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1):
-        self._p0 = fonction(0., self._interpolation, self._EPS, self._STEPS, loijointeAP, proba, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1)
-        for i, r in enumerate(self._Rcentres):
-            self._p01[i] = fonction(r, self._interpolation, self._EPS, self._STEPS, loijointeAP, proba, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1)
-        self._p1 = fonction(1., self._interpolation, self._EPS, self._STEPS, loijointeAP, proba, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1)
+    def setForwBack(self, fonction, loijointeAP, proba, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1):
+        rnp1, indrnp1 = 0., 0
+        self._p0 = fonction(rnp1, indrnp1, self._interpolation, self._EPS, self._STEPS, loijointeAP, proba, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1)
+        
+        for indr, r in enumerate(self._Rcentres):
+            self._p01[indr] = fonction(r, indr+1, self._interpolation, self._EPS, self._STEPS, loijointeAP, proba, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1)
+        
+        rnp1, indrnp1 = 1., self._STEPS+1
+        self._p1 = fonction(rnp1, indrnp1, self._interpolation, self._EPS, self._STEPS, loijointeAP, proba, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1)
 
+
+    def setProbaPredict_1(self, proba):
+        self._p0 = proba(0.)
+        for indr, rn in enumerate(self._Rcentres):
+            self._p01[indr] = proba(rn)
+        self._p1 = proba(1.)
+
+
+    def setProbaPredict(self, probaR2CondR1, r1):
+        self._p0 = probaR2CondR1(r1, 0.)
+        for indr2, r2 in enumerate(self._Rcentres):
+            self._p01[indr2] = probaR2CondR1(r1, r2)
+        self._p1 = probaR2CondR1(r1, 1.)
 
     def fuzzyMPM_1D(self):
 

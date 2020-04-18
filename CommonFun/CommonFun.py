@@ -215,12 +215,11 @@ def MSE_PK(Est, real):
     #SP_mse_sum = np.mean((Est[0, 1:-1]-real[0, 1:-1])**2)
     # print('shape of Est = ', np.shape(Est))
     # print('shape of real = ', np.shape(real))
-    if Est.ndim == 2:
-        SP_mse_sum = np.mean((Est-real)**2, axis=1)
-    else:
-        SP_mse_sum = np.mean((Est-real)**2, axis=0)
-
-    return SP_mse_sum
+    #SP_mse_sum = np.mean((Est-real)**2, axis=0)
+    # print('len(np.shape(None))=', len(np.shape(None)))
+    # print('len(np.shape(Est))=', len(np.shape(Est)))
+    if len(np.shape(Est)) == 0: return 0.
+    return np.mean((Est-real)**2)
 
 def SE_PKn(Est, real):
     """MSE of estimated X"""
@@ -641,6 +640,7 @@ def ReadSimulatedFuzzyData(filenameXRY):
     f.readline()
     Array = np.loadtxt(f, delimiter=" ")
     f.close()
+    input('ReadSimulatedFuzzyData - revoir les dimensions')
     return np.expand_dims(Array[0, :], axis=0), np.expand_dims(Array[1, :], axis=0), np.expand_dims(Array[2, :], axis=0)
 
 def SaveNoiseJump(U, V, R, filenameUVR):
