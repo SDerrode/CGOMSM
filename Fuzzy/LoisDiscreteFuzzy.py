@@ -20,6 +20,7 @@ class Loi2DDiscreteFuzzy():
     def __init__(self, EPS, STEPS, Rcentres):
         self._EPS      = EPS
         self._STEPS    = STEPS
+        self._STEPSp1  = STEPS+1
         self._Rcentres = Rcentres
         if len(Rcentres) != self._STEPS: input('PB constructeur Loi2DDiscreteFuzzy')
 
@@ -81,39 +82,87 @@ class Loi2DDiscreteFuzzy():
     
     def getindr(self, indr1, indr2):
         
-        if indr1==self._STEPS+1:
-            if indr2==0:              return self._p10
-            if indr2==self._STEPS+1: return self._p11
+        if indr1==self._STEPSp1:
+            if indr2==0:             return self._p10
+            if indr2==self._STEPSp1: return self._p11
             return self._p10_11[indr2-1]  
 
         if indr1==0:
-            if indr2==0:              return self._p00
-            if indr2==self._STEPS+1: return self._p01
+            if indr2==0:             return self._p00
+            if indr2==self._STEPSp1: return self._p01
             return self._p01_00[indr2-1]
         
-        if indr2==0:              return self._p00_10[indr1-1]
-        if indr2==self._STEPS+1: return self._p11_01[indr1-1]
+        if indr2==0:             return self._p00_10[indr1-1]
+        if indr2==self._STEPSp1: return self._p11_01[indr1-1]
         return self._p[indr1-1, indr2-1]
-
 
     def Integ(self):
 
         if self._STEPS == 0:
             return self._p00 + self._p10 + self._p01 + self._p11
 
-        #### pour r1==0.
-        integ = np.mean(self._p01_00) + self._p00 + self._p01
+        margeGauche = self.getMarginal_r1()
+        return margeGauche.Integ()
 
-        #### pour r1==1.
-        integ += np.mean(self._p10_11) + self._p10 + self._p11
+    def getMarginal_r1(self):
 
-        #### La surface à l'intérieur
-        pR = np.ndarray(shape=(self._STEPS))
-        for j in range(self._STEPS):
-            pR[j] = np.mean(self._p[j, :]) + self._p00_10[j] + self._p11_01[j]
-        integ += np.mean(pR)
+        margeGauche = Loi1DDiscreteFuzzy(self._EPS, self._STEPS, self._Rcentres)
 
-        return integ
+        if self._STEPS == 0:
+            #### pour r1==0.
+            margeGauche.setindr(0,             self._p00 + self._p01)
+            #### pour r1==1.
+            margeGauche.setindr(self._STEPSp1, self._p10 + self._p11)
+
+        else:
+            #### pour r1==0.
+            margeGauche.setindr(0,             np.mean(self._p01_00) + self._p00 + self._p01)
+            #### pour r1==1.
+            margeGauche.setindr(self._STEPSp1, np.mean(self._p10_11) + self._p10 + self._p11)
+            #### La surface à l'intérieur
+            for indr1 in range(self._STEPS):
+                margeGauche.setindr(indr1+1, np.mean(self._p[indr1, :]) + self._p00_10[indr1] + self._p11_01[indr1])
+
+        return margeGauche
+
+    def getMarginal_r2(self):
+
+        margeDroite = Loi1DDiscreteFuzzy(self._EPS, self._STEPS, self._Rcentres)
+
+        if self._STEPS == 0:
+            #### pour r2==0.
+            margeDroite.setindr(0,             self._p00 + self._p10)
+            #### pour r2==1.
+            margeDroite.setindr(self._STEPSp1, self._p01 + self._p11)
+        else:
+            #### pour r2==0.
+            margeDroite.setindr(0,             np.mean(self._p00_10) + self._p00 + self._p10)
+            #### pour r2==1.
+            margeDroite.setindr(self._STEPSp1, np.mean(self._p11_01) + self._p01 + self._p11)
+            #### La surface à l'intérieur
+            for indr2 in range(self._STEPS):
+                margeDroite.setindr(indr2+1, np.mean(self._p[:, indr2]) + self._p10_11[indr2] + self._p01_00[indr2])
+
+        return margeDroite
+
+    # def Integ_Old(self):
+
+    #     if self._STEPS == 0:
+    #         return self._p00 + self._p10 + self._p01 + self._p11
+
+    #     #### pour r1==0.
+    #     integ = np.mean(self._p01_00) + self._p00 + self._p01
+
+    #     #### pour r1==1.
+    #     integ += np.mean(self._p10_11) + self._p10 + self._p11
+
+    #     #### La surface à l'intérieur
+    #     pR = np.ndarray(shape=(self._STEPS))
+    #     for j in range(self._STEPS):
+    #         pR[j] = np.mean(self._p[j, :]) + self._p00_10[j] + self._p11_01[j]
+    #     integ += np.mean(pR)
+
+    #     return integ
 
 
     def partialInteg(self, minR1, maxR1, minR2, maxR2):
@@ -206,7 +255,19 @@ class Loi2DDiscreteFuzzy():
                     print(self._p[indrn, indrnp1], end=' ')
                 print(" ")
 
+    # def fuzzyMPM_2D(self):
 
+    #     loi = Loi1DDiscreteFuzzy_TMC(self._EPS, self._STEPS, self._interpolation, self._Rcentres)
+
+    #     # pour r == 0.
+    #     loi.setr(0., np.mean(self._p01_00) + self._p00 + self._p01)
+    #     # pour r == 1.
+    #     loi.setr(1., np.mean(self._p10_11) + self._p10 + self._p11)
+    #     # pour l'intérieur
+    #     for i, r in enumerate(self._Rcentres):
+    #         loi.setr(r, np.mean(self._p[i, :]) + self._p00_10[i] + self._p11_01[i])
+
+    #     return loi.fuzzyMPM_1D()
 
 ############################################################################################################
 class Loi1DDiscreteFuzzy():
@@ -214,6 +275,7 @@ class Loi1DDiscreteFuzzy():
     def __init__(self, EPS, STEPS, Rcentres):
         self._EPS      = EPS
         self._STEPS    = STEPS
+        self._STEPSp1  = STEPS+1
         self._Rcentres = Rcentres
         if len(Rcentres) != self._STEPS:
             print(self._STEPS)
@@ -249,7 +311,7 @@ class Loi1DDiscreteFuzzy():
 
     def getindr(self, indr):
         if indr==0:             return self._p0
-        if indr==self._STEPS+1: return self._p1
+        if indr==self._STEPSp1: return self._p1
         return self._p01[indr-1]    
 
     def setr(self, r, val):
@@ -258,9 +320,9 @@ class Loi1DDiscreteFuzzy():
         else:       self._p01[math.floor(r*self._STEPS)]=val
 
     def setindr(self, indr, val):
-        if   indr==0:              self._p0=val
-        elif indr==self._STEPS+1: self._p1=val
-        else:                      self._p01[indr-1]=val
+        if   indr==0:             self._p0=val
+        elif indr==self._STEPSp1: self._p1=val
+        else:                     self._p01[indr-1]=val
  
     def print(self):
         print('__p0 = ', self._p0)
@@ -309,14 +371,41 @@ class Loi1DDiscreteFuzzy():
         if typeSample==0: 
             indr=0
         elif typeSample==1:
-            indr=self._STEPS+1
+            indr=self._STEPSp1
         else: # it is fuzzy
             probaF = self._p01 / (proba[2]*self._STEPS)
-            indr = random.choices(population=list(range(1, self._STEPS+1)), weights=probaF)[0]
+            indr = random.choices(population=list(range(1, self._STEPSp1)), weights=probaF)[0]
         return indr
-
 
     def Integ(self):
         if self._STEPS == 0:
             return self._p0 + self._p1
         return self._p0 + self._p1 + np.mean(self._p01)
+
+    def probaMaxi(self):
+
+        indr = np.argmax(self._p01)
+        r    = self._Rcentres[indr]
+        maxi = self._p01[indr]
+        indr+=1
+
+        if self._p0>maxi:
+            maxi = self._p0
+            r, indr = 0., 0
+
+        if self._p1>maxi:
+            maxi    = self._p1
+            r, indr = 1., self._STEPSp1
+        
+        return maxi, r, indr
+
+    def fuzzyMPM_1D(self, verbose=False):
+
+        maxi, r, indr  = self.probaMaxi()
+    
+        if verbose==True:
+            self.print()
+            print(maxi, r, indr)
+            input('attente - fuzzyMPM_1D')
+
+        return maxi, r, indr

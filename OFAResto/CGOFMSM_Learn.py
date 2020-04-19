@@ -52,6 +52,8 @@ class CGOFMSM_Learn:
         self.__verbose      = verbose
         self.__graphics     = graphics
         self.__STEPS        = STEPS
+        self.__STEPSp1      = STEPS+1
+        self.__STEPSp2      = STEPS+2
         self.__EPS          = 1E-8
         self.__filestem     = filestem
         self.__Datatrain    = Datatrain
@@ -222,9 +224,9 @@ class CGOFMSM_Learn:
     def ConvertParameters_3to2by1(self):
 
         # Convert from Param 3 to Param 1 (using equations from Zied) ############################################################@
-        MeanX = np.zeros(shape=(self.__STEPS+2, self.__n_x))
-        MeanY = np.zeros(shape=(self.__STEPS+2, self.__n_y))
-        for indrn in range(self.__STEPS+2):
+        MeanX = np.zeros(shape=(self.__STEPSp2, self.__n_x))
+        MeanY = np.zeros(shape=(self.__STEPSp2, self.__n_y))
+        for indrn in range(self.__STEPSp2):
             MeanY[indrn] = self.__P[indrn, indrn, 1] / (1.- self.__P[indrn, indrn, 0])
             MeanX[indrn] = (self.__M[indrn, indrn, 3] + MeanY[indrn] * (self.__M[indrn, indrn, 1]+self.__M[indrn, indrn, 2])) / (1. - self.__M[indrn, indrn, 0])
             print('indrn = ', indrn)
@@ -236,12 +238,12 @@ class CGOFMSM_Learn:
             print('MeanY[indrn] approche=', self.__aMeanCovFuzzy.getMean(indrn)[1])
             #input('pause')
 
-        F = np.zeros(((self.__STEPS+2)**2, self.__n_z, self.__n_z))
-        Q = np.zeros(((self.__STEPS+2)**2, self.__n_z, self.__n_z))
-        # B = np.zeros(((self.__STEPS+2)**2, self.__n_z, self.__n_z))
-        for indrn in range(self.__STEPS+2):
-            for indrnp1 in range(self.__STEPS+2):
-                ind = indrn*(self.__STEPS+2) + indrnp1
+        F = np.zeros(((self.__STEPSp2)**2, self.__n_z, self.__n_z))
+        Q = np.zeros(((self.__STEPSp2)**2, self.__n_z, self.__n_z))
+        # B = np.zeros(((self.__STEPSp2)**2, self.__n_z, self.__n_z))
+        for indrn in range(self.__STEPSp2):
+            for indrnp1 in range(self.__STEPSp2):
+                ind = indrn*(self.__STEPSp2) + indrnp1
 
                 ### F 
                 F[ind, 0, 0] = self.__M[indrn, indrnp1, 0]
@@ -276,14 +278,14 @@ class CGOFMSM_Learn:
         #print('########## CONVERSION VERS A,Q ##########')
         # Fbis, Qbis = From_Cov_to_FQ(Cov)
         # print('########## VERIF VERIF VERIF ##########')
-        # for ind in range((self.__STEPS+2)**2):
+        # for ind in range((self.__STEPSp2)**2):
         #     print('ind=', ind)
         #     print(np.around(F[ind, :,:] - Fbis[ind, :,:], decimals=2))
         #     print(np.around(Q[ind, :,:] - Qbis[ind, :,:], decimals=2))
         #     #input('pause')
         #input('fin verif lyapunov')
 
-        # for ind in range((self.__STEPS+2)**2):
+        # for ind in range((self.__STEPSp2)**2):
         #     if is_pos_def(Cov[ind,:,:]) == False:
         #         print('ind=', ind, ' --> PROBLEM with Cov matrix in parameter file!!')
         #         print(Cov[ind,:,:])
@@ -320,9 +322,9 @@ class CGOFMSM_Learn:
         np.savetxt(f, np.array([self.__STEPS], dtype=int), delimiter=" ", header='number of fuzzy steps'+'\n================================', footer='\n')
       
         # Les covariances
-        for j in range(self.__STEPS+2):
-            for k in range(self.__STEPS+2):
-                ind = j*(self.__STEPS+2) + k
+        for j in range(self.__STEPSp2):
+            for k in range(self.__STEPSp2):
+                ind = j*(self.__STEPSp2) + k
                 np.savetxt(f, Cov[ind,:,:], delimiter=" ", header='Cov_xy'+str(j)+str(k)+'\n----------------------------', footer='\n', fmt='%.4f')
         
         # Les moyennes
@@ -347,23 +349,23 @@ class CGOFMSM_Learn:
 
         # Les covariances
         j, k = 0, 0
-        ind = j*(self.__STEPS+2) + k
+        ind = j*(self.__STEPSp2) + k
         np.savetxt(f, Cov[ind,:,:], delimiter=" ", header='Cov_xy'+str(0)+str(0)+'\n----------------------------', footer='\n', fmt='%.4f')
-        j, k = 0, self.__STEPS+1
-        ind = j*(self.__STEPS+2) + k
+        j, k = 0, self.__STEPSp1
+        ind = j*(self.__STEPSp2) + k
         np.savetxt(f, Cov[ind,:,:], delimiter=" ", header='Cov_xy'+str(0)+str(1)+'\n----------------------------', footer='\n', fmt='%.4f')
-        j, k = self.__STEPS+1, 0
-        ind = j*(self.__STEPS+2) + k
+        j, k = self.__STEPSp1, 0
+        ind = j*(self.__STEPSp2) + k
         np.savetxt(f, Cov[ind,:,:], delimiter=" ", header='Cov_xy'+str(1)+str(0)+'\n----------------------------', footer='\n', fmt='%.4f')
-        j, k = self.__STEPS+1, self.__STEPS+1
-        ind = j*(self.__STEPS+2) + k
+        j, k = self.__STEPSp1, self.__STEPSp1
+        ind = j*(self.__STEPSp2) + k
         np.savetxt(f, Cov[ind,:,:], delimiter=" ", header='Cov_xy'+str(1)+str(1)+'\n----------------------------', footer='\n', fmt='%.4f')
         
         # Les moyennes
         np.savetxt(f, MeanX[0], delimiter=" ", header='mean of X'+'\n================================', fmt='%.4f')
-        np.savetxt(f, MeanX[self.__STEPS+1], delimiter=" ", footer='\n', fmt='%.4f')
+        np.savetxt(f, MeanX[self.__STEPSp1], delimiter=" ", footer='\n', fmt='%.4f')
         np.savetxt(f, MeanY[0], delimiter=" ", header='mean of Y'+'\n================================', fmt='%.4f')
-        np.savetxt(f, MeanY[self.__STEPS+1], delimiter=" ", footer='\n', fmt='%.4f')
+        np.savetxt(f, MeanY[self.__STEPSp1], delimiter=" ", footer='\n', fmt='%.4f')
 
         f.close()
 
@@ -385,14 +387,14 @@ class CGOFMSM_Learn:
         np.savetxt(f, np.array([self.__STEPS], dtype=int), delimiter=" ", header='number of fuzzy steps'+'\n================================', footer='\n')
       
         # Les paramètres M, Lambda2, P, Pi2
-        for j in range(self.__STEPS+2):
+        for j in range(self.__STEPSp2):
             np.savetxt(f, self.__M[j],       delimiter=" ", header='M_'+str(j)+'x\n----------------------------', footer='\n', fmt='%.4f')
             np.savetxt(f, self.__Lambda2[j], delimiter=" ", header='Lambda2_'+str(j)+'x\n----------------------------', footer='\n', fmt='%.4f')
             np.savetxt(f, self.__P[j],       delimiter=" ", header='P_'+str(j)+'x\n----------------------------', footer='\n', fmt='%.4f')
             np.savetxt(f, self.__Pi2[j],     delimiter=" ", header='Pi2_'+str(j)+'x\n----------------------------', footer='\n', fmt='%.4f')
 
         # Les paramètres de maoyenneet covaraince pour le premier
-        for j in range(self.__STEPS+2):
+        for j in range(self.__STEPSp2):
             np.savetxt(f, self.__aMeanCovFuzzy.getMean(j), delimiter=" ", header='Mean_'+str(j)+'x\n----------------------------', footer='\n', fmt='%.4f')
             np.savetxt(f, self.__aMeanCovFuzzy.getCov(j),  delimiter=" ", header='Cov_'+str(j)+'x\n----------------------------', footer='\n', fmt='%.4f')
         
@@ -415,7 +417,7 @@ class CGOFMSM_Learn:
 
     def updateParamFromRsimul(self, numIterSEM, kmeans, Plot, ProbaGamma_0=None, ProbaJumpCond=None, ProbaPsi=None):
 
-        # used for simulation of discretized fuzzy r (in [0..self.__STEPS+1])
+        # used for simulation of discretized fuzzy r (in [0..self.__STEPSp1])
         Rsimul = np.zeros(shape=(self.__nbRealSEM*self.__N), dtype=int)
 
         ################### Simulation of R
@@ -428,7 +430,7 @@ class CGOFMSM_Learn:
             M, Lambda2, P, Pi2 = self.EstimParam2ter(ProbaPsi, numIterSEM)
 
             if self.__graphics >= 2:
-                fname = self.__graphRep+self.__filestem +'Rsimul_Iter_' + str(numIterSEM) + '_cl' + str(self.__STEPS+2)
+                fname = self.__graphRep+self.__filestem +'Rsimul_Iter_' + str(numIterSEM) + '_cl' + str(self.__STEPSp2)
                 title = 'Simulated R - Iter ' + str(numIterSEM)
                 self.plotRsimul(Rsimul, fname=fname, title=title)
         else:
@@ -449,7 +451,7 @@ class CGOFMSM_Learn:
                 M, Lambda2, P, Pi2 = self.EstimParam2terInit(Rsimul)
 
             if self.__graphics >= 1:
-                fname = self.__graphRep+self.__filestem + 'Rsimul_Kmeans_cl' + str(self.__STEPS+2)
+                fname = self.__graphRep+self.__filestem + 'Rsimul_Kmeans_cl' + str(self.__STEPSp2)
                 title = 'Simulated R - Iter ' + str(numIterSEM)
                 self.plotRsimul(Rsimul, fname=fname, title=title)
 
@@ -473,7 +475,7 @@ class CGOFMSM_Learn:
         else:
             input('Impossible')
             exit(1)
-        FS.setParametersFromSimul(Rsimul, self.__STEPS+2)
+        FS.setParametersFromSimul(Rsimul, self.__STEPSp2)
 
         # if self.__graphics>=2:
         #     fig = plt.figure()
@@ -487,7 +489,7 @@ class CGOFMSM_Learn:
 
         # Plot de la dernière réalisation
         if Plot == True and ((self.__graphics==0) or (self.__graphics==1)): 
-            fname = self.__graphRep+self.__filestem + 'Rsimul_Iter_' + str(self.__nbIterSEM) + '_cl' + str(self.__STEPS+2)
+            fname = self.__graphRep+self.__filestem + 'Rsimul_Iter_' + str(self.__nbIterSEM) + '_cl' + str(self.__STEPSp2)
             title = 'Simulated R - Iter ' + str(self.__nbIterSEM)
             self.plotRsimul(Rsimul, fname=fname, title=title)
 
@@ -497,11 +499,11 @@ class CGOFMSM_Learn:
     def EstimParam2ter(self, ProbaPsi, numIterSEM):
 
         # M = [A, B, C, D] ##################################################################################
-        MNum   = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 4))
-        MDenom = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 4, 4))
+        MNum   = np.zeros(shape=(self.__STEPSp2, self.__STEPSp2, 4))
+        MDenom = np.zeros(shape=(self.__STEPSp2, self.__STEPSp2, 4, 4))
         # P = [F, G] ##################################################################################
-        PNum   = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 2))
-        PDenom = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 2, 2))
+        PNum   = np.zeros(shape=(self.__STEPSp2, self.__STEPSp2, 2))
+        PDenom = np.zeros(shape=(self.__STEPSp2, self.__STEPSp2, 2, 2))
 
         for n in range(self.__N-1):
             yn    = (self.__Ztrain[self.__n_x:self.__n_z, n])  .item()
@@ -516,8 +518,8 @@ class CGOFMSM_Learn:
             vect2vect2 = np.outer(vect2, vect2)
             vect2      = ynpun * vect2
 
-            for indrn in range(self.__STEPS+2):
-                for indrnp1 in range(self.__STEPS+2):
+            for indrn in range(self.__STEPSp2):
+                for indrnp1 in range(self.__STEPSp2):
                     probaPsi = ProbaPsi[n].getindr(indrn, indrnp1)
 
                     ###################### M ########################
@@ -529,10 +531,10 @@ class CGOFMSM_Learn:
                     PNum  [indrn, indrnp1, :]    += probaPsi * vect2
 
 
-        M = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 4))
-        P = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 2))
-        for indrn in range(self.__STEPS+2):
-            for indrnp1 in range(self.__STEPS+2):
+        M = np.zeros(shape=(self.__STEPSp2, self.__STEPSp2, 4))
+        P = np.zeros(shape=(self.__STEPSp2, self.__STEPSp2, 2))
+        for indrn in range(self.__STEPSp2):
+            for indrnp1 in range(self.__STEPSp2):
                 try:
                     # print(MNum[indrn, indrnp1,:])
                     # print(np.linalg.inv(MDenom[indrn, indrnp1,:,:]))
@@ -555,25 +557,25 @@ class CGOFMSM_Learn:
                     P[indrn, indrnp1,:] = np.dot(PNum[indrn, indrnp1,:], np.linalg.pinv(PDenom[indrn, indrnp1,:,:], rcond=1e-15, hermitian=True))
 
         # Pi2 and Lambda2 ##################################################################################
-        Pi2     = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2))
-        Lambda2 = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2))
-        Denom   = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2))
+        Pi2     = np.zeros(shape=(self.__STEPSp2, self.__STEPSp2))
+        Lambda2 = np.zeros(shape=(self.__STEPSp2, self.__STEPSp2))
+        Denom   = np.zeros(shape=(self.__STEPSp2, self.__STEPSp2))
         for n in range(self.__N-1):
             yn    = (self.__Ztrain[self.__n_x:self.__n_z, n])  .item()
             ynpun = (self.__Ztrain[self.__n_x:self.__n_z, n+1]).item()
             xn    = (self.__Ztrain[0:self.__n_x, n])           .item()
             xnpun = (self.__Ztrain[0:self.__n_x, n+1])         .item()
 
-            for indrn in range(self.__STEPS+2):
-                for indrnp1 in range(self.__STEPS+2):
+            for indrn in range(self.__STEPSp2):
+                for indrnp1 in range(self.__STEPSp2):
                     probaPsi = ProbaPsi[n].getindr(indrn, indrnp1)
 
                     Lambda2[indrn, indrnp1] += probaPsi * (xnpun - (xn * M[indrn, indrnp1, 0] + yn * M[indrn, indrnp1, 1] + ynpun * M[indrn, indrnp1, 2] + M[indrn, indrnp1, 3]))**2
                     Pi2    [indrn, indrnp1] += probaPsi * (ynpun - (yn * P[indrn, indrnp1, 0] + P[indrn, indrnp1, 1]))**2
                     Denom  [indrn, indrnp1] += probaPsi
 
-        for indrn in range(self.__STEPS+2):
-            for indrnp1 in range(self.__STEPS+2):
+        for indrn in range(self.__STEPSp2):
+            for indrnp1 in range(self.__STEPSp2):
                 if Lambda2[indrn, indrnp1] != 0.: 
                     Lambda2[indrn, indrnp1] /= Denom[indrn, indrnp1]
                 if Pi2[indrn, indrnp1]     != 0.: 
@@ -588,11 +590,11 @@ class CGOFMSM_Learn:
     def EstimParam2terInit(self, Rsimul):
 
         # M = [A, B, C, D] ##################################################################################
-        MNum      = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 4))
-        MDenom    = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 4, 4))
+        MNum      = np.zeros(shape=(self.__STEPSp2, self.__STEPSp2, 4))
+        MDenom    = np.zeros(shape=(self.__STEPSp2, self.__STEPSp2, 4, 4))
         # P = [F, G] ##################################################################################
-        PNum      = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 2))
-        PDenom    = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 2, 2))
+        PNum      = np.zeros(shape=(self.__STEPSp2, self.__STEPSp2, 2))
+        PDenom    = np.zeros(shape=(self.__STEPSp2, self.__STEPSp2, 2, 2))
 
         for real in range(self.__nbRealSEM):
 
@@ -618,10 +620,10 @@ class CGOFMSM_Learn:
                 PDenom[indrn, indrnp1, :, :] += vect2vect2
                 PNum  [indrn, indrnp1, :]    += ynpun * vect2
 
-        M = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 4))
-        P = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2, 2))
-        for indrn in range(self.__STEPS+2):
-            for indrnp1 in range(self.__STEPS+2):
+        M = np.zeros(shape=(self.__STEPSp2, self.__STEPSp2, 4))
+        P = np.zeros(shape=(self.__STEPSp2, self.__STEPSp2, 2))
+        for indrn in range(self.__STEPSp2):
+            for indrnp1 in range(self.__STEPSp2):
                 try:
                     # print(MNum[indrn, indrnp1,:])
                     # print(np.linalg.inv(MDenom[indrn, indrnp1,:,:]))
@@ -644,9 +646,9 @@ class CGOFMSM_Learn:
                     P[indrn, indrnp1,:] = np.dot(PNum[indrn, indrnp1,:], np.linalg.pinv(PDenom[indrn, indrnp1,:,:], rcond=1e-15, hermitian=True))
 
         # Pi2 and Lambda2 ##################################################################################
-        Pi2     = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2))
-        Lambda2 = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2))
-        Denom   = np.zeros(shape=(self.__STEPS+2, self.__STEPS+2))
+        Pi2     = np.zeros(shape=(self.__STEPSp2, self.__STEPSp2))
+        Lambda2 = np.zeros(shape=(self.__STEPSp2, self.__STEPSp2))
+        Denom   = np.zeros(shape=(self.__STEPSp2, self.__STEPSp2))
         
         for real in range(self.__nbRealSEM):
 
@@ -669,8 +671,8 @@ class CGOFMSM_Learn:
                 Pi2    [indrn, indrnp1] += (ynpun - (yn * P[indrn, indrnp1, 0] + P[indrn, indrnp1, 1]))**2
                 Denom  [indrn, indrnp1] += 1.
 
-        for indrn in range(self.__STEPS+2):
-            for indrnp1 in range(self.__STEPS+2):
+        for indrn in range(self.__STEPSp2):
+            for indrnp1 in range(self.__STEPSp2):
                 if Lambda2[indrn, indrnp1] != 0.: 
                     Lambda2[indrn, indrnp1] /= Denom[indrn, indrnp1]
                 if Pi2[indrn, indrnp1]     != 0.: 
@@ -829,7 +831,7 @@ class CGOFMSM_Learn:
             # calcul de p(rnp1 | rn, z_1^M)  ****************************************************************
             # on créé une liste, pour chaque valeur de rn, de lois 1D
             Liste = []
-            for indrn in range(self.__STEPS+2):
+            for indrn in range(self.__STEPSp2):
                 
                 Liste.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self._interpolation, self.__Rcentres))
                 if tab_gamma[n].getindr(indrn) != 0.:
@@ -932,7 +934,7 @@ class CGOFMSM_Learn:
                 indrn = Rsimul[real*self.__N + n]
                 if indrn == 0: 
                     rn = 0.
-                elif indrn == self.__STEPS+1: 
+                elif indrn == self.__STEPSp1: 
                     rn= 1.
                 else:
                     rn = self.__Rcentres[indrn-1]
@@ -941,10 +943,10 @@ class CGOFMSM_Learn:
 
             fig, ax1 = plt.subplots()
 
-            Centres = np.zeros(shape=(self.__STEPS+2))
+            Centres = np.zeros(shape=(self.__STEPSp2))
             Centres[0] = 0.
-            Centres[self.__STEPS+1] = 1.
-            Centres[1:self.__STEPS+1] = self.__Rcentres
+            Centres[self.__STEPSp1] = 1.
+            Centres[1:self.__STEPSp1] = self.__Rcentres
             
             color = 'tab:green'
             ax1.set_ylabel('Discrete fuzzy jumps', color=color, fontsize=fontS)
@@ -990,14 +992,16 @@ class MeanCovFuzzy:
     def __init__(self, Ztrain, n_z, STEPS, verbose):
         self.__verbose  = verbose
         self.__STEPS    = STEPS
+        self.__STEPSp1  = STEPS+1
+        self.__STEPSp2  = STEPS+2
         self.__Ztrain   = Ztrain
         self.__n_z      = n_z
 
         self.__N = np.shape(Ztrain)[0]
 
-        self.__Mean_Zf  = np.zeros(shape=(self.__STEPS+2, self.__n_z))
-        self.__Cov_Zf   = np.zeros(shape=(self.__STEPS+2, self.__n_z, self.__n_z))
-        self.__cpt      = np.zeros(shape=(self.__STEPS+2), dtype=int)
+        self.__Mean_Zf  = np.zeros(shape=(self.__STEPSp2, self.__n_z))
+        self.__Cov_Zf   = np.zeros(shape=(self.__STEPSp2, self.__n_z, self.__n_z))
+        self.__cpt      = np.zeros(shape=(self.__STEPSp2), dtype=int)
 
     # def __del__(self):
     #     if self.__verbose >= 2: 
@@ -1020,7 +1024,7 @@ class MeanCovFuzzy:
                 self.__Mean_Zf[label,:] += self.__Ztrain[:, n]
                 self.__cpt[label] += 1
         
-        for indrn in range(self.__STEPS+2):
+        for indrn in range(self.__STEPSp2):
             if self.__cpt[indrn] != 0:
                 self.__Mean_Zf[indrn, :] /= self.__cpt[indrn]
         # print(self.__Mean_Zf)
@@ -1033,7 +1037,7 @@ class MeanCovFuzzy:
                 label = Rlabels[real*self.__N+n]
                 VectZ = (np.transpose(self.__Ztrain[:, n]) - self.__Mean_Zf[label,:]).reshape(self.__n_z, 1)
                 self.__Cov_Zf[label,:,:] += np.outer(VectZ, VectZ)
-        for indrn in range(self.__STEPS+2):
+        for indrn in range(self.__STEPSp2):
             if self.__cpt[indrn] != 0:
                 self.__Cov_Zf[indrn,:,:] /= self.__cpt[indrn]
                 # check if cov matrix
@@ -1047,13 +1051,13 @@ class MeanCovFuzzy:
         # input('hardcov')
 
     def getMean(self, indrn):
-        if indrn>=0 and indrn<self.__STEPS+2:
+        if indrn>=0 and indrn<self.__STEPSp2:
             return self.__Mean_Zf[indrn, :]
         else:
             return None
 
     def getCov(self, indrn):
-        if indrn>=0 and indrn<self.__STEPS+2:
+        if indrn>=0 and indrn<self.__STEPSp2:
             return self.__Cov_Zf[indrn, :]
         else:
             return None

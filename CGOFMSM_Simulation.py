@@ -22,10 +22,11 @@ if __name__ == '__main__':
 
         argv[1] : Parameters file name
         argv[2] : Fuzzy joint law model and parameters. e.g. 2:0.07:0.24:0.09, or 4:0.15:0.15:0.:0.1
-        argv[3] : Hard filter & smoother (0/1), filter (0/1), smoother (0/1), predictor (0/1); e.g. 0,1,0,1
+        argv[3] : Hard filter & smoother (0/1), filter (0/1), smoother (0/1), predictor (horizon size); e.g. 0,1,0,2
+                  The horizon size is 0 if we don't need prediction, 2 if we need a 2-horizon prediction
         argv[4] : Sample size
-        argv[5] : F value (one po several separated by commas), e.g. 1,3,5. If -1 then the value will be read in the parameter file.
-        argv[6] : Number of experiemnts to get mean results
+        argv[5] : F value (one or several separated by commas), e.g. 1,3,5. If -1 then the value will be read in the parameter file.
+        argv[6] : Number of experiments to get mean results
         argv[7] : Verbose levele: Debug(3), pipelette (2), normal (1), presque muet (0)
         argv[8] : Graphics? (0/1)
     """
@@ -71,26 +72,30 @@ if __name__ == '__main__':
     print(' . Plot             =', Plot)
     print('\n')
 
-    hard, filt, smooth, predic = True, True, True, True
+    hard, filt, smooth = True, True, True
     if work[0] == 0: hard   = False
     if work[1] == 0: filt   = False
     if work[2] == 0: smooth = False
-    if work[3] == 0: predic = False
-    if predic==True: filt=True
-    if hard==False and filt==False and smooth==False and predic==False:
+    predic = int(work[3])
+    if predic<0:
+        print('predic=', predic, ' --> Not allowed !')
+        exit(1)
+
+    if predic>0: filt=True
+    if hard==False and filt==False and smooth==False and predic==0:
         print('work=', work, ' --> Not allowed !')
         exit(1)
 
     np.random.seed(None)
-    #np.random.seed(1), print('-----------------> ATTENTION : random fixé à 0!!!<------------------')
+    #np.random.seed(1), print('-----------------> ATTENTION : random fixé!!!<------------------')
 
     readData = False  # Data are read or resimulated ?
 
-    import time
-    start_time = time.time()
+    # import time
+    # start_time = time.time()
 
     # Moyenne de plusieurs expériences
     aCGOFMSM = CGOFMSM(N, filenameParamCov, verbose, FSParametersStr, interpolation)
     mean_tab_MSE, mean_tab_MSE_HARD, mean_time = aCGOFMSM.run_several(NbExp, STEPS=STEPS, hard=hard, filt=filt, smooth=smooth, predic=predic, Plot=Plot)
 
-    print("--- %s seconds ---" % (time.time() - start_time))
+    # print("--- %s seconds ---" % (time.time() - start_time))

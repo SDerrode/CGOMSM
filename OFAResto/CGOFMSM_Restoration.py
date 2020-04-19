@@ -31,7 +31,7 @@ from PKFResto.PKFResto            import RestorationPKF
 from CGPMSMs.CGPMSMs              import GetParamNearestCGO_cov
 
 i_min = 6      # index min for plot
-i_max = 16     # index max for plot
+i_max = 97     # index max for plot
 dpi   = 150
 fontS = 16     # font size
 matplotlib.rc('xtick', labelsize=fontS)
@@ -87,7 +87,7 @@ class CGOFMSM:
         return X, R, Y, pHNum
 
 
-    def restore_signal(self, Data, ch, STEPS=[7], hard=True, filt=True, smooth=True,  predic=True, Plot=False):
+    def restore_signal(self, Data, ch, STEPS=[7], hard=True, filt=True, smooth=True,  predic=1, Plot=False):
 
         elapsed_time = 0
         start_time = time.time()
@@ -133,7 +133,7 @@ class CGOFMSM:
                 chaine = Resto.getFSText() + '_' + ch + '_SMOO_HARD'
                 self.PlotTrajectoriesSignal(chaine, 'Hard smoother (CGOMSM)', Data, E_X_OSA_HARD, E_R_OSA_HARD)
 
-        if filt==True or smooth==True or predic==True:
+        if filt==True or smooth==True or predic>0:
 
             # Loop in discrete jumps F
             for i, steps in enumerate(STEPS):
@@ -154,14 +154,14 @@ class CGOFMSM:
                     if smooth:
                         chaine = Resto.getFSText() + '_' + ch + '_SMOO_FUZZY_STEP_' + str(steps)
                         self.PlotTrajectoriesSignal(chaine, 'Fuzzy smoother (CGOMSM)', Data, E_X_OSA, E_R_OSA)
-                    if predic:
+                    if predic>0:
                         chaine = Resto.getFSText() + '_' + ch + '_PRED_FUZZY_STEP_' + str(steps)
                         self.PlotTrajectoriesSignal(chaine, 'Fuzzy predictor (CGOMSM)', Data, E_Z_OPA[0:n_x, :], None)
 
         return elapsed_time
 
 
-    def run_several(self, nb_exp, STEPS=[5], hard=True, filt=True, smooth=False, predic=True, Plot=False):
+    def run_several(self, nb_exp, STEPS=[5], hard=True, filt=True, smooth=False, predic=1, Plot=False):
 
         tab_MSE          = np.zeros((nb_exp, len(STEPS), 10))
         tab_MSE_HARD     = np.zeros((nb_exp, len(STEPS), 10))
@@ -189,7 +189,7 @@ class CGOFMSM:
         return mean_tab_MSE, mean_tab_MSE_HARD, mean_time
 
 
-    def run_one(self, ch, STEPS=[7], hard=True, filt=True, smooth=True, predic=True, readData = False, Plot=False):
+    def run_one(self, ch, STEPS=[7], hard=True, filt=True, smooth=True, predic=1, readData = False, Plot=False):
 
         # Save of MSE results
         MSE      = np.zeros((len(STEPS), 10))
@@ -272,7 +272,7 @@ class CGOFMSM:
 
         # Fuzzy : Restoration with known and unknown fuzzy jumps
         #####################################################
-        if filt==True or predic==True or smooth==True:
+        if filt==True or predic>0 or smooth==True:
             start_time = time.time()
 
             # Fuzzy : Restoration with known jumps
@@ -296,7 +296,6 @@ class CGOFMSM:
 
                 # FUZZY: filter (and smooth) with unknown jumps
                 E_X_OFA, E_R_OFA, E_X_OSA, E_R_OSA, E_Z_OPA, E_R_OPA = Resto.restore_Fuzzy1D(Y, filt=filt, smooth=smooth, predic=predic)
-
                 elapsed_time += time.time() - start_time
 
                 # MSE
@@ -307,9 +306,9 @@ class CGOFMSM:
                     MSE[i, 5] = MSE_PK(E_X_OSA, X)
                     MSE[i, 8] = MSE_PK(E_R_OSA, Rfuzzy)
 
-                if predic:
-                    MSE[i, 6] = MSE_PK(E_Z_OPA[1:, 0:n_x], X[1:, 0])
-                    MSE[i, 9] = MSE_PK(E_R_OPA, Rfuzzy)
+                if predic>0:
+                    MSE[i, 6] = MSE_PK(E_Z_OPA[1:, 0], X[1:, 0])
+                    MSE[i, 9] = MSE_PK(E_R_OPA[1:], Rfuzzy[1:])
 
                 if Plot is True:
                     if filt:
@@ -334,7 +333,7 @@ class CGOFMSM:
                             chaine = Resto.getFSText() + '_' + ch + '_STEPS' + str(steps) + '_SMOO_UJ_R'
                             self.PlotFuzzyHard_R(chaine, 'CGOFMSM vs CGOMSM smoothers (UJ)', Rfuzzy, E_R_OSA_HARD, E_R_OSA, bottom=0)
 
-                    if predic:
+                    if predic>0:
                         chaine = Resto.getFSText() + '_' + ch + '_STEPS' + str(steps) + '_PRED'
                         self.PlotTrajectories(chaine, 'Fuzzy predictor (CGOFMSM)', X, Rfuzzy, Y, E_Z_PP[:, 0:n_x], E_Z_OPA[:, 0:n_x], E_R_OPA, bottom=0.)
                         if hard:
@@ -350,7 +349,7 @@ class CGOFMSM:
             self.printResult(MSE, MSE_HARD, STEPS, elapsed_time, hard=hard, filt=filt, smooth=smooth, predic=predic)
 
         # SAVE THE RESULT IN CSV FILE
-        if filt or smooth or predic:
+        if filt or smooth or predic>0:
             fname='Result/Fuzzy/Tab_MSE/' + Resto.getFSText() + '_fuzzy_' + ch + '.txt'
             np.savetxt(fname, MSE, delimiter='\n', newline='\n', header=header, encoding=None)
         if hard:
@@ -368,12 +367,12 @@ class CGOFMSM:
         # print("  mse_Y\t:", MSE[0, 0])
         print("  STEPS (F)        : ", STEPS, sep='')
         print("")
-        if predic:
+        if predic>0:
             print("  PREDICTOR---------------------------------")
             print("    Fuzzy X  (KJ)  : TO BE DONE!") #", MSE[0, 3], "TO BE DONE!", sep='')
             print("    Fuzzy X  (UJ)  : ", MSE[:, 6], sep='')
             print("    Fuzzy R  (UJ)  : ", MSE[:, 9], sep='')
-        if hard and predic:
+        if hard and predic>0:
             print("      Hard X (KJ)  : ", MSE_HARD[0, 3], sep='')
             print("      Hard X (UJ)  : ", MSE_HARD[0, 6], sep='')
             print("      Hard R (UJ)  : ", MSE_HARD[0, 9], sep='')
@@ -397,7 +396,7 @@ class CGOFMSM:
             print("      Hard X  (KJ) : ", MSE_HARD[0, 2], sep='')
             print("      Hard X  (UJ) : ", MSE_HARD[0, 5], sep='')
             print("      Hard R  (UJ) : ", MSE_HARD[0, 8], sep='')
-        if hard and filt==False and smooth==False and predic==False:
+        if hard and filt==False and smooth==False and predic==0:
             print("  PREDCITOR---------------------------------")
             print("    Hard X    (KJ) : ", MSE_HARD[0, 3], sep='')
             print("    Hard X, R (UJ) : ", MSE_HARD[0, 6], ", ", MSE_HARD[0, 9], sep='')
@@ -430,7 +429,7 @@ class CGOFMSM:
                 hard_jump_smoother = np.ones(len(MSE_HARD[:, 8])) * MSE_HARD[0, 8]
                 axs[0].plot(STEPS, hard_jump_smoother, dashes=[1, 3, 1, 3], color='k', label='Hard smoother')
                 ListeMaxiJumps.append(max(MSE_HARD[:, 8]))
-        if predic:
+        if predic>0:
             axs[0].plot(STEPS, MSE[:, 9], dashes=[6, 6, 6, 6], color='c', label='Fuzzy predictor')
             ListeMaxiJumps.append(max(MSE[:, 9]))
             if hard:
@@ -468,7 +467,7 @@ class CGOFMSM:
                 axs[1].plot(STEPS, hard_smoother, dashes=[1, 3, 1, 3], color='k', label='Hard smoother - UJ')
                 ListeMaxiStates.append(max(MSE_HARD[:, 5]))
                 ListeMaxiStates.append(max(hard_smoother))
-        if predic:
+        if predic>0:
             superv_predictor = np.ones(len(MSE[:, 3])) * MSE[0, 3]
             axs[1].plot(STEPS, MSE[:, 6], dashes=[2, 4, 2, 4], color='m', label='Fuzzy predictor - UJ')
             axs[1].plot(STEPS, superv_predictor, color='m', label='Fuzzy predictor - KJ')

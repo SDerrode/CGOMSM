@@ -31,7 +31,8 @@ if __name__ == '__main__':
 
         argv[1] : Name of the file of parameters (cov and means)
         argv[2] : Fuzzy joint law model and parameters; e.g. 2ter:0.3:0.3:0.05
-        argv[3] : Hard filter & smoother(0/1), filter (0/1), smoother (0/1), predictor (0/1); e.g. 0,1,0,1
+        argv[3] : Hard filter & smoother (0/1), filter (0/1), smoother (0/1), predictor (horizon size); e.g. 0,1,0,2
+                  The horizon size is 0 if we don't need prediction, 2 if we need a 2-horizon prediction
         argv[4] : Observed signal filename
         argv[5] : If interpolation, number of discrete fuzzy, aka 'F'; e.g. 3.  If -1 then F is to be read in the parameter file
         argv[6] : Debug(3), pipelette (2), normal (1), presque muet (0)
@@ -77,13 +78,16 @@ if __name__ == '__main__':
     print(' . Plot             =', Plot)
     print('\n')
 
-    hard, filt, smooth, predic = True, True, True, True
+    hard, filt, smooth = True, True, True
     if work[0] == 0: hard   = False
     if work[1] == 0: filt   = False
     if work[2] == 0: smooth = False
-    if work[3] == 0: predic = False
-    if predic==True: filt=True
-    if hard==False and filt==False and smooth==False and predic==False:
+    predic = int(work[3])
+    if predic<0:
+        print('predic=', predic, ' --> Not allowed !')
+        exit(1)
+
+    if hard==False and filt==False and smooth==False and predic==0:
         print('work=', work, ' --> Not allowed !')
         exit(1)
 

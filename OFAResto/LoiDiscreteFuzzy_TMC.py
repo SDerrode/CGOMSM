@@ -31,16 +31,16 @@ def calcF(indrnp1, rnp1, EPS, STEPS, Rcentres, ProbaF, FS, Tab_GaussXY_np1):
 
     argument = (rnp1, FS.probaR2CondR1)
     A        = 0.
-    for indrn in range(1, STEPS+1):
+    for indrn in range(STEPS):
         # ON NE PEUT PAS REMPLACER PAR UNE SIMPLE SOMME POUR GAGNER DU TEMPS!!!! 
         #   Parce que probaR2CondR1 n'est pas constant sur l'intervalle d'intégration
         #   Par contre le reste l'est, donc on peut le sortir de l'intégration numérique
     
         # Cette solution est la plus rapide car plein de choses sont constantes sur le petit interval à intégrer
-        GaussXY = Tab_GaussXY_np1.getindr(indrn, indrnp1)
+        GaussXY = Tab_GaussXY_np1.getindr(indrn+1, indrnp1)
         if GaussXY > 0.:
-            ATemp, errTemp = sc.integrate.quad(func=loiForw, a=float(indrn-1)/STEPS+EPS, b=float(indrn)/STEPS-EPS, args=argument, epsabs=1E-2, epsrel=1E-2, limit=50)
-            A += ATemp * GaussXY * ProbaF.getindr(indrn)
+            ATemp, errTemp = sc.integrate.quad(func=loiForw, a=float(indrn)/STEPS+EPS, b=float(indrn+1)/STEPS-EPS, args=argument, epsabs=1E-2, epsrel=1E-2, limit=50)
+            A += ATemp * GaussXY * ProbaF.getindr(indrn+1)
     
     rn, indrn = 0., 0
     A0 = FS.probaR2CondR1(rn, rnp1) * Tab_GaussXY_np1.getindr(indrn, indrnp1) * ProbaF.getindr(indrn)
@@ -63,16 +63,16 @@ def calcB(indrn, rn, EPS, STEPS, Rcentres, ProbaB, FS, Tab_GaussXY_np1):
 
     argument = (rn, FS.probaR2CondR1)
     A        = 0.
-    for indrnp1 in range(1, STEPS+1):
+    for indrnp1 in range(STEPS):
         # ON NE PEUT PAS REMPLACER PAR UNE SIMPLE SOMME POUR GAGNER DU TEMPS!!!! 
         #   Parce que probaR2CondR1 n'est pas constant sur l'instervalle d'intégration
         #   Par contre le reste l'est, donc on peut le sortir de l'intégration numérique
     
         # Cette solution est la plus rapide car plein de choses sont constantes sur le petit interval à intégrer
-        GaussXY = Tab_GaussXY_np1.getindr(indrn, indrnp1)
+        GaussXY = Tab_GaussXY_np1.getindr(indrn, indrnp1+1)
         if GaussXY > 0.:
-            ATemp, errTemp = sc.integrate.quad(func=loiBackw, a=float(indrnp1-1)/STEPS+EPS, b=float(indrnp1)/STEPS-EPS, args=argument, epsabs=1E-2, epsrel=1E-2, limit=50)
-            A += ATemp * GaussXY * ProbaB.getindr(indrnp1)
+            ATemp, errTemp = sc.integrate.quad(func=loiBackw, a=float(indrnp1)/STEPS+EPS, b=float(indrnp1+1)/STEPS-EPS, args=argument, epsabs=1E-2, epsrel=1E-2, limit=50)
+            A += ATemp * GaussXY * ProbaB.getindr(indrnp1+1)
 
             if not np.isfinite(A):
                 print('A=', A)
@@ -123,16 +123,16 @@ class Loi2DDiscreteFuzzy_TMC(Loi2DDiscreteFuzzy):
         rnp1, indrnp1  = 0., 0
         self._p00     = PForward_n.getindr(indrn) * PBackward_np1.getindr(indrnp1) * Tab_GaussXY_np1.getindr(indrn, indrnp1) * FS.probaR2CondR1(rn, rnp1)
         
-        rn, indrn      = 1., self._STEPS+1
+        rn, indrn      = 1., self._STEPSp1
         rnp1, indrnp1  = 0., 0
         self._p10     = PForward_n.getindr(indrn) * PBackward_np1.getindr(indrnp1) * Tab_GaussXY_np1.getindr(indrn, indrnp1) * FS.probaR2CondR1(rn, rnp1)
 
-        rn, indrn      = 1., self._STEPS+1
-        rnp1, indrnp1  = 1., self._STEPS+1
+        rn, indrn      = 1., self._STEPSp1
+        rnp1, indrnp1  = 1., self._STEPSp1
         self._p11     = PForward_n.getindr(indrn) * PBackward_np1.getindr(indrnp1) * Tab_GaussXY_np1.getindr(indrn, indrnp1) * FS.probaR2CondR1(rn, rnp1)
         
         rn, indrn      = 0., 0
-        rnp1, indrnp1  = 1., self._STEPS+1
+        rnp1, indrnp1  = 1., self._STEPSp1
         self._p01     = PForward_n.getindr(indrn) * PBackward_np1.getindr(indrnp1) * Tab_GaussXY_np1.getindr(indrn, indrnp1) * FS.probaR2CondR1(rn, rnp1)
 
         # Pour les arètes et le coeur
@@ -143,11 +143,11 @@ class Loi2DDiscreteFuzzy_TMC(Loi2DDiscreteFuzzy):
             self._p00_10[indr] = PForward_n.getindr(indr+1) * PBackward_np1.getindr(indrnp1) * Tab_GaussXY_np1.getindr(indr+1, indrnp1) * FS.probaR2CondR1(r, rnp1)
 
             # self._p10_11
-            rn, indrn = 1., self._STEPS+1
+            rn, indrn = 1., self._STEPSp1
             self._p10_11[indr] = PForward_n.getindr(indrn) * PBackward_np1.getindr(indr+1) * Tab_GaussXY_np1.getindr(indrn, indr+1) * FS.probaR2CondR1(rn, r)
 
             # self._p11_01
-            rnp1, indrnp1 = 1., self._STEPS+1
+            rnp1, indrnp1 = 1., self._STEPSp1
             self._p11_01[indr] = PForward_n.getindr(indr+1) * PBackward_np1.getindr(indrnp1) * Tab_GaussXY_np1.getindr(indr+1, indrnp1) * FS.probaR2CondR1(r, rnp1)
 
             # self._p01_00
@@ -158,29 +158,16 @@ class Loi2DDiscreteFuzzy_TMC(Loi2DDiscreteFuzzy):
             for indr2, r2 in enumerate(self._Rcentres):
                 self._p[indr, indr2] = PForward_n.getindr(indr+1) * PBackward_np1.getindr(indr2+1) * Tab_GaussXY_np1.getindr(indr+1, indr2+1) * FS.probaR2CondR1(r, r2)
 
-    def fuzzyMPM_2D(self):
-
-        loi = Loi1DDiscreteFuzzy_TMC(self._EPS, self._STEPS, self._interpolation, self._Rcentres)
-
-        # pour r == 0.
-        loi.setr(0., np.mean(self._p01_00) + self._p00 + self._p01)
-        # pour r == 1.
-        loi.setr(1., np.mean(self._p10_11) + self._p10 + self._p11)
-        # pour l'intérieur
-        for i, r in enumerate(self._Rcentres):
-            loi.setr(r, np.mean(self._p[i, :]) + self._p00_10[i] + self._p11_01[i])
-
-        return loi.fuzzyMPM_1D()
 
     def predicSauts(self, probaR2CondR1, ProbaForward_n):
         self._p00 = probaR2CondR1(0., 0.) * ProbaForward_n.getindr(0)
-        self._p10 = probaR2CondR1(1., 0.) * ProbaForward_n.getindr(self._STEPS+1)
+        self._p10 = probaR2CondR1(1., 0.) * ProbaForward_n.getindr(self._STEPSp1)
         self._p01 = probaR2CondR1(0., 1.) * ProbaForward_n.getindr(0.)
-        self._p11 = probaR2CondR1(1., 1.) * ProbaForward_n.getindr(self._STEPS+1)
+        self._p11 = probaR2CondR1(1., 1.) * ProbaForward_n.getindr(self._STEPSp1)
 
         for indr, r in enumerate(self._Rcentres):
             self._p00_10[indr] = probaR2CondR1(r, 0.) * ProbaForward_n.getindr(indr+1)
-            self._p10_11[indr] = probaR2CondR1(1., r) * ProbaForward_n.getindr(self._STEPS+1)
+            self._p10_11[indr] = probaR2CondR1(1., r) * ProbaForward_n.getindr(self._STEPSp1)
             self._p11_01[indr] = probaR2CondR1(r, 1.) * ProbaForward_n.getindr(indr+1)
             self._p01_00[indr] = probaR2CondR1(0., r) * ProbaForward_n.getindr(0)
 
@@ -192,13 +179,13 @@ class Loi2DDiscreteFuzzy_TMC(Loi2DDiscreteFuzzy):
     def CalcProbaTransAposteriori(self, ProbaForward_np1, ProbaForward_n, loijointeAP1, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1):
         self._p00 = loijointeAP1(0., 0., 0,             ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getindr(0)
         self._p10 = loijointeAP1(1., 0., 0,             ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getindr(0)
-        self._p01 = loijointeAP1(0., 1., self._STEPS+1, ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getindr(self._STEPS+1)
-        self._p11 = loijointeAP1(1., 1., self._STEPS+1, ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getindr(self._STEPS+1)
+        self._p01 = loijointeAP1(0., 1., self._STEPSp1, ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getindr(self._STEPSp1)
+        self._p11 = loijointeAP1(1., 1., self._STEPSp1, ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getindr(self._STEPSp1)
 
         for indr, r in enumerate(self._Rcentres):
             self._p00_10[indr] = loijointeAP1(r, 0., 0,             ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getindr(0)
             self._p10_11[indr] = loijointeAP1(1., r, indr+1,        ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getindr(indr+1)
-            self._p11_01[indr] = loijointeAP1(r, 1., self._STEPS+1, ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getindr(self._STEPS+1)
+            self._p11_01[indr] = loijointeAP1(r, 1., self._STEPSp1, ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getindr(self._STEPSp1)
             self._p01_00[indr] = loijointeAP1(0., r, indr+1,        ProbaForward_n, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, self._interpolation, self._STEPS) / ProbaForward_np1.getindr(indr+1)
 
         for indr1, r1 in enumerate(self._Rcentres):
@@ -229,7 +216,7 @@ class Loi1DDiscreteFuzzy_TMC(Loi1DDiscreteFuzzy):
             else:
                 self._p01[ind] = 0.
 
-        alpha, ind = 1., self._STEPS+1 # le dernier
+        alpha, ind = 1., self._STEPSp1 # le dernier
         if not np.any(MeanCovFuzzy.getCov(ind)) == False:
             self._p1 = FS.probaR(alpha) * multivariate_normal.pdf(z, mean=MeanCovFuzzy.getMean(ind), cov=MeanCovFuzzy.getCov(ind))
         else:
@@ -245,7 +232,7 @@ class Loi1DDiscreteFuzzy_TMC(Loi1DDiscreteFuzzy):
         for ind, r in enumerate(self._Rcentres):
             self._p01[ind] = FctCalculForB(ind+1, r, self._EPS, self._STEPS, self._Rcentres, probaForB, FS, Tab_GaussXY_np1)
         
-        r, ind = 1., self._STEPS+1
+        r, ind = 1., self._STEPSp1
         self._p1 = FctCalculForB(ind, r, self._EPS, self._STEPS, self._Rcentres, probaForB, FS, Tab_GaussXY_np1)
 
 
@@ -254,10 +241,10 @@ class Loi1DDiscreteFuzzy_TMC(Loi1DDiscreteFuzzy):
         indrnp1 = 0
         self._p0 = ProbaPsi_n.getindr(indrn, indrnp1) / ProbaGamma_n_rn
 
-        for indrnp1 in range(1, self._STEPS+1):
+        for indrnp1 in range(1, self._STEPSp1):
             self._p01[indrnp1-1] = ProbaPsi_n.getindr(indrn, indrnp1) / ProbaGamma_n_rn
 
-        indrnp1 = self._STEPS+1
+        indrnp1 = self._STEPSp1
         self._p1 = ProbaPsi_n.getindr(indrn, indrnp1) / ProbaGamma_n_rn
 
         # Verification a priori
@@ -307,7 +294,7 @@ class Loi1DDiscreteFuzzy_TMC(Loi1DDiscreteFuzzy):
             Cov_rn_0  = Cov[indrn*self._STEPS+indrnp1]
         self._p0 = probaR(rn) * norm.pdf(y, loc=Mean_Y_rn, scale=np.sqrt(Cov_rn_0[1, 1])).item()
 
-        rn, indrn = 1., self._STEPS+1
+        rn, indrn = 1., self._STEPSp1
         if self._interpolation==True:
             Mean_Y_rn = InterLineaire_Vector(Mean_Y, rn)
             Cov_rn_0  = InterBiLineaire_Matrix(Cov, rn, rnp1)
@@ -335,44 +322,9 @@ class Loi1DDiscreteFuzzy_TMC(Loi1DDiscreteFuzzy):
         for indr, r in enumerate(self._Rcentres):
             self._p01[indr] = fonction(r, indr+1, self._interpolation, self._EPS, self._STEPS, loijointeAP, proba, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1)
         
-        rnp1, indrnp1 = 1., self._STEPS+1
+        rnp1, indrnp1 = 1., self._STEPSp1
         self._p1 = fonction(rnp1, indrnp1, self._interpolation, self._EPS, self._STEPS, loijointeAP, proba, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1)
 
 
-    def setProbaPredict_1(self, proba):
-        self._p0 = proba(0.)
-        for indr, rn in enumerate(self._Rcentres):
-            self._p01[indr] = proba(rn)
-        self._p1 = proba(1.)
-
-
-    def setProbaPredict(self, probaR2CondR1, r1):
-        self._p0 = probaR2CondR1(r1, 0.)
-        for indr2, r2 in enumerate(self._Rcentres):
-            self._p01[indr2] = probaR2CondR1(r1, r2)
-        self._p1 = probaR2CondR1(r1, 1.)
-
-    def fuzzyMPM_1D(self):
-
-        # select if hard or fuzzy
-        hard = False
-        if self._p0 + self._p1 >= 0.5:
-            hard = True
-
-        if hard == True: # its hard
-            if self._p0 > self._p1:
-                proba_max = self._p0
-                flevel_max = 0.
-            else:
-                proba_max = self._p1
-                flevel_max = 1.
-        else: # its fuzzy
-            if self._STEPS != 0:
-                proba_max = self._p01.max()
-                flevel_max = self._Rcentres[self._p01.argmax()]
-            else:
-                proba_max  = -1.
-                flevel_max = -1.
-
-        return flevel_max, proba_max
+   
 

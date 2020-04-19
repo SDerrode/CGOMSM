@@ -293,7 +293,8 @@ class RestorationOFAFuzzy:
         else:
             input('Impossible')
 
-        self.__FSText = 'FS' + FSParameters[0] + '_pH_' + str(self.__FS.maxiHardJump()).replace('.','_')
+        #self.__FSText = 'FS' + FSParameters[0] + '_pH_' + str(self.__FS.maxiHardJump()).replace('.','_')
+        self.__FSText = 'FS' + FSParameters[0]
         # print('self.__FSText=', self.__FSText)
         # input('fin du constructeur')
 
@@ -344,7 +345,7 @@ class RestorationOFAFuzzy:
         # Boucle
         for np1 in range(1, N):
             if self.__verbose >= 2:
-                print('\r         forward np1=', np1, ' sur N=', N, end='', flush = True)
+                print('\r         forward np1=', np1, ' sur N=', N, end='', flush=True)
 
             yn   = ynp1
             ynp1 = Y[np1, :]
@@ -373,26 +374,36 @@ class RestorationOFAFuzzy:
 
         N = len(ProbaForward)
         
-        ProbaPredict = []
+        tab_p_rnnp1_dp_y1_to_yn = []
+        tab_p_rnp1_dp_y1_to_yn  = []
 
-        # Ne sert à rien mais sert pour aligner les algo
-        ProbaPredict.append(Loi2DDiscreteFuzzy_TMC(EPS, self.__STEPS, self.__interpolation, self.__Rcentres))
+        np1 = 0
+
+        # Ne sert à rien mais sert sauf aligner les algo
+        tab_p_rnnp1_dp_y1_to_yn.append(Loi2DDiscreteFuzzy_TMC(EPS, self.__STEPS, self.__interpolation, self.__Rcentres))
+        tab_p_rnp1_dp_y1_to_yn.append (Loi1DDiscreteFuzzy_TMC(EPS, self.__STEPS, self.__interpolation, self.__Rcentres))
+        tab_p_rnp1_dp_y1_to_yn[np1].setValCste(1.)
+        tab_p_rnp1_dp_y1_to_yn[np1].normalisation(tab_p_rnp1_dp_y1_to_yn[np1].Integ())
 
         for np1 in range(1, N):
             if self.__verbose >= 2:
-                print('\r         predict np1=', np1, ' sur N=', N, end='', flush = True)
+                print('\r         predict np1=', np1, ' sur N=', N, end='', flush=True)
        
-            ProbaPredict.append(Loi2DDiscreteFuzzy_TMC(EPS, self.__STEPS, self.__interpolation, self.__Rcentres))
-            ProbaPredict[np1].predicSauts(self.__FS.probaR2CondR1, ProbaForward[np1-1])
-            # print('np1=', np1, ', Integ=', ProbaPredict[np1].Integ())
+            tab_p_rnnp1_dp_y1_to_yn.append(Loi2DDiscreteFuzzy_TMC(EPS, self.__STEPS, self.__interpolation, self.__Rcentres))
+            tab_p_rnnp1_dp_y1_to_yn[np1].predicSauts(self.__FS.probaR2CondR1, ProbaForward[np1-1])
+            # print('np1=', np1, ', Integ=', tab_p_rnnp1_dp_y1_to_yn[np1].Integ())
 
             # normalisation in order to compensate for the fuzzy discretization
-            ProbaPredict[np1].normalisation(ProbaPredict[np1].Integ())
-            
+            tab_p_rnnp1_dp_y1_to_yn[np1].normalisation(tab_p_rnnp1_dp_y1_to_yn[np1].Integ())
+
+            # marginalisation
+            tab_p_rnp1_dp_y1_to_yn.append(tab_p_rnnp1_dp_y1_to_yn[np1].getMarginal_r2())
+
+
         if self.__verbose >= 2:
             print(' ')
 
-        return ProbaPredict
+        return tab_p_rnnp1_dp_y1_to_yn, tab_p_rnp1_dp_y1_to_yn
 
 
     def compute_jumps_backward(self, EPS, Y, tab_normalis, Rcentres):
@@ -418,7 +429,7 @@ class RestorationOFAFuzzy:
         # Boucle pour backward
         for n in range(N-2, -1, -1):
             if self.__verbose >= 2:
-                print('\r         backward n=', n, ' sur N=', N, end='             ', flush = True)
+                print('\r         backward n=', n, ' sur N=', N, end='             ', flush=True)
 
             indice = N-n-1
             ynp1 = yn
@@ -445,7 +456,7 @@ class RestorationOFAFuzzy:
         # Boucle sur backward
         for n in range(N):
             if self.__verbose >= 2:
-                print('\r         proba lissage n=', n, ' sur N=', N, end='   ', flush = True)
+                print('\r         proba lissage n=', n, ' sur N=', N, end='   ', flush=True)
 
             # calcul du produit forward * backward
             tab_p_rn_dp_y1_to_yN.append(Loi1DDiscreteFuzzy_TMC(EPS, self.__STEPS, self.__interpolation, Rcentres))
@@ -464,7 +475,7 @@ class RestorationOFAFuzzy:
         return tab_p_rn_dp_y1_to_yN
 
 
-    def restore_Fuzzy1D(self, Y, filt=True, smooth=False, predic=False):
+    def restore_Fuzzy1D(self, Y, filt=True, smooth=False, predic=0):
         """
         1 dimension should be faster than multiD
         """
@@ -475,15 +486,15 @@ class RestorationOFAFuzzy:
         EPS = 1E-15
 
         # les tableaux a remplir...
-        E_R_n    = np.zeros((N))
-        E_R_np1  = np.zeros((N))
-        E_R_N    = np.zeros((N))
-        E_X_n    = np.zeros((N, self.__n_x))
-        E2_X_n   = np.zeros((N, self.__n_x, self.__n_x))
-        E_Z_np1  = np.zeros((N, self.__n_z))
+        E_R_n     = np.zeros((N))
+        E_R_np1   = np.zeros((N))
+        E_R_N     = np.zeros((N))
+        E_X_n     = np.zeros((N, self.__n_x))
+        E2_X_n    = np.zeros((N, self.__n_x, self.__n_x))
+        E_Z_np1   = np.zeros((N, self.__n_z))
         VAR_Z_np1 = np.zeros((N, self.__n_z, self.__n_z))
-        E_X_N    = np.zeros((N, self.__n_x))
-        E2_X_N   = np.zeros((N, self.__n_x, self.__n_x))
+        E_X_N     = np.zeros((N, self.__n_x))
+        E2_X_N    = np.zeros((N, self.__n_x, self.__n_x))
 
         ########################
         # Preparations des X
@@ -494,13 +505,11 @@ class RestorationOFAFuzzy:
         E_Xnp1_dp1   = Tab1DDiscreteFuzzy(EPS, self.__STEPS, self.__interpolation, self.__Rcentres, dim=(self.__n_x, 1))
         E2_Xnp1_dp1  = Tab1DDiscreteFuzzy(EPS, self.__STEPS, self.__interpolation, self.__Rcentres, dim=(self.__n_x, self.__n_x))
 
-        p_rnp1_dp_rn = Loi1DDiscreteFuzzy_TMC(EPS, self.__STEPS, self.__interpolation, self.__Rcentres)
-
         ########################
         # Proba sauts
         tab_p_rn_dp_y1_to_yn, tab_normalis, p_rn_d_rnpun_yun_ynpun = self.compute_jumps_forward(EPS, Y, self.__Rcentres)
-        if predic:
-            tab_p_rnnp1_dp_y1_to_yn = self.compute_jumps_predict(EPS, self.__Rcentres, tab_p_rn_dp_y1_to_yn)
+        if predic>0:
+            tab_p_rnnp1_dp_y1_to_yn, tab_p_rnp1_dp_y1_to_yn = self.compute_jumps_predict(EPS, self.__Rcentres, tab_p_rn_dp_y1_to_yn)
         if smooth:
             ProbaBackward        = self.compute_jumps_backward(EPS, Y, tab_normalis, self.__Rcentres)
             tab_p_rn_dp_y1_to_yN = self.compute_jumps_smooth  (N, EPS, tab_p_rn_dp_y1_to_yn, ProbaBackward, self.__Rcentres)
@@ -511,15 +520,14 @@ class RestorationOFAFuzzy:
         #########################
         # MPM filtrage et lissage
         if filt:
-            flevel_max_filt, proba_max_filt = tab_p_rn_dp_y1_to_yn[np1].fuzzyMPM_1D()
-            E_R_n[np1] = flevel_max_filt
-        if predic:
-            p_rnp1_dp_rn.setProbaPredict_1(self.__FS.probaR)
-            flevel_max_pred, proba_max_pred = p_rnp1_dp_rn.fuzzyMPM_1D()
-            E_R_np1[np1] = flevel_max_pred
+            maxi, r, indr = tab_p_rn_dp_y1_to_yn[np1].fuzzyMPM_1D()
+            E_R_n[np1] = r
+        if predic>0:
+            maxi, r, indr = tab_p_rnp1_dp_y1_to_yn[np1].fuzzyMPM_1D()
+            E_R_np1[np1] = r
         if smooth:
-            flevel_max_smoo, proba_max_smoo = tab_p_rn_dp_y1_to_yN[np1].fuzzyMPM_1D()
-            E_R_N[np1] = flevel_max_smoo
+            maxi, r, indr = tab_p_rn_dp_y1_to_yN[np1].fuzzyMPM_1D()
+            E_R_N[np1] = r
 
         ######################
         # initialisation des X filtrés et lissés
@@ -542,9 +550,9 @@ class RestorationOFAFuzzy:
                     print('E2_X_n! ', E2_X_n[np1, :, :], ', ', np.outer(E_X_n[np1, :], E_X_n[np1, :]))
                     input('pause - if filt:')
 
-        if predic:
-            E_Z_np1 [np1, :]    = 0. # pas de prediction
-            VAR_Z_np1[np1, :, :] = 0. # pas de prediction
+        if predic>0:
+            E_Z_np1 [np1, :]     = 0. # pas de prediction pour le premier
+            VAR_Z_np1[np1, :, :] = 0. # pas de prediction pour le premier
 
         if smooth:
             E_X_N [np1, :]    = Integ_CalcE_X_np1(EPS, self.__STEPS, tab_p_rn_dp_y1_to_yN[np1], E_Xnp1_dp1,  np1, self.__Rcentres)
@@ -560,7 +568,7 @@ class RestorationOFAFuzzy:
         # Boucle sur les données
         for np1 in range(1, N):
             if self.__verbose >= 2:
-                print('\r         filter and/or smoother np1=', np1, ' sur N=', N, end='    ', flush = True)
+                print('\r         filter and/or smoother np1=', np1, ' sur N=', N, end='    ', flush=True)
 
             yn   = ynp1
             ynp1 = Y[np1, :]
@@ -572,15 +580,14 @@ class RestorationOFAFuzzy:
             #########################
             # stockage de la proba des sauts pour le filtre (et pour le lisseur) la plus élevée
             if filt:
-                flevel_max_filt, proba_max_filt = tab_p_rn_dp_y1_to_yn[np1].fuzzyMPM_1D()
-                E_R_n[np1] = flevel_max_filt
-            if predic:
-                p_rnp1_dp_rn.setProbaPredict(self.__FS.probaR2CondR1, E_R_np1[np1-1])
-                flevel_max_pred, proba_max_pred = p_rnp1_dp_rn.fuzzyMPM_1D()
-                E_R_np1[np1] = flevel_max_pred
+                maxi, r, indr = tab_p_rn_dp_y1_to_yn[np1].fuzzyMPM_1D()
+                E_R_n[np1] = r
+            if predic>0:
+                maxi, r, indr = tab_p_rnp1_dp_y1_to_yn[np1].fuzzyMPM_1D()
+                E_R_np1[np1] = r
             if smooth:
-                flevel_max_smoo, proba_max_smoo = tab_p_rn_dp_y1_to_yN[np1].fuzzyMPM_1D()
-                E_R_N[np1] = flevel_max_smoo
+                maxi, r, indr = tab_p_rn_dp_y1_to_yN[np1].fuzzyMPM_1D()
+                E_R_N[np1] = r
 
             ##################################
             ###### PARTIE CONCERNANT LES X / FILTER
@@ -634,16 +641,18 @@ class RestorationOFAFuzzy:
                         input('Variance Neg!')
 
             # 4c. Calcul du predicteur :  E[Z_{n+1} | ...] et la covariance associée
-            if predic:
-                A = IntegDouble_Predictor(EPS, self.__STEPS, tab_p_rnnp1_dp_y1_to_yn[np1], E_Znp1_dp2,   self.__n_z, self.__Rcentres)
+            if predic>0:
+                A = IntegDouble_Predictor(EPS, self.__STEPS, tab_p_rnnp1_dp_y1_to_yn[np1], E_Znp1_dp2, self.__n_z, self.__Rcentres)
                 E_Z_np1 [np1, :] = np.reshape(A, newshape=(self.__n_z))
+                # print('E_Z_np1 [np1, :]=', E_Z_np1 [np1, :])
+                # input('pause')
                 VAR_Z_np1[np1, :, :] = IntegDouble_Predictor(EPS, self.__STEPS, tab_p_rnnp1_dp_y1_to_yn[np1], VAR_Znp1_dp2, self.__n_z, self.__Rcentres)
                 if self.__verbose >= 3:
                     if is_pos_def(VAR_Z_np1[np1, :, :]) == False:
                         print('np1=', np1)
                         print('A = ', A)
                         print('B = ', B)
-                        input('pause - if predic:')
+                        input('pause - if predic>0:')
 
 
         if self.__verbose >= 2: print(' ')
