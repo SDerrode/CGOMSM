@@ -74,8 +74,8 @@ class CGOFMSM_Learn:
 
         # les données 
         self.__Ztrain = np.zeros(shape=(self.__N, self.__n_z))
-        self.__Ztrain[:, 0:self.__n_x         ] = self.__Datatrain[self.__listeHeader[1]].values
-        self.__Ztrain[:, self.__n_x:self.__n_z] = self.__Datatrain[self.__listeHeader[0]].values
+        self.__Ztrain[:, 0] = self.__Datatrain[self.__listeHeader[1]].values
+        self.__Ztrain[:, 1] = self.__Datatrain[self.__listeHeader[0]].values
 
         if self.__STEPS != 0:
             self.__Rcentres = np.linspace(start=1./(2.*self.__STEPS), stop=1.0-1./(2.*self.__STEPS), num=self.__STEPS, endpoint=True)
@@ -91,7 +91,7 @@ class CGOFMSM_Learn:
         
         # plage graphique pour les plots
         self.__graph_mini = 0
-        self.__graph_maxi = min(200, self.__N) # maxi=self.__N, maxi=min(500, self.__N)
+        self.__graph_maxi = min(600, self.__N) # maxi=self.__N, maxi=min(500, self.__N)
         self.__graphRep   = './Result/Fuzzy/SimulatedR/'
 
         # Detect the weekend days switches
@@ -201,7 +201,7 @@ class CGOFMSM_Learn:
         # MAJ des proba sur la base des paramètres courants
         Tab_GaussXY                         = self.compute_tab_GaussXY()
         ProbaForwardNorm, Tab_Normalis      = self.compute_fuzzyjumps_forward(Tab_GaussXY)
-        ProbaBackwardNorm                   = self.compute_fuzzyjumps_backward(Tab_GaussXY, Tab_Normalis)
+        ProbaBackwardNorm                   = self.compute_fuzzyjumps_backward(ProbaForwardNorm, Tab_GaussXY, Tab_Normalis)
         ProbaGamma, ProbaPsi, ProbaJumpCond = self.compute_fuzzyjumps_gammapsicond(ProbaForwardNorm, ProbaBackwardNorm, Tab_GaussXY)
 
         # Update of param from some simulated R
@@ -435,9 +435,9 @@ class CGOFMSM_Learn:
                 self.plotRsimul(Rsimul, fname=fname, title=title)
         else:
             for real in range(self.__nbRealSEM):
-                #kmeans = KMeans(n_clusters=2+self.__STEPS, random_state=4, init='random', n_init=1).fit(np.transpose(self.__Ztrain))
-                kmeans = KMeans(n_clusters=2+self.__STEPS, random_state=None, init='random', n_init=1).fit(np.transpose(self.__Ztrain))
-                #kmeans = KMeans(n_clusters=2+self.__STEPS, n_init=1).fit(np.transpose(self.__Ztrain))
+                #kmeans = KMeans(n_clusters=2+self.__STEPS, random_state=4, init='random', n_init=1).fit(self.__Ztrain)
+                kmeans = KMeans(n_clusters=2+self.__STEPS, random_state=None, init='random', n_init=1).fit(self.__Ztrain)
+                #kmeans = KMeans(n_clusters=2+self.__STEPS, n_init=1).fit(self.__Ztrain)
                 # print(kmeans.inertia_, kmeans.n_iter_)
                 # print('kmeans.cluster_centers_=', kmeans.cluster_centers_)
                 # Sorting of labels according to the X-coordinate of cluster centers
@@ -506,10 +506,10 @@ class CGOFMSM_Learn:
         PDenom = np.zeros(shape=(self.__STEPSp2, self.__STEPSp2, 2, 2))
 
         for n in range(self.__N-1):
-            yn    = (self.__Ztrain[self.__n_x:self.__n_z, n])  .item()
-            ynpun = (self.__Ztrain[self.__n_x:self.__n_z, n+1]).item()
-            xn    = (self.__Ztrain[0:self.__n_x, n])           .item()
-            xnpun = (self.__Ztrain[0:self.__n_x, n+1])         .item()
+            yn    = (self.__Ztrain[n,   self.__n_x:self.__n_z]).item()
+            ynpun = (self.__Ztrain[n+1, self.__n_x:self.__n_z]).item()
+            xn    = (self.__Ztrain[n,   0:self.__n_x])         .item()
+            xnpun = (self.__Ztrain[n+1, 0:self.__n_x])         .item()
             
             vect1      = np.array([xn, yn, ynpun, 1.]) 
             vect1vect1 = np.outer(vect1, vect1)
@@ -543,7 +543,7 @@ class CGOFMSM_Learn:
                     # print('M[indrn, indrnp1,:]=', M[indrn, indrnp1,:])
                     # input('xvxv;dk')
                 except np.linalg.LinAlgError:
-                    if self.__verbose>1:
+                    if self.__verbose>2:
                         print('indrn, indrnp1 = ', indrn, indrnp1)
                         print("det pour M=", np.linalg.det(MDenom[indrn, indrnp1,:,:]), ' --> pseudo inverse')
                     M[indrn, indrnp1,:] = np.dot(MNum[indrn, indrnp1,:], np.linalg.pinv(MDenom[indrn, indrnp1,:,:], rcond=1e-15, hermitian=True))
@@ -551,7 +551,7 @@ class CGOFMSM_Learn:
                 try:
                     P[indrn, indrnp1,:] = np.dot(PNum[indrn, indrnp1,:], np.linalg.inv(PDenom[indrn, indrnp1,:,:]))
                 except np.linalg.LinAlgError:
-                    if self.__verbose>1:
+                    if self.__verbose>2:
                         print('indrn, indrnp1 = ', indrn, indrnp1)
                         print("det pour P=", np.linalg.det(PDenom[indrn, indrnp1,:,:]), ' --> pseudo inverse')
                     P[indrn, indrnp1,:] = np.dot(PNum[indrn, indrnp1,:], np.linalg.pinv(PDenom[indrn, indrnp1,:,:], rcond=1e-15, hermitian=True))
@@ -561,10 +561,10 @@ class CGOFMSM_Learn:
         Lambda2 = np.zeros(shape=(self.__STEPSp2, self.__STEPSp2))
         Denom   = np.zeros(shape=(self.__STEPSp2, self.__STEPSp2))
         for n in range(self.__N-1):
-            yn    = (self.__Ztrain[self.__n_x:self.__n_z, n])  .item()
-            ynpun = (self.__Ztrain[self.__n_x:self.__n_z, n+1]).item()
-            xn    = (self.__Ztrain[0:self.__n_x, n])           .item()
-            xnpun = (self.__Ztrain[0:self.__n_x, n+1])         .item()
+            yn    = (self.__Ztrain[n,   self.__n_x:self.__n_z]).item()
+            ynpun = (self.__Ztrain[n+1, self.__n_x:self.__n_z]).item()
+            xn    = (self.__Ztrain[n,   0:self.__n_x])         .item()
+            xnpun = (self.__Ztrain[n+1, 0:self.__n_x])         .item()
 
             for indrn in range(self.__STEPSp2):
                 for indrnp1 in range(self.__STEPSp2):
@@ -599,10 +599,10 @@ class CGOFMSM_Learn:
         for real in range(self.__nbRealSEM):
 
             for n in range(self.__N-1):
-                yn    = (self.__Ztrain[self.__n_x:self.__n_z, n])  .item()
-                ynpun = (self.__Ztrain[self.__n_x:self.__n_z, n+1]).item()
-                xn    = (self.__Ztrain[0:self.__n_x, n])           .item()
-                xnpun = (self.__Ztrain[0:self.__n_x, n+1])         .item()
+                yn    = (self.__Ztrain[n,   self.__n_x:self.__n_z]).item()
+                ynpun = (self.__Ztrain[n+1, self.__n_x:self.__n_z]).item()
+                xn    = (self.__Ztrain[n,   0:self.__n_x])         .item()
+                xnpun = (self.__Ztrain[n+1, 0:self.__n_x])         .item()
                 
                 vect1      = np.array([xn, yn, ynpun, 1.]) 
                 vect1vect1 = np.outer(vect1, vect1)
@@ -632,7 +632,7 @@ class CGOFMSM_Learn:
                     # print('M[indrn, indrnp1,:]=', M[indrn, indrnp1,:])
                     # input('xvxv;dk')
                 except np.linalg.LinAlgError:
-                    if self.__verbose>1:
+                    if self.__verbose>2:
                         print('indrn, indrnp1 = ', indrn, indrnp1)
                         print("det pour M (kmeans)=", np.linalg.det(MDenom[indrn, indrnp1,:,:]), ' --> pseudo inverse')
                     M[indrn, indrnp1,:] = np.dot(MNum[indrn, indrnp1,:], np.linalg.pinv(MDenom[indrn, indrnp1,:,:], rcond=1e-15, hermitian=True))
@@ -640,7 +640,7 @@ class CGOFMSM_Learn:
                 try:
                     P[indrn, indrnp1,:] = np.dot(PNum[indrn, indrnp1,:], np.linalg.inv(PDenom[indrn, indrnp1,:,:]))
                 except np.linalg.LinAlgError:
-                    if self.__verbose>1:
+                    if self.__verbose>2:
                         print('indrn, indrnp1 = ', indrn, indrnp1)
                         print("det pour P (kmeans)=", np.linalg.det(PDenom[indrn, indrnp1,:,:]), ' --> pseudo inverse')
                     P[indrn, indrnp1,:] = np.dot(PNum[indrn, indrnp1,:], np.linalg.pinv(PDenom[indrn, indrnp1,:,:], rcond=1e-15, hermitian=True))
@@ -651,13 +651,11 @@ class CGOFMSM_Learn:
         Denom   = np.zeros(shape=(self.__STEPSp2, self.__STEPSp2))
         
         for real in range(self.__nbRealSEM):
-
             for n in range(self.__N-1):
-            
-                yn    = (self.__Ztrain[self.__n_x:self.__n_z, n])  .item()
-                ynpun = (self.__Ztrain[self.__n_x:self.__n_z, n+1]).item()
-                xn    = (self.__Ztrain[0:self.__n_x, n])           .item()
-                xnpun = (self.__Ztrain[0:self.__n_x, n+1])         .item()
+                yn    = (self.__Ztrain[n,   self.__n_x:self.__n_z]).item()
+                ynpun = (self.__Ztrain[n+1, self.__n_x:self.__n_z]).item()
+                xn    = (self.__Ztrain[n,   0:self.__n_x])         .item()
+                xnpun = (self.__Ztrain[n+1, 0:self.__n_x])         .item()
                 
                 vect1      = np.array([xn, yn, ynpun, 1.]) 
                 vect1vect1 = np.outer(vect1, vect1)
@@ -690,7 +688,7 @@ class CGOFMSM_Learn:
         # La premiere ne sert à rien, uniquementà a synchroniser les indices
         tab_GaussXY.append(Tab2DDiscreteFuzzy(self.__EPS, self.__STEPS, self._interpolation, self.__Rcentres, (1, 1)))
 
-        znp1=self.__Ztrain[:, 0]
+        znp1=self.__Ztrain[0, :]
 
         # Les suivantes
         for np1 in range(1, self.__N):
@@ -698,10 +696,12 @@ class CGOFMSM_Learn:
                 print('\r         proba tnp1 condit. to tn, np1=', np1, ' sur N=', self.__N, end='   ', flush = True)
 
             zn   = znp1
-            znp1 = self.__Ztrain[:, np1]
+            znp1 = self.__Ztrain[np1, :]
 
             tab_GaussXY.append(Tab2DDiscreteFuzzy(self.__EPS, self.__STEPS, self._interpolation, self.__Rcentres, (1, 1)))
             tab_GaussXY[np1].Calc_GaussXY(self.__M, self.__Lambda2, self.__P, self.__Pi2, zn, znp1, self.__n_x)
+            # tab_GaussXY[np1].print()
+            # input('tab gauss')
 
         if self.__verbose >= 2: print(' ')
         return tab_GaussXY
@@ -716,10 +716,13 @@ class CGOFMSM_Learn:
         # Initialisation
         np1  = 0
         ProbaForward.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self._interpolation, self.__Rcentres))
-        ProbaForward[np1].CalcForw1(self.__FS, self.__Ztrain[:, np1], self.__aMeanCovFuzzy)
+        ProbaForward[np1].CalcForw1(self.__FS, self.__Ztrain[np1, :], self.__aMeanCovFuzzy)
         Tab_Normalis[np1] = ProbaForward[np1].Integ()
         # normalisation (devijver)
         ProbaForward[np1].normalisation(Tab_Normalis[np1])
+
+        # ProbaForward[np1].print()
+        # input('forward')
 
         ###############################
         # Boucle
@@ -738,13 +741,17 @@ class CGOFMSM_Learn:
                 print('1.-ProbaForward[np1].Integ()=', 1.-ProbaForward[np1].Integ())
                 input('forward, ca ne va pas!')
 
+            #input('fin forward np1')
+
         if self.__verbose >= 2: print(' ')
         return ProbaForward, Tab_Normalis
 
 
-    def compute_fuzzyjumps_backward(self, Tab_GaussXY, Tab_Normalis):
+    def compute_fuzzyjumps_backward(self, ProbaForwardNorm, Tab_GaussXY, Tab_Normalis):
 
         ProbaBackward = []
+
+        loicorrective = Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self._interpolation, self.__Rcentres)
 
         # on créé la liste de tous les lois discrétisées
         for n in range(self.__N):
@@ -767,6 +774,14 @@ class CGOFMSM_Learn:
             ProbaBackward[n].normalisation(Tab_Normalis[n+1])
             # ProbaBackward[n].print()
             # input('pause')
+
+            # Cette normalisation n'est implémentée que pour contre-carrer la dérive suite à l'intégration numérique
+            # Important lorsque F est faible
+            loicorrective.ProductFB(ProbaForwardNorm[n], ProbaBackward[n])
+            # loicorrective.print()
+            # print('loicorrective.Integ()=', loicorrective.Integ())
+            # input('attente')
+            ProbaBackward[n].normalisation(loicorrective.Integ())
             
         if self.__verbose >= 2: print(' ')
         return ProbaBackward
@@ -778,18 +793,13 @@ class CGOFMSM_Learn:
         tab_psi   = []
         tab_cond  = []
 
-        loicorrective = Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self._interpolation, self.__Rcentres)
-
         ###############################
         # Boucle sur gamma et psi
         for n in range(self.__N-1):
             if self.__verbose >= 2:
                 print('\r         proba gamma psi cond n=', n, ' sur N=', self.__N, end='   ', flush = True)
 
-            # Cette normalisation n'est implémentée que pour contre-carrer la dérive suite à l'intégration numérique
-            # Important lorsque F est faible
-            loicorrective.ProductFB(ProbaForwardNorm[n], ProbaBackwardNorm[n])
-            ProbaBackwardNorm[n].normalisation(loicorrective.Integ())
+            # print('AAAAAAAAA1')
 
             # calcul de gamma = produit forward norm * backward norm ****************************************************************
             tab_gamma.append(Loi1DDiscreteFuzzy_TMC(self.__EPS, self.__STEPS, self._interpolation, self.__Rcentres))
@@ -807,6 +817,9 @@ class CGOFMSM_Learn:
                 input('PB PB PB Gamma')
             tab_gamma[n].normalisation(integ)
 
+            # print('AAAAAAAAA2')
+
+
             # if tab_gamma[n].getindr(2)>tab_gamma[n].getindr(0) and tab_gamma[n].getindr(2)>tab_gamma[n].getindr(1):
             #     tab_gamma[n].print()
             #     input('pause tab-gamma')
@@ -822,6 +835,9 @@ class CGOFMSM_Learn:
                 tab_psi[n].print()
                 input('pause')
             tab_psi[n].normalisation(integ)
+
+            # print('AAAAAAAAA3')
+
 
             # integ = tab_psi[n].Integ()
             # if abs(1.-integ) > 1E-2: # we stop only if more than 5% error
@@ -857,6 +873,7 @@ class CGOFMSM_Learn:
     def PlotConvSEM(self):
 
         ax = plt.figure().gca()
+        ax.ticklabel_format(useOffset=False)
         plt.plot(self.__Tab_ParamFS[:, 0], color='g', label=r'$\alpha_0$')
         plt.plot(self.__Tab_ParamFS[:, 1], color='r', label=r'$\alpha_1$')
         plt.plot(self.__Tab_ParamFS[:, 2], color='b', label=r'$\beta$')
@@ -871,6 +888,7 @@ class CGOFMSM_Learn:
         plt.close()
 
         ax = plt.figure().gca()
+        ax.ticklabel_format(useOffset=False)
         plt.plot(self.__Tab_M_00[:, 0], color='g', label=r'$\mathcal{A}_{0}^{0}$')
         plt.plot(self.__Tab_M_00[:, 1], color='r', label=r'$\mathcal{B}_{0}^{0}$')
         plt.plot(self.__Tab_M_00[:, 2], color='b', label=r'$\mathcal{C}_{0}^{0}$')
@@ -884,6 +902,7 @@ class CGOFMSM_Learn:
         plt.close()
 
         ax = plt.figure().gca()
+        ax.ticklabel_format(useOffset=False)
         plt.plot(self.__Tab_P_00[:, 0], color='g', label=r'$\mathcal{F}_{0}^{0}$')
         #plt.plot(self.__Tab_P_00[:, 1], color='r', label=r'$\mathcal{G}_{0}^{0}$')
         plt.xlim(xmax=self.__nbIterSEM, xmin=0)
@@ -895,7 +914,8 @@ class CGOFMSM_Learn:
         plt.close()
 
         ax = plt.figure().gca()
-        plt.plot(self.__Tab_Lambda_00[:, 0], color='g', label=r'$\lambda_{0}^{0}$')
+        ax.ticklabel_format(useOffset=False)
+        plt.plot(self.__Tab_Lambda_00, color='g', label=r'$\lambda_{0}^{0}$')
         plt.xlim(xmax=self.__nbIterSEM, xmin=0)
         plt.xlabel('SEM iteration')
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
@@ -905,7 +925,8 @@ class CGOFMSM_Learn:
         plt.close()
 
         ax = plt.figure().gca()
-        plt.plot(self.__Tab_Pi_00[:, 0],     color='g', label=r'$\pi_{0}^{0}$')
+        ax.ticklabel_format(useOffset=False)
+        plt.plot(self.__Tab_Pi_00, color='g', label=r'$\pi_{0}^{0}$')
         plt.xlim(xmax=self.__nbIterSEM, xmin=0)
         plt.xlabel('SEM iteration')
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
@@ -1021,7 +1042,7 @@ class MeanCovFuzzy:
         for real in range(nbreal):
             for n in range(self.__N):
                 label = Rlabels[real*self.__N+n]
-                self.__Mean_Zf[label,:] += self.__Ztrain[:, n]
+                self.__Mean_Zf[label,:] += self.__Ztrain[n, :]
                 self.__cpt[label] += 1
         
         for indrn in range(self.__STEPSp2):
@@ -1035,7 +1056,7 @@ class MeanCovFuzzy:
         for real in range(nbreal):
             for n in range(self.__N):
                 label = Rlabels[real*self.__N+n]
-                VectZ = (np.transpose(self.__Ztrain[:, n]) - self.__Mean_Zf[label,:]).reshape(self.__n_z, 1)
+                VectZ = (np.transpose(self.__Ztrain[n, :]) - self.__Mean_Zf[label,:]).reshape(self.__n_z, 1)
                 self.__Cov_Zf[label,:,:] += np.outer(VectZ, VectZ)
         for indrn in range(self.__STEPSp2):
             if self.__cpt[indrn] != 0:

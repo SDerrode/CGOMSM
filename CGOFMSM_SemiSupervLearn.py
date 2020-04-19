@@ -102,7 +102,6 @@ if __name__ == '__main__':
     filenameParam = './Parameters/Fuzzy/' + filestem + '_F=' + str(STEPS) + '.param3'
     aCGOFMSM_learn.SaveParameters_3(filenameParam)
     aCGOFMSM_learn.GenerateCommandline(chWork, fileTrain, filenameParam, STEPS, clipboardcopy=False)
-    exit(1)
 
     # Convert parametrization 3 to parametrization 2 by parametrization 1
     filenameParam = './Parameters/Fuzzy/' + filestem + '_F=' + str(STEPS) + '.param1'

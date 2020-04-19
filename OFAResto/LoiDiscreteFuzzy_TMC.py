@@ -37,16 +37,15 @@ def calcF(indrnp1, rnp1, EPS, STEPS, Rcentres, ProbaF, FS, Tab_GaussXY_np1):
         #   Par contre le reste l'est, donc on peut le sortir de l'intégration numérique
     
         # Cette solution est la plus rapide car plein de choses sont constantes sur le petit interval à intégrer
-        GaussXY = Tab_GaussXY_np1.getindr(indrn+1, indrnp1)
+        GaussXY = Tab_GaussXY_np1.getindr(indrn+1, indrnp1)[0,0]
         if GaussXY > 0.:
             ATemp, errTemp = sc.integrate.quad(func=loiForw, a=float(indrn)/STEPS+EPS, b=float(indrn+1)/STEPS-EPS, args=argument, epsabs=1E-2, epsrel=1E-2, limit=50)
             A += ATemp * GaussXY * ProbaF.getindr(indrn+1)
     
     rn, indrn = 0., 0
-    A0 = FS.probaR2CondR1(rn, rnp1) * Tab_GaussXY_np1.getindr(indrn, indrnp1) * ProbaF.getindr(indrn)
-    
+    A0 = FS.probaR2CondR1(rn, rnp1) * Tab_GaussXY_np1.getindr(indrn, indrnp1)[0,0] * ProbaF.getindr(indrn)
     rn, indrn = 1., STEPS+1
-    A1 = FS.probaR2CondR1(rn, rnp1) * Tab_GaussXY_np1.getindr(indrn, indrnp1) * ProbaF.getindr(indrn)
+    A1 = FS.probaR2CondR1(rn, rnp1) * Tab_GaussXY_np1.getindr(indrn, indrnp1)[0,0] * ProbaF.getindr(indrn)
     
     if not np.isfinite(A + A0 + A1):
         print('  A  = ', A, ',  A0 = ', A0, ',  A1 = ', A1)
@@ -69,7 +68,7 @@ def calcB(indrn, rn, EPS, STEPS, Rcentres, ProbaB, FS, Tab_GaussXY_np1):
         #   Par contre le reste l'est, donc on peut le sortir de l'intégration numérique
     
         # Cette solution est la plus rapide car plein de choses sont constantes sur le petit interval à intégrer
-        GaussXY = Tab_GaussXY_np1.getindr(indrn, indrnp1+1)
+        GaussXY = Tab_GaussXY_np1.getindr(indrn, indrnp1+1)[0,0]
         if GaussXY > 0.:
             ATemp, errTemp = sc.integrate.quad(func=loiBackw, a=float(indrnp1)/STEPS+EPS, b=float(indrnp1+1)/STEPS-EPS, args=argument, epsabs=1E-2, epsrel=1E-2, limit=50)
             A += ATemp * GaussXY * ProbaB.getindr(indrnp1+1)
@@ -80,10 +79,10 @@ def calcB(indrn, rn, EPS, STEPS, Rcentres, ProbaB, FS, Tab_GaussXY_np1):
                 input('calcB')
     
     rnp1, indrnp1 = 0., 0
-    A0 = FS.probaR2CondR1(rn, rnp1) * Tab_GaussXY_np1.getindr(indrn, indrnp1) * ProbaB.getindr(indrnp1)
+    A0 = FS.probaR2CondR1(rn, rnp1) * Tab_GaussXY_np1.getindr(indrn, indrnp1)[0,0] * ProbaB.getindr(indrnp1)
     
     rnp1, indrnp1 = 1., STEPS+1
-    A1 = FS.probaR2CondR1(rn, rnp1) * Tab_GaussXY_np1.getindr(indrn, indrnp1) * ProbaB.getindr(indrnp1)
+    A1 = FS.probaR2CondR1(rn, rnp1) * Tab_GaussXY_np1.getindr(indrn, indrnp1)[0,0] * ProbaB.getindr(indrnp1)
 
     if not np.isfinite(A + A0 + A1):
         print('  A  = ', A, ',  A0 = ', A0, ',  A1 = ', A1)
@@ -121,19 +120,19 @@ class Loi2DDiscreteFuzzy_TMC(Loi2DDiscreteFuzzy):
         # Pour les masses
         rn, indrn      = 0., 0
         rnp1, indrnp1  = 0., 0
-        self._p00     = PForward_n.getindr(indrn) * PBackward_np1.getindr(indrnp1) * Tab_GaussXY_np1.getindr(indrn, indrnp1) * FS.probaR2CondR1(rn, rnp1)
+        self._p00     = PForward_n.getindr(indrn) * PBackward_np1.getindr(indrnp1) * Tab_GaussXY_np1.getindr(indrn, indrnp1)[0,0] * FS.probaR2CondR1(rn, rnp1)
         
         rn, indrn      = 1., self._STEPSp1
         rnp1, indrnp1  = 0., 0
-        self._p10     = PForward_n.getindr(indrn) * PBackward_np1.getindr(indrnp1) * Tab_GaussXY_np1.getindr(indrn, indrnp1) * FS.probaR2CondR1(rn, rnp1)
+        self._p10     = PForward_n.getindr(indrn) * PBackward_np1.getindr(indrnp1) * Tab_GaussXY_np1.getindr(indrn, indrnp1)[0,0] * FS.probaR2CondR1(rn, rnp1)
 
         rn, indrn      = 1., self._STEPSp1
         rnp1, indrnp1  = 1., self._STEPSp1
-        self._p11     = PForward_n.getindr(indrn) * PBackward_np1.getindr(indrnp1) * Tab_GaussXY_np1.getindr(indrn, indrnp1) * FS.probaR2CondR1(rn, rnp1)
+        self._p11     = PForward_n.getindr(indrn) * PBackward_np1.getindr(indrnp1) * Tab_GaussXY_np1.getindr(indrn, indrnp1)[0,0] * FS.probaR2CondR1(rn, rnp1)
         
         rn, indrn      = 0., 0
         rnp1, indrnp1  = 1., self._STEPSp1
-        self._p01     = PForward_n.getindr(indrn) * PBackward_np1.getindr(indrnp1) * Tab_GaussXY_np1.getindr(indrn, indrnp1) * FS.probaR2CondR1(rn, rnp1)
+        self._p01     = PForward_n.getindr(indrn) * PBackward_np1.getindr(indrnp1) * Tab_GaussXY_np1.getindr(indrn, indrnp1)[0,0] * FS.probaR2CondR1(rn, rnp1)
 
         # Pour les arètes et le coeur
         for indr, r in enumerate(self._Rcentres):
@@ -261,8 +260,8 @@ class Loi1DDiscreteFuzzy_TMC(Loi1DDiscreteFuzzy):
             # on met une lois uniforme
             self.setValCste(1.)
             self.normalisation(self.Integ())
-            self.print()
-            print('\nWarning: all the proba cond is 0. when indrn=' + str(indrn))
+            #self.print()
+            #print('\nWarning: all the proba cond is 0. when indrn=' + str(indrn))
             #input('Attente')
         else:
             # this normalisation is only to avoid numerical integration pb due to the number of discrete fuzzy steps

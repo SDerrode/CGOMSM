@@ -573,11 +573,11 @@ class RestorationOFAFuzzy:
             yn   = ynp1
             ynp1 = Y[np1, :]
 
-            ##################################
+            #######################################
             ###### PARTIE CONCERNANT LES SAUTS
-            ##################################
+            #######################################
 
-            #########################
+            ############################################
             # stockage de la proba des sauts pour le filtre (et pour le lisseur) la plus élevée
             if filt:
                 maxi, r, indr = tab_p_rn_dp_y1_to_yn[np1].fuzzyMPM_1D()
@@ -589,12 +589,12 @@ class RestorationOFAFuzzy:
                 maxi, r, indr = tab_p_rn_dp_y1_to_yN[np1].fuzzyMPM_1D()
                 E_R_N[np1] = r
 
-            ##################################
+            ########################################
             ###### PARTIE CONCERNANT LES X / FILTER
-            ##################################
+            ########################################
 
             # SOUS PARTIE CONCERNANT les calculs sur X
-            ##################################
+            ############################################
             # 1. calcul de E_Znp1_ = E[Zn+1 | r_n^{n+1}, ...] et covariance associée
             E_Znp1_dp2.set1_2D(self.__Cov, self.__Mean_X, self.__Mean_Y, yn, E_Xnp1_dp1)
             VAR_Znp1_dp2.set33_2D(self.__Cov, yn, E_Xnp1_dp1, E2_Xnp1_dp1)
@@ -650,8 +650,8 @@ class RestorationOFAFuzzy:
                 if self.__verbose >= 3:
                     if is_pos_def(VAR_Z_np1[np1, :, :]) == False:
                         print('np1=', np1)
-                        print('A = ', A)
-                        print('B = ', B)
+                        print('E_Z_np1 [np1, :] = ', E_Z_np1 [np1, :])
+                        print('VAR_Z_np1[np1, :, :] = ', VAR_Z_np1[np1, :, :])
                         input('pause - if predic>0:')
 
 

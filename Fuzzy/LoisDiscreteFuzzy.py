@@ -288,6 +288,9 @@ class Loi1DDiscreteFuzzy():
         else:
             self._p01 = np.empty(shape=(0,))
         self._p1 = 0.
+
+        # print('\nConstructeur Loi1DDiscreteFuzzy : p0+p1=', self._p0 + self._p1)
+        # print('Constructeur Loi1DDiscreteFuzzy : p=', np.mean(self._p01))
     
     def ProductFB(self, loi1, loi2):
         self._p0 = loi1._p0 * loi2._p0
@@ -384,10 +387,12 @@ class Loi1DDiscreteFuzzy():
 
     def probaMaxi(self):
 
-        indr = np.argmax(self._p01)
-        r    = self._Rcentres[indr]
-        maxi = self._p01[indr]
-        indr+=1
+        maxi = -1
+        if self._STEPS>0:
+            indr = np.argmax(self._p01)
+            r    = self._Rcentres[indr]
+            maxi = self._p01[indr]
+            indr+=1
 
         if self._p0>maxi:
             maxi = self._p0

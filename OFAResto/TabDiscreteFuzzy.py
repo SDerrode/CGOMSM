@@ -432,28 +432,24 @@ class Tab2DDiscreteFuzzy():
         xn, yn, xnpun, ynpun = zn[0:n_x], zn[n_x:], znp1[0:n_x], znp1[n_x:]
 
         # Pour les masses
-        indrn   = 0
-        indrnp1 = 0
-        self._p00 = getGaussXY(M[indrn, indrnp1], Lambda2[indrn, indrnp1], P[indrn, indrnp1], Pi2[indrn, indrnp1], xn, yn, xnpun, ynpun)
+        indrn, indrnp1 = 0, 0
+        self._p00[0,0] = getGaussXY(M[indrn, indrnp1], Lambda2[indrn, indrnp1], P[indrn, indrnp1], Pi2[indrn, indrnp1], xn, yn, xnpun, ynpun)
         
-        indrn   = self._STEPSp1
-        indrnp1 = 0
-        self._p10 = getGaussXY(M[indrn, indrnp1], Lambda2[indrn, indrnp1], P[indrn, indrnp1], Pi2[indrn, indrnp1], xn, yn, xnpun, ynpun)
+        indrn, indrnp1 = self._STEPSp1, 0
+        self._p10[0,0] = getGaussXY(M[indrn, indrnp1], Lambda2[indrn, indrnp1], P[indrn, indrnp1], Pi2[indrn, indrnp1], xn, yn, xnpun, ynpun)
 
-        indrn   = self._STEPSp1
-        indrnp1 = self._STEPSp1
-        self._p11 = getGaussXY(M[indrn, indrnp1], Lambda2[indrn, indrnp1], P[indrn, indrnp1], Pi2[indrn, indrnp1], xn, yn, xnpun, ynpun)
+        indrn, indrnp1 = self._STEPSp1, self._STEPSp1
+        self._p11[0,0] = getGaussXY(M[indrn, indrnp1], Lambda2[indrn, indrnp1], P[indrn, indrnp1], Pi2[indrn, indrnp1], xn, yn, xnpun, ynpun)
         
-        indrn   = 0
-        indrnp1 = self._STEPSp1
-        self._p01 = getGaussXY(M[indrn, indrnp1], Lambda2[indrn, indrnp1], P[indrn, indrnp1], Pi2[indrn, indrnp1], xn, yn, xnpun, ynpun)
+        indrn, indrnp1 = 0, self._STEPSp1 
+        self._p01[0,0] = getGaussXY(M[indrn, indrnp1], Lambda2[indrn, indrnp1], P[indrn, indrnp1], Pi2[indrn, indrnp1], xn, yn, xnpun, ynpun)
 
         # Pour les arrètes et le coeur
         for ind in range(1, self._STEPSp1):
             
             indrnp1 = 0
             self._p00_10[ind-1] = getGaussXY(M[ind, indrnp1], Lambda2[ind, indrnp1], P[ind, indrnp1], Pi2[ind, indrnp1], xn, yn, xnpun, ynpun)
-
+            
             indrn = self._STEPSp1
             self._p10_11[ind-1] = getGaussXY(M[indrn, ind], Lambda2[indrn, ind], P[indrn, ind], Pi2[indrn, ind], xn, yn, xnpun, ynpun)
 
