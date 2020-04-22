@@ -2,7 +2,7 @@
 git add -A && git commit -a -m "avant archivage" && git archive --format=zip HEAD > CGPMSM.zip
 scp CGPMSM.zip  sderrode@156.18.90.100:~/
 ssh sderrode@156.18.90.100 
-rm -r -f CGPMSM && mkdir CGPMSM && cd CGPMSM && mv ../CGPMSM.zip . && unzip CGPMSM.zip && rm CGPMSM.zip
+#rm -r -f CGPMSM && mkdir CGPMSM && cd CGPMSM && mv ../CGPMSM.zip . && unzip CGPMSM.zip && rm CGPMSM.zip
 
 
 #xpra start ssh:sderrode@156.18.90.100 --start=xterm
