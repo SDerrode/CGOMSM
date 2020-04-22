@@ -2,7 +2,8 @@
 
 Project to simulate and restore CGOFMSM : Conditionnally Gaussian Observed Fuzzy Markov Switching Model 
 
-      >>  python3 CGOFMSM_Simulation.py [arguments]
+      >>  python3 
+CGOFMSM_SimRest.py [arguments]
 
 ## Arguments
 
@@ -25,14 +26,15 @@ Project to simulate and restore CGOFMSM : Conditionnally Gaussian Observed Fuzzy
 
 ## Running Examples
 
-      >> python3 CGOFMSM_Simulation.py Parameters/Fuzzy/SP2018.param 2:0.07:0.24:0.09 1,1,1 72 3 5 2 1
+      >> python3 
+CGOFMSM_SimRest.py Parameters/Fuzzy/SP2018.param 2:0.07:0.24:0.09 1,1,1 72 3 5 2 1
       >> nohup python3 CGOFMSM.py Parameters/SP2018.param 4:0.15:0.15:0.:0.1 1,1,0 1000 1,2,3,5,7,10 10 1 0 1 > serie2.out &
 
 # CGOFMSM for Seattle Temperature data
 
 There is now also a program for testing the fuzzy model on real data (temperture form the open data web site of the town of Seattle)
 
-     >>  python3 Test_CGOFMSM_Signals.py [arguments]
+     >>  python3 CGOFMSM_SignalRest.py [arguments]
 
 More information on how to generate the command can be found in file *./Data/Kaggle/Traces.md*.
 
@@ -55,5 +57,5 @@ More information on how to generate the command can be found in file *./Data/Kag
 
 ## Running Example
 
-      >> python3 Test_CGOFMSM_Signals.py ./Parameters/Signal.param 4:0.10:1.05:0.13:0.13 1,1,0 ./Data/Kaggle/input/JoseRizalBridgeNorth_all_resample_1303_GT.csv 1,3,5,7,9 2 1
+      >> python3 CGOFMSM_SignalRest.py ./Parameters/Signal.param 4:0.10:1.05:0.13:0.13 1,1,0 ./Data/Kaggle/input/JoseRizalBridgeNorth_all_resample_1303_GT.csv 1,3,5,7,9 2 1
 

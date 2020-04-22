@@ -13,8 +13,18 @@ import scipy as sc
 from scipy.stats import norm
 from scipy.stats import multivariate_normal
 
-from Fuzzy.InterFuzzy    import InterBiLineaire_Matrix, InterLineaire_Matrix, InterLineaire_Vector
-from CommonFun.CommonFun import From_Cov_to_FQ_bis
+from Fuzzy.InterFuzzy       import InterBiLineaire_Matrix, InterLineaire_Matrix, InterLineaire_Vector
+from CommonFun.CommonFun    import From_Cov_to_FQ_bis
+
+# def getrnFromindrn(Rcentres, indrn):
+#     if indrn == 0:               return 0.
+#     if indrn == len(Rcentres)+1: return 1.
+#     return Rcentres[indrn-1]
+
+def getindrnFromrn(STEPS, rn):
+    if rn == 0.: return 0
+    if rn == 1.: return STEPS+1
+    return int(math.floor(rn*STEPS)+1)
 
 
 def getGaussXY(M, Lambda2, P, Pi2, xn, yn, xnpun, ynpun, verb=False):

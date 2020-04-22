@@ -74,7 +74,7 @@ def main():
     plot    = 1
     name1 = '../Data_CGPMSM/Kaggle/input/'+ listStations[9] + ch
 
-    A  = 'python3 Test_CGOFMSM_Signals.py ./Parameters/Signal/' + filanemaneParam + ' 4:' + str(alpha) + ':' + str(gamma) + ':' + str(delta_d) + ':' + str(delta_u) + ' '
+    A  = 'python3 CGOFMSM_SignalRest.py ./Parameters/Signal/' + filanemaneParam + ' 4:' + str(alpha) + ':' + str(gamma) + ':' + str(delta_d) + ':' + str(delta_u) + ' '
     A += chWork + ' ' + name1 + ' ' + steps + ' ' + str(verbose) + ' ' + str(plot)
     # A  = 'python3 CGOFMSM_Signals.py ./Parameters/Signal/' + filanemaneParam + ' 2:' + str(alpha) + ':' + str(beta) + ':' + str(eta) + ':' + str(delta) + ' '
     # A += chWork + ' ' + name1 + ' ' + steps + ' ' + str(verbose) + ' ' + str(plot) 
@@ -85,7 +85,8 @@ def main():
     # Commande pour simuler un signal de la même forme et le restaurer par CGOFMSM
     N = 2000
     NbExp = 1
-    B = 'python3 CGOFMSM_Simulation.py ./Parameters/Signal/' + filanemaneParam + ' 4:' + str(alpha) + ':' + str(gamma) + ':' + str(delta_d) + ':' + str(delta_u) + ' '
+    B = 'python3 
+CGOFMSM_SimRest.py ./Parameters/Signal/' + filanemaneParam + ' 4:' + str(alpha) + ':' + str(gamma) + ':' + str(delta_d) + ':' + str(delta_u) + ' '
     B += chWork + ' ' + str(N) + ' ' + steps + ' ' + str(NbExp) + ' ' + str(verbose) + ' ' + str(plot)
     # B = 'python3 CGOFMSM.py ./Parameters/Signal/' + filanemaneParam + ' 4:' + str(alpha) + ':' + str(beta) + ':' + str(eta) + ':' + str(delta) + ' '
     # B += chWork + ' ' + str(N) + ' ' + steps + ' ' + str(NbExp) + ' ' + str(verbose) + ' ' + str(plot)

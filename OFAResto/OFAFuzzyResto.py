@@ -18,7 +18,7 @@ from CommonFun.CommonFun              import From_Cov_to_FQ_bis, Readin_CovMeans
 from CGPMSMs.CGPMSMs                  import GetParamNearestCGO_cov, From_Cov_to_FQ
 
 from OFAResto.LoiDiscreteFuzzy_TMC    import Loi1DDiscreteFuzzy_TMC, Loi2DDiscreteFuzzy_TMC
-from OFAResto.TabDiscreteFuzzy        import Tab1DDiscreteFuzzy, Tab2DDiscreteFuzzy
+from OFAResto.TabDiscreteFuzzy        import Tab1DDiscreteFuzzy, Tab2DDiscreteFuzzy, getindrnFromrn
 
 from Fuzzy.InterFuzzy                 import InterBiLineaire_Matrix, InterLineaire_Vector
 from Fuzzy.APrioriFuzzyLaw_Series1    import LoiAPrioriSeries1
@@ -29,15 +29,7 @@ from Fuzzy.APrioriFuzzyLaw_Series3    import LoiAPrioriSeries3
 from Fuzzy.APrioriFuzzyLaw_Series4    import LoiAPrioriSeries4
 from Fuzzy.APrioriFuzzyLaw_Series4bis import LoiAPrioriSeries4bis
 
-# def getrnFromindrn(Rcentres, indrn):
-#     if indrn == 0:               return 0.
-#     if indrn == len(Rcentres)+1: return 1.
-#     return Rcentres[indrn-1]
 
-def getindrnFromrn(STEPS, rn):
-    if rn == 0.: return 0
-    if rn == 1.: return STEPS+1
-    return int(math.floor(rn*STEPS)+1)
 
 def loijointeAP1(rn, rnp1, indrnp1, proba, probaR2CondR1, Cov, Mean_Y, yn, ynp1, np1, interpolation, STEPS):
     n_z = int(np.shape(Cov)[1]/2)
@@ -551,7 +543,8 @@ class RestorationOFAFuzzy:
                     input('pause - if filt:')
 
         if predic>0:
-            E_Z_np1 [np1, :]     = 0. # pas de prediction pour le premier
+            E_Z_np1 [np1, 0:self.__n_x] = self.__Mean_X[getindrnFromrn(self.__STEPS, E_R_np1[np1]), :]
+            E_Z_np1 [np1, self.__n_x:]  = self.__Mean_Y[getindrnFromrn(self.__STEPS, E_R_np1[np1]), :]
             VAR_Z_np1[np1, :, :] = 0. # pas de prediction pour le premier
 
         if smooth:

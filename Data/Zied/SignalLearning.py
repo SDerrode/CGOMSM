@@ -74,9 +74,9 @@ def main():
     #################################
     # Commande d'appel au programme
     name1='./Data/Zied/results/XYR.csv'
-    # A  = 'python3 Test_CGOFMSM_Signals.py ./Parameters/Signal/' + filanemaneParam + ' 4:' + str(alpha) + ':' + str(gamma) + ':' + str(delta_d) + ':' + str(delta_u) + ' '
+    # A  = 'python3 CGOFMSM_SignalRest.py ./Parameters/Signal/' + filanemaneParam + ' 4:' + str(alpha) + ':' + str(gamma) + ':' + str(delta_d) + ':' + str(delta_u) + ' '
     # A += chWork + ' ' + name1 + ' ' + steps + ' ' + str(verbose) + ' ' + str(plot)
-    A  = 'python3 Test_CGOFMSM_Signals.py ./Parameters/Signal/' + filanemaneParam + ' 2:' + str(alpha) + ':' + str(beta) + ':' + str(eta) + ':' + str(delta) + ' '
+    A  = 'python3 CGOFMSM_SignalRest.py ./Parameters/Signal/' + filanemaneParam + ' 2:' + str(alpha) + ':' + str(beta) + ':' + str(eta) + ':' + str(delta) + ' '
     A += chWork + ' ' + name1 + ' ' + steps + ' ' + str(verbose) + ' ' + str(plot) 
 
     clipboard.copy(A.strip()) # mise en memoire de la commande à exécuter
@@ -86,9 +86,11 @@ def main():
     # Commande pour simuler un signal de la même forme et le restaurer par CGOFMSM
     N = 1000
     NbExp = 1
-    # B = 'python3 CGOFMSM_Simulation.py ./Parameters/Signal/' + filanemaneParam + ' 4:' + str(alpha) + ':' + str(gamma) + ':' + str(delta_d) + ':' + str(delta_u) + ' '
+    # B = 'python3 
+CGOFMSM_SimRest.py ./Parameters/Signal/' + filanemaneParam + ' 4:' + str(alpha) + ':' + str(gamma) + ':' + str(delta_d) + ':' + str(delta_u) + ' '
     # B += chWork + ' ' + str(N) + ' ' + steps + ' ' + str(NbExp) + ' ' + str(verbose) + ' ' + str(plot)
-    B = 'python3 CGOFMSM_Simulation.py ./Parameters/Signal/' + filanemaneParam + ' 2:' + str(alpha) + ':' + str(beta) + ':' + str(eta) + ':' + str(delta) + ' '
+    B = 'python3 
+CGOFMSM_SimRest.py ./Parameters/Signal/' + filanemaneParam + ' 2:' + str(alpha) + ':' + str(beta) + ':' + str(eta) + ':' + str(delta) + ' '
     B += chWork + ' ' + str(N) + ' ' + steps + ' ' + str(NbExp) + ' ' + str(verbose) + ' ' + str(plot)
     print('pour simuler + restaurer:')
     print('\n', B, '\n')

@@ -3,13 +3,13 @@ import scipy as sp
 import copy
 import clipboard
 import warnings
-from sklearn.cluster import KMeans
-
+import pathlib
 
 import matplotlib
 import matplotlib.pyplot as plt
-import matplotlib.dates as md
+import matplotlib.dates  as md
 from matplotlib.ticker import MaxNLocator
+from sklearn.cluster import KMeans
 
 years    = md.YearLocator()   # every year
 months   = md.MonthLocator()  # every month
@@ -18,14 +18,12 @@ yearsFmt = md.DateFormatter('%Y      ')
 monthFmt = md.DateFormatter('%B %Y')
 dayFmt   = md.DateFormatter('%d')
 
-fontS = 13     # font size
-
-#from Fuzzy.LoisDiscreteFuzzy          import Loi2DDiscreteFuzzy, Loi1DDiscreteFuzzy
 from OFAResto.LoiDiscreteFuzzy_TMC    import calcF, calcB
 from OFAResto.LoiDiscreteFuzzy_TMC    import Loi1DDiscreteFuzzy_TMC, Loi2DDiscreteFuzzy_TMC
 from OFAResto.TabDiscreteFuzzy        import Tab1DDiscreteFuzzy, Tab2DDiscreteFuzzy
 
-from CommonFun.CommonFun              import From_FQ_to_Cov_Lyapunov, Test_if_CGPMSM, is_pos_def, From_Cov_to_FQ
+from CommonFun.CommonFun              import From_FQ_to_Cov_Lyapunov, Test_if_CGPMSM, Test_isCGOMSM_from_Cov, is_pos_def, From_Cov_to_FQ
+from CGPMSMs.CGPMSMs                  import GetParamNearestCGO_cov
 
 from Fuzzy.APrioriFuzzyLaw_Series1    import LoiAPrioriSeries1
 from Fuzzy.APrioriFuzzyLaw_Series2    import LoiAPrioriSeries2
@@ -36,15 +34,31 @@ from Fuzzy.APrioriFuzzyLaw_Series4    import LoiAPrioriSeries4
 from Fuzzy.APrioriFuzzyLaw_Series4bis import LoiAPrioriSeries4bis
 
 
-def Check_CovMatrix(Mat):
+fontS = 13     # font size
+DPI   = 150    # graphic resolution
+
+
+
+def Check_CovMatrix(Mat, verbose=False):
     w, v = np.linalg.eig(Mat)
+    if verbose == True:
+        print('w=', w)
+        print('v=', v)
+        print('Mat=', Mat)
+        print('det Mat=', np.linalg.det(Mat))
+        corr = np.zeros(shape = np.shape(Mat))
+        for i in range(np.shape(corr)[0]):
+            for j in range(np.shape(corr)[1]):
+                corr[i, j] = Mat[i, j]/np.sqrt(Mat[i,i] * Mat[j,j])
+        print('corr=', corr)
+
     if np.all(np.logical_not(np.iscomplex(w))) == False or np.all(w>0.) == False:
         return False
     return True
 
 ###################################################################################################
 class CGOFMSM_Learn:
-    def __init__(self, STEPS, nbIterSEM, nbRealSEM, Datatrain, filestem, FSstring, verbose, graphics):
+    def __init__(self, STEPS, nbIterSEM, nbRealSEM, Datatrain, fileTrain, FSstring, verbose, graphics):
 
         self.__n_r          = 2
         self.__nbIterSEM    = nbIterSEM
@@ -55,7 +69,8 @@ class CGOFMSM_Learn:
         self.__STEPSp1      = STEPS+1
         self.__STEPSp2      = STEPS+2
         self.__EPS          = 1E-8
-        self.__filestem     = filestem
+        self.__fileTrain    = fileTrain
+        self.__filestem     = pathlib.Path(fileTrain).stem
         self.__Datatrain    = Datatrain
         self.__FSstring     = FSstring
         self._interpolation = False
@@ -91,13 +106,12 @@ class CGOFMSM_Learn:
         
         # plage graphique pour les plots
         self.__graph_mini = 0
-        self.__graph_maxi = min(600, self.__N) # maxi=self.__N, maxi=min(500, self.__N)
+        self.__graph_maxi = min(1000, self.__N) # maxi=self.__N, maxi=min(500, self.__N)
         self.__graphRep   = './Result/Fuzzy/SimulatedR/'
 
         # Detect the weekend days switches
         self.__weekend_indices = []
         BoolWE = False
-        #for i in range(len(self.__Datatrain.index[self.__graph_mini:self.__graph_maxi])):
         for i in range(self.__graph_mini,self.__graph_maxi):
             if self.__Datatrain.index[i].weekday() >= 5 and BoolWE == False:
                 self.__weekend_indices.append(i) 
@@ -113,19 +127,22 @@ class CGOFMSM_Learn:
 
         if self.__graphics >= 1:
 
+            s_Graph = slice(self.__graph_mini, self.__graph_maxi)
+
             # Plot of the original data
             fig, ax1 = plt.subplots()
 
             color = 'tab:red'
             ax1.set_ylabel(self.__listeHeader[0], color=color, fontsize=fontS)
-            ax1.plot(self.__Datatrain.index[self.__graph_mini:self.__graph_maxi], self.__Datatrain[self.__listeHeader[0]].iloc[self.__graph_mini:self.__graph_maxi], color=color)
+            ax1.plot(self.__Datatrain.index[s_Graph], self.__Datatrain[self.__listeHeader[0]].iloc[s_Graph], color=color)
             ax1.tick_params(axis='y', labelcolor=color, labelsize=fontS-2)
             ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
             color = 'tab:blue'
             ax2.set_ylabel(self.__listeHeader[1], color=color, fontsize=fontS)
-            ax2.plot(self.__Datatrain.index[self.__graph_mini:self.__graph_maxi], self.__Datatrain[self.__listeHeader[1]].iloc[self.__graph_mini:self.__graph_maxi], color=color)
+            ax2.plot(self.__Datatrain.index[s_Graph], self.__Datatrain[self.__listeHeader[1]].iloc[s_Graph], color=color)
             ax2.tick_params(axis='y', labelcolor=color, labelsize=fontS-2)
 
+            # surlignage des jours de WE
             i = 0
             while i < len(self.__weekend_indices)-1:
                 ax1.axvspan(self.__Datatrain.index[self.__weekend_indices[i]], self.__Datatrain.index[self.__weekend_indices[i+1]], facecolor='gray', edgecolor='none', alpha=.25, zorder=-100)
@@ -138,19 +155,16 @@ class CGOFMSM_Learn:
             ax1.xaxis.set_minor_formatter(dayFmt)
             #ax1.format_xdata = md.DateFormatter('%m-%d')
             ax1.grid(True, which='major', axis='both')
-            ax1.set_title('Sensor: ' + self.__filestem, fontsize=fontS+2)
+            ax1.set_title('Data: ' + self.__filestem, fontsize=fontS+2)
             ax1.tick_params(axis='x', which='both', labelsize=fontS-2)
             ax1.set_xlim(xmin=self.__Datatrain.index[self.__graph_mini], xmax=self.__Datatrain.index[self.__graph_maxi-1])
 
             fig.autofmt_xdate()
             plt.xticks(rotation=35)
             fig.tight_layout()  # otherwise the right y-label is slightly clipped
-            plt.savefig(self.__graphRep+self.__filestem+'_origData.png', bbox_inches='tight', dpi=150)    
+            plt.savefig(self.__graphRep+self.__filestem+'_origData.png', bbox_inches='tight', dpi=DPI)    
             plt.close()
 
-    # def __del__(self):
-    #     if self.__verbose >= 2: 
-    #         print('\nCGOFMSM_Learn deleted')
 
     def run_several(self):
 
@@ -158,9 +172,17 @@ class CGOFMSM_Learn:
         iter = 0
         print('SEM ITERATION', iter, 'over', self.__nbIterSEM, '(kmeans)')
 
-        self.__FS, self.__M, self.__Lambda2, self.__P, self.__Pi2, self.__aMeanCovFuzzy = \
+        self.__FS, self.__M, self.__Lambda2, self.__P, self.__Pi2, self.__aMeanCovFuzzy, Rsimul = \
             self.updateParamFromRsimul(numIterSEM=iter, kmeans=True, Plot=False)
-                
+
+        # Save of parameters for parametrization 2
+        filenameParam = './Parameters/Fuzzy/' + self.__filestem + '_F=' + str(self.__STEPS) + '_direct.param2'
+        CovZ_CGO, MeanX, MeanY = self.GenerateParameters_2(Rsimul)
+        if len(np.shape(CovZ_CGO)) != 0:
+            self.SaveParameters_2(filenameParam, CovZ_CGO, MeanX, MeanY)
+            chWork = str(0) + ',' + str(1) + ',' + str(1) + ',' + str(1)
+            self.GenerateCommandline(chWork, self.__fileTrain, filenameParam, -1, clipboardcopy=True)
+
         # To plot the evolution of some parameters
         self.__Tab_ParamFS  [iter,:] = self.__FS.getParam()
         self.__Tab_M_00     [iter,:] = self.__M[0,0,:]
@@ -207,7 +229,7 @@ class CGOFMSM_Learn:
         # Update of param from some simulated R
         if self.__verbose >= 2: print('         update parameters')
         
-        self.__FS, self.__M, self.__Lambda2, self.__P, self.__Pi2, self.__aMeanCovFuzzy = \
+        self.__FS, self.__M, self.__Lambda2, self.__P, self.__Pi2, self.__aMeanCovFuzzy, Rsimul = \
             self.updateParamFromRsimul(numIterSEM=iter, kmeans=False, Plot=Plot, ProbaGamma_0=ProbaGamma[0], ProbaJumpCond=ProbaJumpCond, ProbaPsi=ProbaPsi)
          
         # To plot the evolution of some parameters
@@ -296,13 +318,40 @@ class CGOFMSM_Learn:
 
     def GenerateCommandline(self, chWork, fileTrain, filenameParam, steps, clipboardcopy=False):
  
-        A  = 'python3 Test_CGOFMSM_Signals.py ' + filenameParam + ' ' + self.__FS.stringName() + ' '
+        A  = 'python3 CGOFMSM_SignalRest.py ' + filenameParam + ' ' + self.__FS.stringName() + ' '
         A += chWork + ' ' + fileTrain + ' ' + str(steps) + ' 2 1'
         print('  -> Command line for data restoration:')
-        print('\n        ', A, '\n')
+        print('        ', A, '\n')
 
         if clipboardcopy == True:
             clipboard.copy(A.strip()) # mise en mémoire de la commande à exécuter
+
+
+    def GenerateParameters_2(self, Rsimul):
+
+        # Objet permettant d'estimert les paramètres
+        aMeanCovZ1Z2Fuzzy=MeanCovZ1Z2Fuzzy(self.__Ztrain, self.__n_z, self.__STEPS, self.__verbose)
+        OK = aMeanCovZ1Z2Fuzzy.update(Rsimul)
+
+        # Les moyennes 
+        meanZ = aMeanCovZ1Z2Fuzzy.getMeanZAll()
+        meanX = np.around(meanZ[:, 0:self.__n_x], decimals=4)
+        meanY = np.around(meanZ[:, self.__n_x: ], decimals=4)
+
+        if OK == False:
+            CovZ_CGO = None
+        else:
+            # Les covarainces
+            CovZ  = aMeanCovZ1Z2Fuzzy.getCovZ1Z2All()
+
+            CovZ_CGO = GetParamNearestCGO_cov(CovZ, n_x=self.__n_x)
+            if Test_isCGOMSM_from_Cov(CovZ_CGO, self.__n_x) == False:
+                print('ATTENTION: Le modele directe n''est pas un CGOMSM!!!')
+                print('self.__CovZ1Z2_Fuzzy=\n', self.__CovZ1Z2_Fuzzy)
+                input('pause')
+            # print('CovZ_CGO=', CovZ_CGO)
+
+        return CovZ_CGO, meanX, meanY
 
 
     def SaveParameters_2(self, filenameParam, Cov, MeanX, MeanY):
@@ -330,7 +379,6 @@ class CGOFMSM_Learn:
         # Les moyennes
         np.savetxt(f, MeanX, delimiter=" ", header='mean of X'+'\n================================', footer='\n', fmt='%.4f')
         np.savetxt(f, MeanY, delimiter=" ", header='mean of Y'+'\n================================', footer='\n', fmt='%.4f')
-
         f.close()
 
 
@@ -366,9 +414,7 @@ class CGOFMSM_Learn:
         np.savetxt(f, MeanX[self.__STEPSp1], delimiter=" ", footer='\n', fmt='%.4f')
         np.savetxt(f, MeanY[0], delimiter=" ", header='mean of Y'+'\n================================', fmt='%.4f')
         np.savetxt(f, MeanY[self.__STEPSp1], delimiter=" ", footer='\n', fmt='%.4f')
-
         f.close()
-
 
     def SaveParameters_3(self, filenameParam):
 
@@ -441,8 +487,9 @@ class CGOFMSM_Learn:
                 # print(kmeans.inertia_, kmeans.n_iter_)
                 # print('kmeans.cluster_centers_=', kmeans.cluster_centers_)
                 # Sorting of labels according to the X-coordinate of cluster centers
-                sortedlabel = np.argsort(kmeans.cluster_centers_[:, 0])
+                sortedlabel = np.argsort(kmeans.cluster_centers_[:, 1])
                 # print('sortedlabel=', sortedlabel)
+                # input('attente')
 
                 for n in range(self.__N):
                     Rsimul[real*self.__N + n] = np.where(sortedlabel == kmeans.labels_[n])[0][0]
@@ -458,7 +505,7 @@ class CGOFMSM_Learn:
 
         # Parameter for fuzzy Markov model called APrioriFuzzyLaw_serie2ter.py
         FS = None
-        if self.__FSstring == '1':
+        if   self.__FSstring == '1':
             FS = LoiAPrioriSeries1(alpha=0., gamma=0.)
         elif self.__FSstring == '2':
             FS = LoiAPrioriSeries2(alpha=0., eta=0., delta=0.)
@@ -480,8 +527,8 @@ class CGOFMSM_Learn:
         # if self.__graphics>=2:
         #     fig = plt.figure()
         #     ax = fig.add_subplot(1, 1, 1, projection='3d')
-        #     FS.plotR1R2(self.__graphRep+self.__filestem + 'FS_2D_iter' + str(numIterSEM) + '.png', ax, dpi=150)
-        #     FS.plotR1  (self.__graphRep+self.__filestem + 'FS_1D_iter' + str(numIterSEM) + '.png', dpi=150)
+        #     FS.plotR1R2(self.__graphRep+self.__filestem + 'FS_2D_iter' + str(numIterSEM) + '.png', ax, dpi=DPI)
+        #     FS.plotR1  (self.__graphRep+self.__filestem + 'FS_1D_iter' + str(numIterSEM) + '.png', dpi=DPI)
        
         # Parameters for the first p(r_1 | z_1) - Nécessaire pour le forward n=1
         aMeanCovFuzzy = MeanCovFuzzy(self.__Ztrain, self.__n_z, self.__STEPS, self.__verbose)
@@ -493,7 +540,7 @@ class CGOFMSM_Learn:
             title = 'Simulated R - Iter ' + str(self.__nbIterSEM)
             self.plotRsimul(Rsimul, fname=fname, title=title)
 
-        return FS, M, Lambda2, P, Pi2, aMeanCovFuzzy
+        return FS, M, Lambda2, P, Pi2, aMeanCovFuzzy, Rsimul
 
 
     def EstimParam2ter(self, ProbaPsi, numIterSEM):
@@ -884,7 +931,7 @@ class CGOFMSM_Learn:
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         plt.legend()
         plt.title('Evolution of FS param - Fuzzy steps (F)=' + str(self.__STEPS)+ ', mean of ' + str(self.__nbRealSEM) + ' realizations')
-        plt.savefig(self.__graphRep+self.__filestem + 'ParamFS_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
+        plt.savefig(self.__graphRep+self.__filestem + 'ParamFS_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=DPI)    
         plt.close()
 
         ax = plt.figure().gca()
@@ -898,7 +945,7 @@ class CGOFMSM_Learn:
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         plt.legend()
         plt.title(r'Evolution of $\mathcal{M}_{0}^{0}$ param - Fuzzy steps (F)=' + str(self.__STEPS)+ ', mean of ' + str(self.__nbRealSEM) + ' realizations')
-        plt.savefig(self.__graphRep+self.__filestem + 'MOO_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
+        plt.savefig(self.__graphRep+self.__filestem + 'MOO_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=DPI)    
         plt.close()
 
         ax = plt.figure().gca()
@@ -910,7 +957,7 @@ class CGOFMSM_Learn:
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         plt.legend()
         plt.title(r'Evolution of $\mathcal{P}_{0}^{0}$ param - Fuzzy steps (F)=' + str(self.__STEPS)+ ', mean of ' + str(self.__nbRealSEM) + ' realizations')
-        plt.savefig(self.__graphRep+self.__filestem + 'POO_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
+        plt.savefig(self.__graphRep+self.__filestem + 'POO_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=DPI)    
         plt.close()
 
         ax = plt.figure().gca()
@@ -921,7 +968,7 @@ class CGOFMSM_Learn:
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         plt.legend()
         plt.title(r'Evolution of $\lambda_{0}^{0}$ param - Fuzzy steps (F)=' + str(self.__STEPS)+ ', mean of ' + str(self.__nbRealSEM) + ' realizations')
-        plt.savefig(self.__graphRep+self.__filestem + 'Lambda_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
+        plt.savefig(self.__graphRep+self.__filestem + 'Lambda_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=DPI)    
         plt.close()
 
         ax = plt.figure().gca()
@@ -932,7 +979,7 @@ class CGOFMSM_Learn:
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         plt.legend()
         plt.title(r'Evolution of $\pi_{0}^{0}$ param - Fuzzy steps (F)=' + str(self.__STEPS)+ ', mean of ' + str(self.__nbRealSEM) + ' realizations')
-        plt.savefig(self.__graphRep+self.__filestem + 'Pi_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=150)    
+        plt.savefig(self.__graphRep+self.__filestem + 'Pi_STEPS_' + str(self.__STEPS)+ '_NbReal_' + str(self.__nbRealSEM) + '.png', bbox_inches='tight', dpi=DPI)    
         plt.close()
 
 
@@ -948,6 +995,7 @@ class CGOFMSM_Learn:
     def plotRsimul(self, Rsimul, fname, title):
 
         RsimulFuzzy = np.zeros(shape=(self.__N))
+        s_Graph = slice(self.__graph_mini, self.__graph_maxi)
 
         for real in range(self.__nbRealSEM):
             for n in range(self.__N):
@@ -971,7 +1019,7 @@ class CGOFMSM_Learn:
             
             color = 'tab:green'
             ax1.set_ylabel('Discrete fuzzy jumps', color=color, fontsize=fontS)
-            ax1.plot(self.__Datatrain.index[self.__graph_mini:self.__graph_maxi], RsimulFuzzy[self.__graph_mini:self.__graph_maxi], color=color)
+            ax1.plot(self.__Datatrain.index[s_Graph], RsimulFuzzy[s_Graph], color=color)
             ax1.tick_params(axis='y', labelcolor=color, labelsize=fontS-2)
             ax1.tick_params(axis='x', which='both', labelsize=fontS-2)
             
@@ -994,7 +1042,7 @@ class CGOFMSM_Learn:
             plt.setp(ax1.xaxis.get_minorticklabels(), rotation=90)
             plt.setp(ax1.xaxis.get_majorticklabels(), rotation=35)
             #ax1.grid(True, which='major', axis='both')
-            ax1.set_title('Sensor: ' + self.__filestem + title + ', Realization ' + str(real), fontsize=fontS-4)
+            ax1.set_title('Data: ' + self.__filestem + title + ', Realization ' + str(real), fontsize=fontS-4)
             
             i = 0
             while i < len(self.__weekend_indices)-1:
@@ -1003,7 +1051,7 @@ class CGOFMSM_Learn:
 
             fig.autofmt_xdate()
             #fig.tight_layout()  # otherwise the right y-label is slightly clipped
-            plt.savefig(fname + '_Real_'  + str(real)+'.png', bbox_inches='tight', dpi=150)    
+            plt.savefig(fname + '_Real_'  + str(real)+'.png', bbox_inches='tight', dpi=DPI)    
             plt.close()
 
 
@@ -1080,6 +1128,163 @@ class MeanCovFuzzy:
     def getCov(self, indrn):
         if indrn>=0 and indrn<self.__STEPSp2:
             return self.__Cov_Zf[indrn, :]
+        else:
+            return None
+        
+
+
+###################################################################################################
+class MeanCovZ1Z2Fuzzy:
+
+    def __init__(self, Ztrain, n_z, STEPS, verbose):
+        self.__verbose  = verbose
+        self.__STEPS    = STEPS
+        self.__STEPSp1  = STEPS+1
+        self.__STEPSp2  = STEPS+2
+        self.__Ztrain   = Ztrain
+        self.__n_z      = n_z
+
+        self.__N = np.shape(Ztrain)[0]
+
+        self.__Mean_Fuzzy    = np.zeros(shape=(self.__STEPSp2, self.__n_z))
+        self.__CovZ1Z2_Fuzzy = np.zeros(shape=(self.__STEPSp2**2, self.__n_z*2, self.__n_z*2))
+
+
+    def update(self, Rlabels):
+
+        # nombre de realisation
+        nbreal = int(len(Rlabels)/self.__N)
+        
+        # Remise à 0.
+        self.__Mean_Fuzzy.fill(0.)
+        self.__CovZ1Z2_Fuzzy.fill(0.)
+
+        VectZ1 = np.zeros(shape=(self.__n_z*2))
+
+         # The means MEANZ
+        ####################################################
+        cpt0 = np.zeros((self.__STEPSp2), dtype=int)
+        for real in range(nbreal):
+            for n in range(self.__N):
+                label = Rlabels[real*self.__N+n]
+                self.__Mean_Fuzzy[label,:] += self.__Ztrain[n, :]
+                cpt0[label] += 1
+        
+        for j in range(self.__STEPSp2):
+            if cpt0[j] != 0:
+                self.__Mean_Fuzzy[j, :] /= cpt0[j]
+        # print(self.__Mean_Fuzzy)
+        # print(cpt0)
+        # input('MEANZ')
+        
+        # The means MeanZ1Z2
+        ####################################################
+        MeanZ1Z2 = np.zeros((self.__STEPSp2**2, self.__n_z*2))
+        cpt = np.zeros((self.__STEPSp2**2), dtype=int)
+        for real in range(nbreal):
+            for n in range(self.__N-1):
+                ln   = Rlabels[real*self.__N+n]
+                lnp1 = Rlabels[real*self.__N+n+1]
+                l    = ln*self.__STEPSp2+lnp1
+                MeanZ1Z2[l, 0:self.__n_z] += self.__Ztrain[n,   :]
+                MeanZ1Z2[l, self.__n_z:]  += self.__Ztrain[n+1, :]
+                cpt[l] += 1
+        
+        for l in range(self.__STEPSp2**2):
+            if cpt[l] != 0:
+                MeanZ1Z2[l, :] /= cpt[l]
+        # print(MeanZ1Z2)
+        # print(cpt)
+        # input('MEANZ')
+
+        # The covariances CovZ1Z2
+        ####################################################
+        TabIsCov = np.zeros(shape=(self.__STEPSp2**2), dtype=bool)
+        TabIsCov.fill(True)
+        
+        for real in range(nbreal):
+            for n in range(self.__N-1):
+                ln   = Rlabels[real*self.__N+n]
+                lnp1 = Rlabels[real*self.__N+n+1]
+                l    = ln*self.__STEPSp2+lnp1
+                VectZ1[0:self.__n_z] = self.__Ztrain[n,   :]
+                VectZ1[self.__n_z:]  = self.__Ztrain[n+1, :]
+                VectZ1 -=  MeanZ1Z2[l, :]
+                self.__CovZ1Z2_Fuzzy[l, :, :] += np.outer(VectZ1, VectZ1)
+
+        for l in range(self.__STEPSp2**2):
+            if cpt[l] > 1: # on évite 0 et 1 (auquel cas la matrice de cov vaut 0 partout)
+                self.__CovZ1Z2_Fuzzy[l, :, :] /= cpt[l]
+            if Check_CovMatrix(self.__CovZ1Z2_Fuzzy[l, :, :], verbose=False) == False:
+                TabIsCov[l] = False
+                # print('l=', l, ', cpt[l]=', cpt[l], ', sum=', np.sum(cpt))
+                # print('self.__CovZ1Z2_Fuzzy[l, :, :] = ', self.__CovZ1Z2_Fuzzy[l, :, :])
+                # Check_CovMatrix(self.__CovZ1Z2_Fuzzy[l, :, :], verbose=True)
+                    # input('update - self.__CovZ1Z2_Fuzzy[l, :, :] This is not a cov matrix!!')
+        # print('self.__CovZ1Z2_Fuzzy=', self.__CovZ1Z2_Fuzzy)
+        # print('TabIsCov=', TabIsCov)
+        # input('COVZ1Z2')
+
+        # Correction des matrices Gamma par moyennage
+        ####################################################
+        Gamma = np.zeros((self.__STEPSp2, self.__n_z, self.__n_z))
+        cpt1  = np.zeros((self.__STEPSp2), dtype=int)
+        for j in range(self.__STEPSp2):
+            l = j*self.__STEPSp2+j
+            Gamma[j, :, :] += (self.__CovZ1Z2_Fuzzy[l, 0:self.__n_z, 0:self.__n_z]+self.__CovZ1Z2_Fuzzy[l, self.__n_z:,  self.__n_z:])/2.
+            if Check_CovMatrix(Gamma[j, :, :], verbose=False) == False:
+                if self.__verbose>1:
+                    print('j=', j)
+                    print('Gamma[j, :, :]=', Gamma[j, :, :])
+                    print('update - This is not a cov matrix!! --> parameters not saved')
+                return False
+        # print('Gamma=', Gamma)
+        # input('Corrections Gamma')
+
+        # implantation dans self.__CovZ1Z2_Fuzzy
+        for l in range(self.__STEPSp2**2):
+            j = l//self.__STEPSp2
+            k = l%self.__STEPSp2
+            # print("j=", j, ", k=", k)
+            self.__CovZ1Z2_Fuzzy[l, 0:self.__n_z, 0:self.__n_z] = Gamma[j, :, :]
+            self.__CovZ1Z2_Fuzzy[l, self.__n_z:,  self.__n_z:]  = Gamma[k, :, :]
+            if Check_CovMatrix(self.__CovZ1Z2_Fuzzy[l, :, :], verbose=False) == False:
+                #print('TabIsCov[l]=', TabIsCov[l])
+                #Check_CovMatrix(self.__CovZ1Z2_Fuzzy[l, :, :], verbose=True)
+                #input('Nous avons un pb - les matrices de cov ne sont pas definies positives')
+                TabIsCov[l] = False
+    
+        # Pour les matrices fausse, on remet les matrices sigma à 0
+        for l in range(self.__STEPSp2**2):
+            if TabIsCov[l] == False:
+                self.__CovZ1Z2_Fuzzy[l, 0:self.__n_z, self.__n_z:] = 0.
+                self.__CovZ1Z2_Fuzzy[l, self.__n_z:, 0:self.__n_z] = 0.
+                if Check_CovMatrix(self.__CovZ1Z2_Fuzzy[l, :, :], verbose=False) == False:
+                    if self.__verbose>1:
+                        print('l=', l)
+                        print('TabIsCov[l]=', TabIsCov[l])
+                        Check_CovMatrix(self.__CovZ1Z2_Fuzzy[l, :, :], verbose=True)
+                        print('update - This matrix is not pos. def. !')
+                    return False
+        # print('TabIsCov=', TabIsCov)
+        # input('COVZ1Z2')
+        return True
+
+    def getMeanZAll(self):
+        return self.__Mean_Fuzzy
+    
+    def getCovZ1Z2All(self):
+        return self.__CovZ1Z2_Fuzzy
+
+    def getMean(self, indrn):
+        if indrn>=0 and indrn<self.__STEPSp2:
+            return self.__Mean_Fuzzy[indrn, :]
+        else:
+            return None
+
+    def getCovZ1Z2(self, indrn):
+        if indrn>=0 and indrn<self.__STEPSp2:
+            return self.__CovZ1Z2_Fuzzy[indrn, :]
         else:
             return None
         

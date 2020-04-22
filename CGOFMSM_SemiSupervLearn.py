@@ -90,25 +90,26 @@ if __name__ == '__main__':
         print('  -->Date fin   série = ', Datatrain[listeHeader[0]].iloc[-1])
 
     # Learning fo parameters
-    filestem       = pathlib.Path(fileTrain).stem
-    aCGOFMSM_learn = CGOFMSM_Learn(STEPS, nbIterSEM, nbRealSEM, Datatrain, filestem, FSstring, verbose, graphics)
+    aCGOFMSM_learn = CGOFMSM_Learn(STEPS, nbIterSEM, nbRealSEM, Datatrain, fileTrain, FSstring, verbose, graphics)
     aCGOFMSM_learn.run_several()
     
     # Command ligne for filtering, smoothing, predicting
-    hard, filt, smooth, predic = 0, 1, 0, 1
+    filestem = pathlib.Path(fileTrain).stem
+    hard, filt, smooth, predic = 0, 1, 1, 1
     chWork = str(hard) + ',' + str(filt) + ',' + str(smooth) + ',' + str(predic)
 
     # Save parametrization 3
-    filenameParam = './Parameters/Fuzzy/' + filestem + '_F=' + str(STEPS) + '.param3'
+    filenameParam = './Parameters/Fuzzy/' + filestem + '_F=' + str(STEPS) + '_direct.param3'
     aCGOFMSM_learn.SaveParameters_3(filenameParam)
     aCGOFMSM_learn.GenerateCommandline(chWork, fileTrain, filenameParam, STEPS, clipboardcopy=False)
+    exit(1)
 
-    # Convert parametrization 3 to parametrization 2 by parametrization 1
-    filenameParam = './Parameters/Fuzzy/' + filestem + '_F=' + str(STEPS) + '.param1'
-    Cov, MeanX, MeanY = aCGOFMSM_learn.ConvertParameters_3to2by1()
-    aCGOFMSM_learn.SaveParameters_2(filenameParam, Cov, MeanX, MeanY)
-    aCGOFMSM_learn.GenerateCommandline(chWork, fileTrain, filenameParam, STEPS, clipboardcopy=True)
+    # # Convert parametrization 3 to parametrization 2 by parametrization 1
+    # filenameParam = './Parameters/Fuzzy/' + filestem + '_F=' + str(STEPS) + '_convert.param2'
+    # CovZ, MeanX, MeanY = aCGOFMSM_learn.ConvertParameters_3to2by1()
+    # aCGOFMSM_learn.SaveParameters_2(filenameParam, CovZ, MeanX, MeanY)
+    # aCGOFMSM_learn.GenerateCommandline(chWork, fileTrain, filenameParam, STEPS, clipboardcopy=True)
 
-    filenameParam = './Parameters/Fuzzy/' + filestem + '_interpolation.param1'
-    aCGOFMSM_learn.SaveParameters_2Interpolation(filenameParam, Cov, MeanX, MeanY)
-    aCGOFMSM_learn.GenerateCommandline(chWork, fileTrain, filenameParam, -1, clipboardcopy=False)
+    # filenameParam = './Parameters/Fuzzy/' + filestem + '_interpolation_convert.param2'
+    # aCGOFMSM_learn.SaveParameters_2Interpolation(filenameParam, CovZ, MeanX, MeanY)
+    # aCGOFMSM_learn.GenerateCommandline(chWork, fileTrain, filenameParam, -1, clipboardcopy=False)
