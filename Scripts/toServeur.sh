@@ -1,5 +1,6 @@
 
-git add -A && git commit -a -m "avant archivage" && git archive --format=zip HEAD > CGPMSM.zip
+git add -A && git commit -a -m "avant archivage"
+git archive --format=zip HEAD > CGPMSM.zip
 scp CGPMSM.zip  sderrode@156.18.90.100:~/
 rm CGPMSM.zip
 ssh sderrode@156.18.90.100 && rm -r -f CGPMSM
