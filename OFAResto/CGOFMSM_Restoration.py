@@ -63,13 +63,16 @@ class CGOFMSM:
     def SimulateFuzzy(self, filenameSimulatedXRY=None, readData = False, Plot = False):
 
         if readData == False:
-            self.__n_r, X, R, Y  = simulateFuzzy(self.__filenameParamCov, self.__FSParameters, self.__interpolation, self.__N)
+            self.__n_r, X, R, Y, self.__FSParameters = simulateFuzzy(self.__filenameParamCov, self.__FSParameters, self.__interpolation, self.__N)
             assert self.__n_r == 2, print('number of jumps must be 2!')
             if Plot is True:
                 self.PlotSimul(X, R, Y)
         else:
-            X, R, Y = ReadSimulatedFuzzyData(filenameSimulatedXRY)
+            X, R, Y, self.__FSParameters = ReadSimulatedFuzzyData(filenameSimulatedXRY)
             self.__N = np.shape(X)[0]
+
+        # print('self.__FSParameters=', self.__FSParameters)
+        # input('pause SimulateFuzzy')
 
         cpt = 0
         for i in range(self.__N):
@@ -93,7 +96,7 @@ class CGOFMSM:
 
         # Create main objects
         Resto = RestorationOFAFuzzy(self.__filenameParamCov, STEPS[0], self.__FSParameters, self.__interpolation, self.__verbose)
-        self.__n_r, n_x, n_y, n_z, STEPS, F, B, Q, Cov, Mean_X, Mean_Y = Resto.getParams()
+        self.__n_r, n_x, n_y, n_z, STEPS, F, B, Q, Cov, Mean_X, Mean_Y, self.__FSParameters = Resto.getParams()
         # print(self.__n_r, n_x, n_y, n_z, STEPS, self.__interpolation)
         assert self.__n_r == 2, print('number of jumps must be 2!')
         

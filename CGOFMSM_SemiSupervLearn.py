@@ -91,24 +91,24 @@ if __name__ == '__main__':
 
     # Learning fo parameters
     aCGOFMSM_learn = CGOFMSM_Learn(STEPS, nbIterSEM, nbRealSEM, Datatrain, fileTrain, FSstring, verbose, graphics)
-    aCGOFMSM_learn.run_several()
+    aCGOFMSM_learn.run_several_learn()
     
     # Command ligne for filtering, smoothing, predicting
-    filestem = pathlib.Path(fileTrain).stem
-    hard, filt, smooth, predic = 0, 1, 1, 1
-    chWork = str(hard) + ',' + str(filt) + ',' + str(smooth) + ',' + str(predic)
+    # filestem = pathlib.Path(fileTrain).stem
+    # hard, filt, smooth, predic = 0, 1, 1, 1
+    # chWork = str(hard) + ',' + str(filt) + ',' + str(smooth) + ',' + str(predic)
 
     # Save parametrization 3
-    filenameParam = './Parameters/Fuzzy/' + filestem + '_F=' + str(STEPS) + '_direct.param3'
-    aCGOFMSM_learn.SaveParameters_3(filenameParam)
-    aCGOFMSM_learn.GenerateCommandline(chWork, fileTrain, filenameParam, STEPS, clipboardcopy=False)
-    exit(1)
+    # filenameParam = './Parameters/Fuzzy/' + filestem + '_F=' + str(STEPS) + '_direct.param3'
+    # aCGOFMSM_learn.SaveParameters_3(filenameParam)
+    # aCGOFMSM_learn.GenerateCommandline(chWork, fileTrain, filenameParam, STEPS, clipboardcopy=False)
+    # exit(1)
 
     # # Convert parametrization 3 to parametrization 2 by parametrization 1
     # filenameParam = './Parameters/Fuzzy/' + filestem + '_F=' + str(STEPS) + '_convert.param2'
     # CovZ, MeanX, MeanY = aCGOFMSM_learn.ConvertParameters_3to2by1()
     # aCGOFMSM_learn.SaveParameters_2(filenameParam, CovZ, MeanX, MeanY)
-    # aCGOFMSM_learn.GenerateCommandline(chWork, fileTrain, filenameParam, STEPS, clipboardcopy=True)
+    # aCGOFMSM_learn.GenerateCommandline(chWork, fileTrain, filenameParam, STEPS, clipboardcopy=False)
 
     # filenameParam = './Parameters/Fuzzy/' + filestem + '_interpolation_convert.param2'
     # aCGOFMSM_learn.SaveParameters_2Interpolation(filenameParam, CovZ, MeanX, MeanY)

@@ -166,7 +166,7 @@ class CGOFMSM_Learn:
             plt.close()
 
 
-    def run_several(self):
+    def run_several_learn(self):
 
         ########## initialisation by kmeans 
         iter = 0
@@ -181,7 +181,7 @@ class CGOFMSM_Learn:
         if len(np.shape(CovZ_CGO)) != 0:
             self.SaveParameters_2(filenameParam, CovZ_CGO, MeanX, MeanY)
             chWork = str(0) + ',' + str(1) + ',' + str(1) + ',' + str(1)
-            self.GenerateCommandline(chWork, self.__fileTrain, filenameParam, -1, clipboardcopy=True)
+            self.GenerateCommandline(chWork, self.__fileTrain, filenameParam, -1, clipboardcopy=False)
 
         # To plot the evolution of some parameters
         self.__Tab_ParamFS  [iter,:] = self.__FS.getParam()
@@ -205,7 +205,7 @@ class CGOFMSM_Learn:
         for iter in range(1, self.__nbIterSEM+1):
             print('SEM ITERATION', iter, 'over', self.__nbIterSEM)
             if iter==self.__nbIterSEM: Plot=True
-            self.run_one(iter, Plot)
+            self.run_one_learn(iter, Plot)
 
             # Convert parametrization 3 to parametrization 2 (by param 1) 
             # filenameParam = self.__graphRep+'parametrization2_F=' + str(self.__STEPS) + '_Iter_' +str(iter) + '.param'
@@ -218,7 +218,7 @@ class CGOFMSM_Learn:
             self.PlotConvSEM()
 
 
-    def run_one(self, iter, Plot=False):
+    def run_one_learn(self, iter, Plot=False):
 
         # MAJ des proba sur la base des paramètres courants
         Tab_GaussXY                         = self.compute_tab_GaussXY()
@@ -318,7 +318,7 @@ class CGOFMSM_Learn:
 
     def GenerateCommandline(self, chWork, fileTrain, filenameParam, steps, clipboardcopy=False):
  
-        A  = 'python3 CGOFMSM_SignalRest.py ' + filenameParam + ' ' + self.__FS.stringName() + ' '
+        A  = 'python3 CGOFMSM_SignalRest.py ' + filenameParam + ' -1 '
         A += chWork + ' ' + fileTrain + ' ' + str(steps) + ' 2 1'
         print('  -> Command line for data restoration:')
         print('        ', A, '\n')
@@ -363,13 +363,17 @@ class CGOFMSM_Learn:
         f.write(  '#==========================================================#')
         f.write('\n# CGOFMSM parameters (parametrization 2)                   #')
         f.write('\n#==========================================================#\n#\n')
+        f.write('#\n# fuzzy parameters\n# ================================\n')
+        f.write(self.__FS.stringName())
+        f.write('\n#\n#\n')
         f.close()
 
         f = open(filenameParam, 'ab')
         
         # the number of fuzzy steps
         np.savetxt(f, np.array([self.__STEPS], dtype=int), delimiter=" ", header='number of fuzzy steps'+'\n================================', footer='\n')
-      
+
+        
         # Les covariances
         for j in range(self.__STEPSp2):
             for k in range(self.__STEPSp2):

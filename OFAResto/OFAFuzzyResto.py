@@ -242,16 +242,25 @@ class RestorationOFAFuzzy:
         
         self.__interpolation = interpolation
         self.__verbose       = verbose
+        self.__FSParameters  = FSParameters 
 
         if interpolation == False:
-            self.__n_r, self.__STEPS, self.__A, self.__B, self.__Q, self.__Cov, self.__Mean_X, self.__Mean_Y = Readin_CovMeansProba(filenameParam)
+            self.__n_r, self.__STEPS, self.__A, self.__B, self.__Q, self.__Cov, self.__Mean_X, self.__Mean_Y, FSPar = \
+                Readin_CovMeansProba(filenameParam)
         else:
             self.__STEPS = STEPS
             self.__n_r = 2
-            self.__A, self.__B, self.__Q, self.__Cov, self.__Mean_X, self.__Mean_Y = Readin_CovMeansProba(filenameParam, interpolation)
+            self.__A, self.__B, self.__Q, self.__Cov, self.__Mean_X, self.__Mean_Y, FSPar = Readin_CovMeansProba(filenameParam, interpolation)
             # print('n_r=', self.__n_r)
             # print('self.__STEPS=', self.__STEPS)
             # input('interpolation == True')
+
+        if self.__FSParameters[0] == str(-1):
+            if FSPar == None:
+                print('\nImpossible: the FS parameters are not stored in the parameter file')
+                exit(1)
+            else:
+                self.__FSParameters = FSPar
 
         self.__n_x = np.shape(self.__Mean_X)[1]
         self.__n_y = np.shape(self.__Mean_Y)[1]
@@ -268,30 +277,30 @@ class RestorationOFAFuzzy:
             self.__Rcentres = np.empty(shape=(0,))
 
         self.__FS = None
-        if FSParameters[0] == '1':
-            self.__FS = LoiAPrioriSeries1(alpha=float(FSParameters[1]), gamma=float(FSParameters[2]))
-        elif FSParameters[0] == '2':
-            self.__FS = LoiAPrioriSeries2(alpha=float(FSParameters[1]), eta=float(FSParameters[2]), delta=float(FSParameters[3]))
-        elif FSParameters[0] == '2bis':
-            self.__FS = LoiAPrioriSeries2bis(alpha=float(FSParameters[1]), eta=float(FSParameters[2]), delta=float(FSParameters[3]), lamb=float(FSParameters[4]))
-        elif FSParameters[0] == '2ter':
-            self.__FS = LoiAPrioriSeries2ter(alpha0=float(FSParameters[1]), alpha1=float(FSParameters[2]), beta=float(FSParameters[3]))
-        elif FSParameters[0] == '3':
-            self.__FS = LoiAPrioriSeries3(alpha=float(FSParameters[1]), delta=float(FSParameters[2]))
-        elif FSParameters[0] == '4':
-            self.__FS = LoiAPrioriSeries4(alpha=float(FSParameters[1]), gamma=float(FSParameters[2]), delta_d=float(FSParameters[3]), delta_u=float(FSParameters[4]))
-        elif FSParameters[0] == '4bis':
-            self.__FS = LoiAPrioriSeries4bis(alpha=float(FSParameters[1]), gamma=float(FSParameters[2]), delta_d=float(FSParameters[3]), delta_u=float(FSParameters[4]), lamb=float(FSParameters[5]))
+        if self.__FSParameters[0] == '1':
+            self.__FS = LoiAPrioriSeries1(alpha=float(self.__FSParameters[1]), gamma=float(self.__FSParameters[2]))
+        elif self.__FSParameters[0] == '2':
+            self.__FS = LoiAPrioriSeries2(alpha=float(self.__FSParameters[1]), eta=float(self.__FSParameters[2]), delta=float(self.__FSParameters[3]))
+        elif self.__FSParameters[0] == '2bis':
+            self.__FS = LoiAPrioriSeries2bis(alpha=float(self.__FSParameters[1]), eta=float(self.__FSParameters[2]), delta=float(self.__FSParameters[3]), lamb=float(self.__FSParameters[4]))
+        elif self.__FSParameters[0] == '2ter':
+            self.__FS = LoiAPrioriSeries2ter(alpha0=float(self.__FSParameters[1]), alpha1=float(self.__FSParameters[2]), beta=float(self.__FSParameters[3]))
+        elif self.__FSParameters[0] == '3':
+            self.__FS = LoiAPrioriSeries3(alpha=float(self.__FSParameters[1]), delta=float(self.__FSParameters[2]))
+        elif self.__FSParameters[0] == '4':
+            self.__FS = LoiAPrioriSeries4(alpha=float(self.__FSParameters[1]), gamma=float(self.__FSParameters[2]), delta_d=float(self.__FSParameters[3]), delta_u=float(self.__FSParameters[4]))
+        elif self.__FSParameters[0] == '4bis':
+            self.__FS = LoiAPrioriSeries4bis(alpha=float(self.__FSParameters[1]), gamma=float(self.__FSParameters[2]), delta_d=float(self.__FSParameters[3]), delta_u=float(self.__FSParameters[4]), lamb=float(self.__FSParameters[5]))
         else:
             input('Impossible')
 
-        #self.__FSText = 'FS' + FSParameters[0] + '_pH_' + str(self.__FS.maxiHardJump()).replace('.','_')
-        self.__FSText = 'FS' + FSParameters[0]
+        #self.__FSText = 'FS' + self.__FSParameters[0] + '_pH_' + str(self.__FS.maxiHardJump()).replace('.','_')
+        self.__FSText = 'FS' + self.__FSParameters[0]
         # print('self.__FSText=', self.__FSText)
         # input('fin du constructeur')
 
     def getParams(self):
-        return self.__n_r, self.__n_x, self.__n_y, self.__n_z, np.array([self.__STEPS]), self.__A, self.__B, self.__Q, self.__Cov, self.__Mean_X, self.__Mean_Y
+        return self.__n_r, self.__n_x, self.__n_y, self.__n_z, np.array([self.__STEPS]), self.__A, self.__B, self.__Q, self.__Cov, self.__Mean_X, self.__Mean_Y, self.__FSParameters
 
     def resetSTEPS(self, steps):
         self.__STEPS = steps

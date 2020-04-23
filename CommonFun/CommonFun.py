@@ -411,6 +411,8 @@ def Readin_CovMeansProba(filenameParam, interpolation=False):
     STEPS   = -1
     okJump  = False
     okSTEPS = False
+    okFSPar = False
+    FSParameters = None
     with open(filenameParam, 'r') as f:
         for line in f:
 
@@ -420,6 +422,8 @@ def Readin_CovMeansProba(filenameParam, interpolation=False):
                 flag=1
             if line.startswith("# number of fuzzy steps"):
                 Name='STEPS'
+            if line.startswith("# fuzzy parameters"):
+                Name='FSParStr'
             if line.startswith("# Cov"):
                 Name = 'Cov'
                 K1 = K1+1
@@ -429,12 +433,15 @@ def Readin_CovMeansProba(filenameParam, interpolation=False):
                 Name = 'Mean_X'
             if line.startswith("# mean of Y"):
                 Name = 'Mean_Y'
-
             if (flag == 1 and Name == 'Cov'):
                 locals()['Cov_%s'%K1] = mat_read(m, line)
             if (flag==1 and Name=='STEPS'):
                 okSTEPS = True
                 STEPS=int(mat_read(m,line).item())
+            if (flag==1 and Name=='FSParStr'):
+                okFSPar      = True
+                FSParStr     = line
+                FSParameters = list(map(str, FSParStr.split(':')))
             if (flag==1 and Name=='joint_proba'):
                 okJump = True
                 joint_proba=mat_read(m,line)
@@ -444,16 +451,17 @@ def Readin_CovMeansProba(filenameParam, interpolation=False):
                 Mean_Y = mat_read(m, line)
 
             m = flag
+        
 
     # Verification of the dimensions of matrices and vectors
     if okJump == True:
         n_rp1, n_rp2 = np.shape(joint_proba)
     n_rX, n_x = np.shape(Mean_X)
     n_rY, n_y = np.shape(Mean_Y)
-    n_rX -= STEPS
-    n_rY -= STEPS
-    n_z          = n_x + n_y
-    n_z_2        = n_z*2
+    n_rX     -= STEPS
+    n_rY     -= STEPS
+    n_z       = n_x + n_y
+    n_z_2     = n_z*2
 
     if ((okJump == True) and (not (n_rp1 == n_rp2 == n_rX == n_rY))) or (okJump == False and (not (n_rX == n_rY))):
         input('probleme - n_r dimension incoherent in the parameter file')
@@ -522,12 +530,13 @@ def Readin_CovMeansProba(filenameParam, interpolation=False):
             print('Apres norma --> Array joint_proba = ', joint_proba)
             input('pause')
         init_proba, trans_proba, steady_proba = getprobamarkov(joint_proba)
-        return (n_r, A, B, Q, Cov, Mean_X, Mean_Y, joint_proba, init_proba, trans_proba, steady_proba)
-    
+        return (n_r, A, B, Q, Cov, Mean_X, Mean_Y, joint_proba, init_proba, trans_proba, steady_proba, FSParameters)
+            
     if interpolation == True:
-        return A, B, Q, Cov, Mean_X, Mean_Y
+        return A, B, Q, Cov, Mean_X, Mean_Y, FSParameters
     else:
-        return n_r, STEPS, A, B, Q, Cov, Mean_X, Mean_Y
+        return n_r, STEPS, A, B, Q, Cov, Mean_X, Mean_Y, FSParameters
+
 
 def Test_if_CGPMSM(Cov):
 

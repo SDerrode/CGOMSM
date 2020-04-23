@@ -21,11 +21,13 @@ if __name__ == '__main__':
         >> nohup python3 CGOFMSM_SimRest.py Parameters/Fuzzy/SP2018.param 4:0.15:0.15:0.05:0.05 1,1,0,1 1000 1,2,3,5,7,10 10 1 0 1 > serie2.out &
 
         argv[1] : Parameters file name
-        argv[2] : Fuzzy joint law model and parameters. e.g. 2:0.07:0.24:0.09, or 4:0.15:0.15:0.:0.1
+        argv[2] : Fuzzy joint law model and parameters; e.g. 2ter:0.3:0.3:0.05
+                  If -1 then the model is to be read in the parameter file
         argv[3] : Hard filter & smoother (0/1), filter (0/1), smoother (0/1), predictor (horizon size); e.g. 0,1,0,2
                   The horizon size is 0 if we don't need prediction, 2 if we need a 2-horizon prediction
         argv[4] : Sample size
-        argv[5] : F value (one or several separated by commas), e.g. 1,3,5. If -1 then the value will be read in the parameter file.
+        argv[5] : F value (one or several separated by commas), e.g. 1,3,5. 
+                  If -1 then the value is to be read in the parameter file.
         argv[6] : Number of experiments to get mean results
         argv[7] : Verbose levele: Debug(3), pipelette (2), normal (1), presque muet (0)
         argv[8] : Graphics? (0/1)

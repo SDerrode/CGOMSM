@@ -22,10 +22,20 @@ from Fuzzy.APrioriFuzzyLaw_Series4bis import LoiAPrioriSeries4bis
 def simulateFuzzy(filenameParam, FSParameters, interpolation, N):
 
     if interpolation == True:
-        A, B, Q, Cov, Mean_X, Mean_Y = Readin_CovMeansProba(filenameParam, interpolation)
+        A, B, Q, Cov, Mean_X, Mean_Y, FSPar = Readin_CovMeansProba(filenameParam, interpolation)
         n_r = 2
     else:
-        n_r, STEPS, A, B, Q, Cov, Mean_X, Mean_Y = Readin_CovMeansProba(filenameParam, interpolation)
+        n_r, STEPS, A, B, Q, Cov, Mean_X, Mean_Y, FSPar = Readin_CovMeansProba(filenameParam, interpolation)
+
+    if FSParameters[0] == str(-1):
+        if FSPar == None:
+            print('\nImpossible: the FS parameters are not stored in the parameter file')
+            exit(1)
+        else:
+            FSParameters = FSPar
+
+    print('FSParameters=', FSParameters)
+    input('pause simulateFuzzy')
 
     n_x  = np.shape(Mean_X)[1]
     n_y  = np.shape(Mean_Y)[1]
@@ -88,7 +98,7 @@ def simulateFuzzy(filenameParam, FSParameters, interpolation, N):
 
     X = Z[:, s_0x]
     Y = Z[:, s_xz]
-    return n_r, X, R, Y
+    return n_r, X, R, Y, FSParameters
 
 def InterLineaire_Vector(Vect, alpha):
     """ Return the Vect_alpha by linear interpolation of vectors in Vect."""

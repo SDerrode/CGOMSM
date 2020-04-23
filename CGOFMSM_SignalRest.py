@@ -32,10 +32,12 @@ if __name__ == '__main__':
 
         argv[1] : Name of the file of parameters (cov and means)
         argv[2] : Fuzzy joint law model and parameters; e.g. 2ter:0.3:0.3:0.05
+                  If -1 then the model is to be read in the parameter file
         argv[3] : Hard filter & smoother (0/1), filter (0/1), smoother (0/1), predictor (horizon size); e.g. 0,1,0,2
                   The horizon size is 0 if we don't need prediction, 2 if we need a 2-horizon prediction
         argv[4] : Observed signal filename
-        argv[5] : If interpolation, number of discrete fuzzy, aka 'F'; e.g. 3.  If -1 then F is to be read in the parameter file
+        argv[5] : If interpolation required, number of discrete fuzzy steps, aka 'F'; e.g. 3.  
+                  If -1 then F is to be read in the parameter file
         argv[6] : Debug(3), pipelette (2), normal (1), presque muet (0)
         argv[7] : Plot graphique (0/1)
     """

@@ -14,6 +14,9 @@ __pycache__/
 Fuzzy/figures/
 Fuzzy/films/
 
+# le répertoire de rapports d'expériecne
+Report/
+
 # Distribution / packaging
 .Python
 build/
