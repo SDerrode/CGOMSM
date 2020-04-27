@@ -53,7 +53,7 @@ def main():
     OKtestModel = P.testModel(verbose=verbose, epsilon=epsilon)
 
     # Simulation d'un chaine de markov flou suivant ce modèle
-    N = 30000
+    N = 10000
     chain = P.testSimulMC(N, verbose=verbose, epsilon=epsilon)
 
     if graphics == True:

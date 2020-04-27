@@ -10,10 +10,11 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection
 
 
-from Fuzzy.LoisDiscreteFuzzy import Loi2DDiscreteFuzzy, Loi1DDiscreteFuzzy
-#from LoisDiscreteFuzzy import Loi2DDiscreteFuzzy, Loi1DDiscreteFuzzy
+#from Fuzzy.LoisDiscreteFuzzy import Loi2DDiscreteFuzzy, Loi1DDiscreteFuzzy
+from LoisDiscreteFuzzy import Loi2DDiscreteFuzzy, Loi1DDiscreteFuzzy
 
 
 fontS = 13 # fontSize
@@ -175,7 +176,6 @@ class LoiAPriori:
             self.__uneLoi1D.setindr(i+1, self.probaR2CondR1 (r1, r))
 
         integ = self.__uneLoi1D.Integ()
-
         return integ
 
 
@@ -316,17 +316,33 @@ class LoiAPriori:
         maxim = np.amax(pR1R2)
 
         ############# Dessin des bords
-        # pR1R2.fill(0.)
-        # for i, r1 in enumerate(self.__R1):
-        #     pR1R2[i, 0] = self.probaR1R2(r1, 0.)
-        # for i, r1 in enumerate(self.__R1):
-        #     pR1R2[i, R2.shape[0]-1] = self.probaR1R2(r1, 1.)
-        # for j, r2 in enumerate(R2):
-        #     pR1R2[0, j] = self.probaR1R2(0., r2)
-        # for j, r2 in enumerate(R2):
-        #     pR1R2[R1.shape[0]-1, j] = self.probaR1R2(1., r2)
-        # ax.plot_surface(R1Grid1, R2Grid1, pR1R2, alpha=0.6, color='xkcd:lavender')
-        # maxim = max(maxim, np.amax(pR1R2))
+        for i, r1 in enumerate(self.__Rcentres):
+            pR1R2[i, 0] = self.probaR1R2(r1, 0.)
+        for i, r1 in enumerate(self.__Rcentres):
+            pR1R2[i, self.__discretization-1] = self.probaR1R2(r1, 1.)
+        for j, r2 in enumerate(self.__Rcentres):
+            pR1R2[0, j] = self.probaR1R2(0., r2)
+        for j, r2 in enumerate(self.__Rcentres):
+            pR1R2[self.__discretization-1, j] = self.probaR1R2(1., r2)
+        #ax.plot_surface(R1Grid1, R2Grid1, pR1R2, alpha=0.9, color='xkcd:lavender')
+
+        # x = [0, 2, 1, 1]
+        # y = [0, 0, 1, 0]
+        # z = [0, 0, 0, 1]
+
+        # vertices = [[0, 1, 2,0], [0, 1, 3, 0], [0, 2, 3, 0], [1, 2, 3, 1], [0, 1, 2, 0]]
+        # tupleList = list(zip(x, y, z))
+
+        # poly3d = [[tupleList[vertices[ix][iy]] for iy in range(len(vertices[0]))] for ix in range(len(vertices))]
+        # ax.scatter(x,y,z)
+        # collection=Poly3DCollection(poly3d, linewidths=1, alpha=0.2)
+        # face_color = (141 / 255, 184 / 255, 226 / 255)
+        # edge_color = (50 / 255, 50 / 255, 50 / 255)
+        # collection.set_facecolor(face_color)
+        # collection.set_edgecolor(edge_color)
+        # ax.add_collection3d(collection)
+
+        maxim = max(maxim, np.amax(pR1R2))
 
         ############# Dessin des masses
         x, y, z=[0., 0.], [0., 0.], [0., self.probaR1R2(0., 0.)]
