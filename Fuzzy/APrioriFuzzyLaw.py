@@ -11,10 +11,11 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection, Line3DCollection
+from matplotlib.lines import Line2D
 
 
-#from Fuzzy.LoisDiscreteFuzzy import Loi2DDiscreteFuzzy, Loi1DDiscreteFuzzy
-from LoisDiscreteFuzzy import Loi2DDiscreteFuzzy, Loi1DDiscreteFuzzy
+from Fuzzy.LoisDiscreteFuzzy import Loi2DDiscreteFuzzy, Loi1DDiscreteFuzzy
+#from LoisDiscreteFuzzy import Loi2DDiscreteFuzzy, Loi1DDiscreteFuzzy
 
 
 fontS = 13 # fontSize
@@ -67,7 +68,7 @@ class LoiAPriori:
 
     def __init__(self, EPS, discretization):
 
-        self.__EPS            = EPS
+        self._EPS            = EPS
         self.__discretization = discretization
 
         if self.__discretization != 0:
@@ -75,8 +76,8 @@ class LoiAPriori:
         else:
             self.__Rcentres = np.empty(shape=(0,))
 
-        self.__uneLoi1D = Loi1DDiscreteFuzzy(self.__EPS, self.__discretization, self.__Rcentres)
-        self.__uneLoi2D = Loi2DDiscreteFuzzy(self.__EPS, self.__discretization, self.__Rcentres)
+        self.__uneLoi1D = Loi1DDiscreteFuzzy(self._EPS, self.__discretization, self.__Rcentres)
+        self.__uneLoi2D = Loi2DDiscreteFuzzy(self._EPS, self.__discretization, self.__Rcentres)
 
     def maxiFuzzyJump(self):
         """
@@ -268,6 +269,7 @@ class LoiAPriori:
 
         return chain
 
+
     def testSum_to_one(self, verbose=False, epsilon=1E-2):
 
         OKSumtoOne = True
@@ -316,31 +318,15 @@ class LoiAPriori:
         maxim = np.amax(pR1R2)
 
         ############# Dessin des bords
-        for i, r1 in enumerate(self.__Rcentres):
-            pR1R2[i, 0] = self.probaR1R2(r1, 0.)
-        for i, r1 in enumerate(self.__Rcentres):
-            pR1R2[i, self.__discretization-1] = self.probaR1R2(r1, 1.)
-        for j, r2 in enumerate(self.__Rcentres):
-            pR1R2[0, j] = self.probaR1R2(0., r2)
-        for j, r2 in enumerate(self.__Rcentres):
-            pR1R2[self.__discretization-1, j] = self.probaR1R2(1., r2)
-        #ax.plot_surface(R1Grid1, R2Grid1, pR1R2, alpha=0.9, color='xkcd:lavender')
-
-        # x = [0, 2, 1, 1]
-        # y = [0, 0, 1, 0]
-        # z = [0, 0, 0, 1]
-
-        # vertices = [[0, 1, 2,0], [0, 1, 3, 0], [0, 2, 3, 0], [1, 2, 3, 1], [0, 1, 2, 0]]
-        # tupleList = list(zip(x, y, z))
-
-        # poly3d = [[tupleList[vertices[ix][iy]] for iy in range(len(vertices[0]))] for ix in range(len(vertices))]
-        # ax.scatter(x,y,z)
-        # collection=Poly3DCollection(poly3d, linewidths=1, alpha=0.2)
-        # face_color = (141 / 255, 184 / 255, 226 / 255)
-        # edge_color = (50 / 255, 50 / 255, 50 / 255)
-        # collection.set_facecolor(face_color)
-        # collection.set_edgecolor(edge_color)
-        # ax.add_collection3d(collection)
+        # for i, r1 in enumerate(self.__Rcentres):
+        #     pR1R2[i, 0] = self.probaR1R2(r1, 0.)
+        # for i, r1 in enumerate(self.__Rcentres):
+        #     pR1R2[i, self.__discretization-1] = self.probaR1R2(r1, 1.)
+        # for j, r2 in enumerate(self.__Rcentres):
+        #     pR1R2[0, j] = self.probaR1R2(0., r2)
+        # for j, r2 in enumerate(self.__Rcentres):
+        #     pR1R2[self.__discretization-1, j] = self.probaR1R2(1., r2)
+        #ax.plot_surface(R1Grid1, R2Grid1, pR1R2, alpha=0.9, color='xkcd:lavender'
 
         maxim = max(maxim, np.amax(pR1R2))
 
@@ -384,12 +370,17 @@ class LoiAPriori:
             proba[i] = self.probaR(r)
 
         fig, ax = plt.subplots()
-        ax.plot(self.__Rcentres, proba, alpha=0.6, color='g')
+        ax.plot(self.__Rcentres, proba, alpha=0.6, color='g', linewidth=2)
         ax.set_xlabel('$r$', fontsize=fontS)
         #ax.set_xlim(0, 1)
         #ax.set_ylabel('$p(r)$', fontsize=fontS)
         #ax.set_ylim(0., max(pR)*1.05)
         # plt.show()
+
+        line1 = Line2D([0., 0.], [0., self.probaR(0.) ], linewidth=4)
+        line2 = Line2D([1., 1.], [0., self.probaR(1.) ], linewidth=4)
+        ax.add_line(line1)
+        ax.add_line(line2)
         plt.savefig(filename, bbox_inches='tight', dpi=dpi)
         plt.close()
 

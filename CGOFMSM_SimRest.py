@@ -18,7 +18,7 @@ if __name__ == '__main__':
         >> python3 CGOFMSM_SimRest.py Parameters/Fuzzy/SP2018.param 2:0.12:0.12:0.09 1,1,1,1 40000 0 1 2 0
         >> python3 CGOFMSM_SimRest.py Parameters/Fuzzy/SP2018.param 2:0.07:0.24:0.09 1,1,1,1 72    3 5 2 1
         >> python3 CGOFMSM_SimRest.py Parameters/Fuzzy/SP2018.param 2:0.07:0.24:0.09 1,1,0,1 500 1,2,3,5,7,10 10 1 0 1
-        >> nohup python3 CGOFMSM_SimRest.py Parameters/Fuzzy/SP2018.param 4:0.15:0.15:0.05:0.05 1,1,0,1 1000 1,2,3,5,7,10 10 1 0 1 > serie2.out &
+        >> nohup python3 CGOFMSM_SimRest.py Parameters/Fuzzy/SP2018.param 4:0.15:0.15:0.05 1,1,0,1 1000 1,2,3,5,7,10 10 1 0 1 > serie2.out &
 
         argv[1] : Parameters file name
         argv[2] : Fuzzy joint law model and parameters; e.g. 2ter:0.3:0.3:0.05

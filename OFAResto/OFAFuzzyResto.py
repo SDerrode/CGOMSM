@@ -288,9 +288,9 @@ class RestorationOFAFuzzy:
         elif self.__FSParameters[0] == '3':
             self.__FS = LoiAPrioriSeries3(alpha=float(self.__FSParameters[1]), delta=float(self.__FSParameters[2]))
         elif self.__FSParameters[0] == '4':
-            self.__FS = LoiAPrioriSeries4(alpha=float(self.__FSParameters[1]), gamma=float(self.__FSParameters[2]), delta_d=float(self.__FSParameters[3]), delta_u=float(self.__FSParameters[4]))
+            self.__FS = LoiAPrioriSeries4(alpha=float(self.__FSParameters[1]), gamma=float(self.__FSParameters[2]), delta=float(self.__FSParameters[3]))
         elif self.__FSParameters[0] == '4bis':
-            self.__FS = LoiAPrioriSeries4bis(alpha=float(self.__FSParameters[1]), gamma=float(self.__FSParameters[2]), delta_d=float(self.__FSParameters[3]), delta_u=float(self.__FSParameters[4]), lamb=float(self.__FSParameters[5]))
+            self.__FS = LoiAPrioriSeries4bis(alpha=float(self.__FSParameters[1]), beta=float(self.__FSParameters[2]), delta=float(self.__FSParameters[3]), lamb=float(self.__FSParameters[5]))
         else:
             input('Impossible')
 

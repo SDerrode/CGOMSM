@@ -26,7 +26,7 @@ if __name__ == '__main__':
     print("Seed was:", seed)
 
     P = LoiAPrioriSeries2(EPS, discretization, alpha=0.10, eta=0.21, delta=0.076)
-    #P = LoiAPrioriSeries4(EPS, discretization, alpha=0.15, gamma = 0.60, delta_d=0.20, delta_u=0.20)
+    #P = LoiAPrioriSeries4(EPS, discretization, alpha=0.15, gamma = 0.60, delta_d=0.20)
 
     fig = plt.figure(figsize=(7, 10))
     ax1 = fig.add_subplot(2, 1, 1, projection='3d')

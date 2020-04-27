@@ -64,8 +64,8 @@ def main():
     # Apprentissage des paramètres de R
     # coeffdelta = 16
     # coeffalpha = 1./6.
-    # alpha, beta, gamma, delta_d, delta_u = getRParam_FMC2(DOE_df, np.sum(cpt), coeffalpha=coeffalpha, coeffdelta=coeffdelta)
-    # print('alpha=', alpha, ', beta=', beta, ', gamma = ', gamma, ', delta_d=', delta_d, ', delta_u=', delta_u)
+    # alpha, beta, gamma, delta, = getRParam_FMC2(DOE_df, np.sum(cpt), coeffalpha=coeffalpha, coeffdelta=coeffdelta)
+    # print('alpha=', alpha, ', beta=', beta, ', gamma = ', gamma, ', delta=', delta)
     coeffalpha = 1.#0.9
     alpha, beta, delta, eta = getRParam_FMC1(X, Y, R, np.sum(cpt), coeffalpha)
     print('alpha=', alpha, ', beta=', beta, ', delta = ', delta, ', eta=', eta)
@@ -74,7 +74,7 @@ def main():
     #################################
     # Commande d'appel au programme
     name1='./Data/Zied/results/XYR.csv'
-    # A  = 'python3 CGOFMSM_SignalRest.py ./Parameters/Signal/' + filanemaneParam + ' 4:' + str(alpha) + ':' + str(gamma) + ':' + str(delta_d) + ':' + str(delta_u) + ' '
+    # A  = 'python3 CGOFMSM_SignalRest.py ./Parameters/Signal/' + filanemaneParam + ' 4:' + str(alpha) + ':' + str(gamma) + ':' + str(delta) + ' '
     # A += chWork + ' ' + name1 + ' ' + steps + ' ' + str(verbose) + ' ' + str(plot)
     A  = 'python3 CGOFMSM_SignalRest.py ./Parameters/Signal/' + filanemaneParam + ' 2:' + str(alpha) + ':' + str(beta) + ':' + str(eta) + ':' + str(delta) + ' '
     A += chWork + ' ' + name1 + ' ' + steps + ' ' + str(verbose) + ' ' + str(plot) 
@@ -86,11 +86,9 @@ def main():
     # Commande pour simuler un signal de la même forme et le restaurer par CGOFMSM
     N = 1000
     NbExp = 1
-    # B = 'python3 
-CGOFMSM_SimRest.py ./Parameters/Signal/' + filanemaneParam + ' 4:' + str(alpha) + ':' + str(gamma) + ':' + str(delta_d) + ':' + str(delta_u) + ' '
+    # B = 'python3 CGOFMSM_SimRest.py ./Parameters/Signal/' + filanemaneParam + ' 4:' + str(alpha) + ':' + str(gamma) + ':' + str(delta) + ' '
     # B += chWork + ' ' + str(N) + ' ' + steps + ' ' + str(NbExp) + ' ' + str(verbose) + ' ' + str(plot)
-    B = 'python3 
-CGOFMSM_SimRest.py ./Parameters/Signal/' + filanemaneParam + ' 2:' + str(alpha) + ':' + str(beta) + ':' + str(eta) + ':' + str(delta) + ' '
+    B = 'python3 CGOFMSM_SimRest.py ./Parameters/Signal/' + filanemaneParam + ' 2:' + str(alpha) + ':' + str(beta) + ':' + str(eta) + ':' + str(delta) + ' '
     B += chWork + ' ' + str(N) + ' ' + steps + ' ' + str(NbExp) + ' ' + str(verbose) + ' ' + str(plot)
     print('pour simuler + restaurer:')
     print('\n', B, '\n')

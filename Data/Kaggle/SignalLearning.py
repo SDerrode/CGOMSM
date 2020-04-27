@@ -60,8 +60,8 @@ def main():
     ##################################
     # Apprentissage des paramètres de R
     coeffmult = 15
-    alpha, beta, gamma, delta_d, delta_u = getRParam_FMC2(temperature_df, np.sum(cpt), coeff= coeffmult)
-    print('alpha=', alpha, ', beta=', beta, ', gamma = ', gamma, ', delta_d=', delta_d, ', delta_u=', delta_u)
+    alpha, beta, gamma, delta = getRParam_FMC2(temperature_df, np.sum(cpt), coeff= coeffmult)
+    print('alpha=', alpha, ', beta=', beta, ', gamma = ', gamma, ', delta=', delta, ', delta_u=', delta_u)
     # alpha, beta, delta, eta = getRParam_FMC1(temperature_df, np.sum(cpt))
     # print('alpha=', alpha, ', beta=', beta, ', delta = ', delta, ', eta=', eta)
 
@@ -74,7 +74,7 @@ def main():
     plot    = 1
     name1 = '../Data_CGPMSM/Kaggle/input/'+ listStations[9] + ch
 
-    A  = 'python3 CGOFMSM_SignalRest.py ./Parameters/Signal/' + filanemaneParam + ' 4:' + str(alpha) + ':' + str(gamma) + ':' + str(delta_d) + ':' + str(delta_u) + ' '
+    A  = 'python3 CGOFMSM_SignalRest.py ./Parameters/Signal/' + filanemaneParam + ' 4:' + str(alpha) + ':' + str(gamma) + ':' + str(delta) + ' '
     A += chWork + ' ' + name1 + ' ' + steps + ' ' + str(verbose) + ' ' + str(plot)
     # A  = 'python3 CGOFMSM_Signals.py ./Parameters/Signal/' + filanemaneParam + ' 2:' + str(alpha) + ':' + str(beta) + ':' + str(eta) + ':' + str(delta) + ' '
     # A += chWork + ' ' + name1 + ' ' + steps + ' ' + str(verbose) + ' ' + str(plot) 
@@ -85,8 +85,7 @@ def main():
     # Commande pour simuler un signal de la même forme et le restaurer par CGOFMSM
     N = 2000
     NbExp = 1
-    B = 'python3 
-CGOFMSM_SimRest.py ./Parameters/Signal/' + filanemaneParam + ' 4:' + str(alpha) + ':' + str(gamma) + ':' + str(delta_d) + ':' + str(delta_u) + ' '
+    B = 'python3 CGOFMSM_SimRest.py ./Parameters/Signal/' + filanemaneParam + ' 4:' + str(alpha) + ':' + str(gamma) + ':' + str(delta) + ' '
     B += chWork + ' ' + str(N) + ' ' + steps + ' ' + str(NbExp) + ' ' + str(verbose) + ' ' + str(plot)
     # B = 'python3 CGOFMSM.py ./Parameters/Signal/' + filanemaneParam + ' 4:' + str(alpha) + ':' + str(beta) + ':' + str(eta) + ':' + str(delta) + ' '
     # B += chWork + ' ' + str(N) + ' ' + steps + ' ' + str(NbExp) + ' ' + str(verbose) + ' ' + str(plot)
@@ -110,45 +109,7 @@ def getRParam_FMC1(df, sumcpt01):
     return alpha, beta, delta, eta
 
 
-def getRParam(df, sumcpt01, coeff):
 
-    # estimation of beta
-    beta = 0.0 # Pas de transition entre 0 et 1 et inversement
-
-    # estimation of beta
-    delta = 0.0 # Pas de transition entre 0 et 1 et inversement
-
-    # estimation de delta par la pente maximum sur AT_R_GT
-    delta_d = 0.
-    delta_u = 0.
-    for i, fuzzylevel in enumerate(df.AT_R_GT[:-1]):
-        if fuzzylevel != 0.0 and fuzzylevel != 1.0:
-            delta_u = max(delta_u, df.AT_R_GT[i+1] - df.AT_R_GT[i])
-            delta_d = max(delta_d, df.AT_R_GT[i] - df.AT_R_GT[i+1])
-    delta_u *= coeff
-    if delta_d == 0.:
-        delta_d  = delta_u
-    else:
-        delta_d *= coeff
-
-    delta = delta_u + delta_d
-    M = 3*delta - 0.5*(delta_u*delta_u + delta_d*delta_d)
-    PH = sumcpt01 / df.AirTemperature.count()
-    print('PH=', PH)
-
-    # estimation de gamma selon l'eq. (32) du papier
-    gamma = (PH-1.) / (delta_u + delta_d - M)
-    print('delta_u + delta_d - M=', delta_u + delta_d - M)
-
-    # estimation de alpha
-    alpha = (1.-gamma * M) / 2.
-    print('alpha=', alpha)
-    alpha = (PH-gamma*(delta_u+delta_d)) / 2.
-    print('alpha=', alpha)
-    print('beta=', (1. - gamma * M)/2. - alpha)
-    input('pause')
-
-    return alpha, beta, gamma, delta_d, delta_u
 
 
 def getRParam_FMC2(df, meancpt01, coeff):
@@ -174,7 +135,7 @@ def getRParam_FMC2(df, meancpt01, coeff):
     M = delta * (6.- delta)
     gamma = (1.-2.*(beta + alpha)) / M
 
-    return alpha, beta, gamma, delta, delta
+    return alpha, beta, gamma, delta
 
 def printfileParam(filanemane, Cov, meanX, meanY, n_z):
 

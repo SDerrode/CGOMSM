@@ -27,7 +27,7 @@ if __name__ == '__main__':
 
         >> python3 CGOFMSM_SignalRest.py Parameters/Signal.param 2:0.07:0.24:0.09 1,1,0 ./Data/Kaggle/input/JoseRizalBridgeNorth_ATemp.csv 3 2 1
         >> python3 CGOFMSM_SignalRest.py Parameters/Signal.param 2:0.07:0.24:0.09 1,1,0 ./Data/Kaggle/input/JoseRizalBridgeNorth_ATemp.csv 1,2,3,5,7,10 10 0 1
-        >> nohup python3 CGOFMSM_SignalRest.py Parameters/Signal.param 4:0.15:0.15:0.:0.1 1,1,0 ./Data/Kaggle/input/JoseRizalBridgeNorth_ATemp.csv 1,2,3,5,7,10 10 0 1 > serie2.out &
+        >> nohup python3 CGOFMSM_SignalRest.py Parameters/Signal.param 4:0.15:0.15:0.1 1,1,0 ./Data/Kaggle/input/JoseRizalBridgeNorth_ATemp.csv 1,2,3,5,7,10 10 0 1 > serie2.out &
         >> python3 CGOFMSM_SignalRest.py ./Parameters/Fuzzy/TMU6048TrainX_extract_TMU6048TrainY_extract_F=1.param 2ter:0.4204:0.2328:0.0000 0,1,0,1 ./Data/Traffic/TMU5509/generated/TMU5509_train.csv -1 2 1
 
         argv[1] : Name of the file of parameters (cov and means)

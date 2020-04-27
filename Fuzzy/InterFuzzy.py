@@ -60,9 +60,9 @@ def simulateFuzzy(filenameParam, FSParameters, interpolation, N):
     elif FSParameters[0] == '3':
         FS = LoiAPrioriSeries3(alpha=float(FSParameters[1]), delta=float(FSParameters[2]))
     elif FSParameters[0] == '4':
-        FS = LoiAPrioriSeries4(alpha=float(FSParameters[1]), gamma=float(FSParameters[2]), delta_d=float(FSParameters[3]), delta_u=float(FSParameters[4]))
+        FS = LoiAPrioriSeries4(alpha=float(FSParameters[1]), gamma=float(FSParameters[2]), delta=float(FSParameters[3]))
     elif FSParameters[0] == '4bis':
-        FS = LoiAPrioriSeries4bis(alpha=float(FSParameters[1]), gamma=float(FSParameters[2]), delta_d=float(FSParameters[3]), delta_u=float(FSParameters[4]), lamb=float(FSParameters[5]))
+        FS = LoiAPrioriSeries4bis(alpha=float(FSParameters[1]), beta=float(FSParameters[2]), delta=float(FSParameters[3]), lamb=float(FSParameters[5]))
     else:
         input('Impossible')
 

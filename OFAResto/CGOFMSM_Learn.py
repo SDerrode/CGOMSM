@@ -520,9 +520,9 @@ class CGOFMSM_Learn:
         elif self.__FSstring == '3':
             FS = LoiAPrioriSeries3(alpha=0., delta=0.)
         elif self.__FSstring == '4':
-            FS = LoiAPrioriSeries4(alpha=0., gamma=0., delta_d=0., delta_u=0.)
+            FS = LoiAPrioriSeries4(alpha=0., gamma=0., delta=0.)
         elif self.__FSstring == '4bis':
-            FS = LoiAPrioriSeries4bis(alpha=0., gamma=0., delta_d=0., delta_u=0., lamb=0.)
+            FS = LoiAPrioriSeries4bis(alpha=0., beta=0., delta=0., lamb=0.)
         else:
             input('Impossible')
             exit(1)
