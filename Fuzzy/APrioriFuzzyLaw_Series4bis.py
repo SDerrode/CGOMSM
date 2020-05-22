@@ -44,6 +44,14 @@ def main():
     #P, case = LoiAPrioriSeries4bis(alpha=0.10, beta = 0.10, delta=0.15, lamb=0.10, EPS=EPS, discretization=discretization), 2
     P, case = LoiAPrioriSeries4bis(alpha=0.05, beta = 0.05, delta=0.10, lamb=0.001, EPS=EPS, discretization=discretization), 3
     
+    alpha=0.13710879284649777
+    beta=0.0
+    delta=0.1
+    gamma=2.2354694485842024
+    lamb=0.6733333333333333
+    P, case = LoiAPrioriSeries4bis(alpha=alpha, beta = beta, delta=delta, lamb=lamb, EPS=EPS, discretization=discretization), 44
+
+
     print(P)
     print('model string', P.stringName())
 
@@ -125,16 +133,52 @@ class LoiAPrioriSeries4bis(LoiAPriori):
         # print(self.maxiHardJump())
         # print(self.maxiFuzzyJump())
         # print(2.*(self.__alpha+self.__beta) + self.__lamb * self.__gamma / 2.*2.*self.__delta)
-        # print(self.__gamma*( (self.__lamb/2.+1.) * (2.*self.__delta) - self.__delta*self.__delta))
+        # print(self.__gamma*self.__delta*( self.__lamb+2. - self.__delta))
         # input('Perfecto!')
 
     def setParametersFromSimul(self, Rsimul, nbcl):
         
-        input('setParametersFromSimul : to be done')
         Nsimul = len(Rsimul)
+
+        alpha, beta, cptDur = 0., 0., 0
+        for n in range(1, Nsimul):
+            if Rsimul[n-1] == 0      and Rsimul[n] == 0:      alpha += 1.
+            if Rsimul[n-1] == nbcl-1 and Rsimul[n] == nbcl-1: alpha += 1.
+            if Rsimul[n-1] == 0      and Rsimul[n] == nbcl-1: beta  += 1.
+            if Rsimul[n-1] == nbcl-1 and Rsimul[n] == 0:      beta  += 1.
+            if Rsimul[n] == 0 or Rsimul[n] == nbcl-1: cptDur += 1.
+        alpha /= 2. # ca compte les transitions 0-0, 1-1, donc on divise par deux
+        beta  /= 2. # ca compte les transitions 0-1, 1-0, donc on divise par deux
+        
+        alpha  = alpha / (Nsimul-1.)
+        beta   = beta / (Nsimul-1.)
+        cptDur = cptDur / (Nsimul-1.)
+
+        delta = 0.1
+
+        #1-cptDur = gamma*delta*( lamb+2. - delta)
+        temp = cptDur-2.*(alpha+beta)
+        lamb = (2.-delta) * (cptDur-2.*(alpha+beta)) / (1-2.*cptDur+2.*(alpha+beta) )
+
+
+        self.__alpha = alpha 
+        self.__beta  = beta
+        self.__lamb  = lamb
+        self.__delta = delta
 
         self.update()
         
+    def getNbParam(self):
+        return 5
+
+    def getParamLetter(self, num):
+        if num == 0: return r'$\alpha$'
+        if num == 1: return r'$\beta$'
+        if num == 2: return r'$\delta$'
+        if num == 3: return r'$\gamma$'
+        if num == 4: return r'$\lambda$'
+        return r'unknown!'
+
     def getParam(self):
         """ Return the params of the law model."""
         return self.__alpha, self.__beta, self.__delta, self.__gamma, self.__lamb

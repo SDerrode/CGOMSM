@@ -9,8 +9,8 @@ import pathlib
 import matplotlib
 import matplotlib.pyplot as plt
 
-from pandas.plotting import register_matplotlib_converters
-register_matplotlib_converters()
+#from pandas.plotting import register_matplotlib_converters
+#register_matplotlib_converters()
 
 from OFAResto.CGOFMSM_Learn import CGOFMSM_Learn, MeanCovFuzzy
 

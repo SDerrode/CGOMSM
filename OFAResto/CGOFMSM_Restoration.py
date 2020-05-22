@@ -108,7 +108,6 @@ class CGOFMSM:
 
         Data.set_index(list(Data)[0], inplace=True)
         listeHeader = list(Data)
-        listeHeader=list(Data)
         Y          = np.zeros((self.__N, n_y))
         Y[:, 0]    = Data[listeHeader[0]].values
         X_GT       = np.zeros((self.__N, n_x))

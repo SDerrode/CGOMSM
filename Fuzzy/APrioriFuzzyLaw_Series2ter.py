@@ -104,6 +104,16 @@ class LoiAPrioriSeries2ter(LoiAPriori):
         """ Return the params of the law model."""
         return self.__alpha0, self.__alpha1, self.__beta, self.__eta
 
+    def getNbParam(self):
+        return 4
+
+    def getParamLetter(self, num):
+        if num == 0: return r'$\alpha_0$'
+        if num == 1: return r'$\alpha_1$'
+        if num == 2: return r'$\beta$'
+        if num == 3: return r'$\eta$'
+        return r'unknown!'
+
     def getEta(self):
         """ Return the eta param of the law model."""
         self.__eta = 3./8.*(1. - self.__alpha0 - self.__alpha1 - 2.*self.__beta)

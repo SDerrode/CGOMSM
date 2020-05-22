@@ -86,9 +86,9 @@ def main():
             MatCov[l, s_0z, s_0z]   = MatSigma[i, :, :]
             MatCov[l, s_z2z, s_z2z] = MatSigma[j, :, :]
             # MatCorr
-            for p in range(2*n_z):
-                for q in range(2*n_z):
-                    MatCorr[l, p, q] = MatCov[l, p, q]/np.sqrt(MatCov[l, p, p] * MatCov[l, q, q])
+            # for p in range(2*n_z):
+            #     for q in range(2*n_z):
+            #         MatCorr[l, p, q] = MatCov[l, p, q]/np.sqrt(MatCov[l, p, p] * MatCov[l, q, q])
     # print('Array MatCorr = ', MatCorr)
     # input('pause')
 
@@ -193,13 +193,9 @@ def Check_CovMatrix(MatCov):
 def Check_CovMatrices(MatCov, n_r):
 
     for l in range(n_r**2):
-
         if Check_CovMatrix(MatCov[l, :, :]) == False:
             return False
-
     return True
-
-
 
 def Impression(Cov, n_r, n_z, decim=3):
 

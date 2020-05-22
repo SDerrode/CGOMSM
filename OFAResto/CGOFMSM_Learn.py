@@ -96,13 +96,6 @@ class CGOFMSM_Learn:
             self.__Rcentres = np.linspace(start=1./(2.*self.__STEPS), stop=1.0-1./(2.*self.__STEPS), num=self.__STEPS, endpoint=True)
         else:
             self.__Rcentres = np.empty(shape=(0,))
-
-        # used to print the evolution of FS parameters
-        self.__Tab_ParamFS   = np.zeros(shape=(self.__nbIterSEM+1, 4)) 
-        self.__Tab_M_00      = np.zeros(shape=(self.__nbIterSEM+1, 4)) 
-        self.__Tab_Lambda_00 = np.zeros(shape=(self.__nbIterSEM+1, 1)) 
-        self.__Tab_P_00      = np.zeros(shape=(self.__nbIterSEM+1, 2)) 
-        self.__Tab_Pi_00     = np.zeros(shape=(self.__nbIterSEM+1, 1))
         
         # plage graphique pour les plots
         self.__graph_mini = 0
@@ -176,12 +169,20 @@ class CGOFMSM_Learn:
             self.updateParamFromRsimul(numIterSEM=iter, kmeans=True, Plot=False)
 
         # Save of parameters for parametrization 2
-        filenameParam = './Parameters/Fuzzy/' + self.__filestem + '_F=' + str(self.__STEPS) + '_direct.param2'
+        filenameParam = './Parameters/Fuzzy/' + self.__filestem + '_FS' + self.__FSstring + '_F=' + str(self.__STEPS) + '_direct.param2'
         CovZ_CGO, MeanX, MeanY = self.GenerateParameters_2(Rsimul)
         if len(np.shape(CovZ_CGO)) != 0:
             self.SaveParameters_2(filenameParam, CovZ_CGO, MeanX, MeanY)
             chWork = str(0) + ',' + str(1) + ',' + str(1) + ',' + str(1)
             self.GenerateCommandline(chWork, self.__fileTrain, filenameParam, -1, clipboardcopy=False)
+
+        # used to print the evolution of FS parameters
+        self.__Tab_ParamFS   = np.zeros(shape=(self.__nbIterSEM+1, self.__FS.getNbParam())) 
+        self.__Tab_M_00      = np.zeros(shape=(self.__nbIterSEM+1, 4)) 
+        self.__Tab_Lambda_00 = np.zeros(shape=(self.__nbIterSEM+1, 1)) 
+        self.__Tab_P_00      = np.zeros(shape=(self.__nbIterSEM+1, 2)) 
+        self.__Tab_Pi_00     = np.zeros(shape=(self.__nbIterSEM+1, 1))
+
 
         # To plot the evolution of some parameters
         self.__Tab_ParamFS  [iter,:] = self.__FS.getParam()
@@ -522,7 +523,7 @@ class CGOFMSM_Learn:
         elif self.__FSstring == '4':
             FS = LoiAPrioriSeries4(alpha=0., gamma=0., delta=0.)
         elif self.__FSstring == '4bis':
-            FS = LoiAPrioriSeries4bis(alpha=0., beta=0., delta=0., lamb=0.)
+            FS = LoiAPrioriSeries4bis(alpha=0.05, beta=0.05, delta=0.10, lamb=0.01)
         else:
             input('Impossible')
             exit(1)
@@ -922,13 +923,13 @@ class CGOFMSM_Learn:
 
 
     def PlotConvSEM(self):
+        tabcolor=['g', 'r', 'b', 'k', 'm']
 
         ax = plt.figure().gca()
         ax.ticklabel_format(useOffset=False)
-        plt.plot(self.__Tab_ParamFS[:, 0], color='g', label=r'$\alpha_0$')
-        plt.plot(self.__Tab_ParamFS[:, 1], color='r', label=r'$\alpha_1$')
-        plt.plot(self.__Tab_ParamFS[:, 2], color='b', label=r'$\beta$')
-        plt.plot(self.__Tab_ParamFS[:, 3], color='k', label=r'$\eta$')
+        for nbparam in range(self.__FS.getNbParam()):
+            plt.plot(self.__Tab_ParamFS[:, nbparam], color=tabcolor[nbparam], label=self.__FS.getParamLetter(nbparam))
+
         plt.ylim(ymax=1.05, ymin=-0.05)
         plt.xlim(xmax=self.__nbIterSEM, xmin=0)
         plt.xlabel('SEM iteration')
